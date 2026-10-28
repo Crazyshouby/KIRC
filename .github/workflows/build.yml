@@ -18,6 +18,7 @@ permissions:
 jobs:
   build:
     runs-on: windows-2022
+    timeout-minutes: 40
     outputs:
       version: ${{ steps.ver.outputs.version }}
     steps:
@@ -73,6 +74,7 @@ jobs:
 
       # The real application against tools/fake_ircd.py (see tests/e2e.mjs). OpenSSL comes with Git for Windows.
       - name: End-to-end test
+        timeout-minutes: 12
         shell: pwsh
         run: |
           $env:PATH = "C:\Program Files\Git\usr\bin;$env:PATH"

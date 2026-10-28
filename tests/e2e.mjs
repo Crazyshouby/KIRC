@@ -20,6 +20,8 @@ const data = mkdtempSync(join(tmpdir(), "kirc-e2e-"));
 const DEBUG_PORT = 9333, IRC_PORT = 16667, TLS_PORT = 16697;
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+// Whatever happens, the whole run ends.
+setTimeout(() => { console.error("ERROR: the test took more than 8 minutes"); process.exit(3); }, 8 * 60 * 1000).unref();
 let failures = 0;
 const check = (cond, what) => { console.log((cond ? "  ok   " : "  FAIL ") + what); if (!cond) failures++; };
 
@@ -36,9 +38,18 @@ async function until(fn, what, ms = 10000) {
 class Page {
   constructor(info, ws) { this.info = info; this.ws = ws; this.id = 0; this.waiting = new Map(); ws.onmessage = m => { const d = JSON.parse(m.data); const w = this.waiting.get(d.id); if (w) { this.waiting.delete(d.id); d.error ? w.reject(new Error(d.error.message)) : w.resolve(d.result); } }; }
   static async open(info) { const ws = new WebSocket(info.webSocketDebuggerUrl); await new Promise((res, rej) => { ws.onopen = res; ws.onerror = rej; }); return new Page(info, ws); }
-  send(method, params = {}) { const id = ++this.id; this.ws.send(JSON.stringify({ id, method, params })); return new Promise((resolve, reject) => this.waiting.set(id, { resolve, reject })); }
+  // No call may wait for ever: a window that is not drawn (a CI machine has no screen) never answers.
+  send(method, params = {}) {
+    const id = ++this.id;
+    this.ws.send(JSON.stringify({ id, method, params }));
+    return new Promise((resolve, reject) => {
+      const t = setTimeout(() => { this.waiting.delete(id); reject(new Error("no answer to " + method)); }, 20000);
+      this.waiting.set(id, { resolve: v => { clearTimeout(t); resolve(v); }, reject: e => { clearTimeout(t); reject(e); } });
+    });
+  }
   async eval(expr) { const r = await this.send("Runtime.evaluate", { expression: expr, awaitPromise: true, returnByValue: true }); if (r.exceptionDetails) throw new Error(r.exceptionDetails.exception?.description || "eval failed"); return r.result.value; }
-  async shot(name) { const r = await this.send("Page.captureScreenshot", { format: "png" }); writeFileSync(join(shots, name + ".png"), Buffer.from(r.data, "base64")); }
+  // Screenshots are a courtesy: where the window cannot be drawn they are skipped, not fatal.
+  async shot(name) { try { const r = await this.send("Page.captureScreenshot", { format: "png" }); writeFileSync(join(shots, name + ".png"), Buffer.from(r.data, "base64")); } catch (e) { console.log("   (no screenshot " + name + ": " + e.message + ")"); } }
   close() { this.ws.close(); }
 }
 const targets = async () => (await (await fetch(`http://127.0.0.1:${DEBUG_PORT}/json`)).json()).filter(t => t.type === "page");
