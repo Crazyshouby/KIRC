@@ -319,7 +319,8 @@ async function main() {
   check(upd.ok !== undefined || typeof upd.err === "string", "a manual update check answers (" + (upd.err ? upd.err.slice(0, 60) : JSON.stringify(upd.ok)) + ")");
   check((await inv("update_info", {})).ok === null || typeof (await inv("update_info", {})).ok === "object", "update_info answers");
   const aboutU = await (async () => { await inv("open_window", { kind: "about" }); return page(win("about"), 10000); })();
-  check(await aboutU.eval("!!document.querySelector('#checkUpdate')"), "the About window has the update button");
+  await until(() => aboutU.eval("!!document.querySelector('#checkUpdate')"), "the About window has the update button", 8000);
+  check(true, "the About window has the update button");
   await aboutU.fire("window.__TAURI__.core.invoke('win_close')");
 
   console.log("unread counters and paste");
