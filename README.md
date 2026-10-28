@@ -44,7 +44,7 @@ Prérequis : Rust (MSVC), Node.js 20 ou plus, Python 3 (outils seulement). WebVi
 npm install
 npm run dev                 # lance l'application en mode développement
 npm run build               # installateur NSIS dans src-tauri/target/release/bundle/nsis/
-cd src-tauri && cargo test  # 70 tests unitaires + 4 tests réseau
+cd src-tauri && cargo test  # 75 tests unitaires + 4 tests réseau
 node tests/e2e.mjs          # test de bout en bout de la vraie application (voir ci-dessous)
 python tools/gen_assets.py  # régénère polices et pictogrammes (fichiers versionnés)
 ```
