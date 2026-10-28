@@ -89,6 +89,9 @@ impl ServerEntry {
     }
 }
 
+/// The themes the pages know (ui/themes.css); "kdx" is the default look.
+pub const THEMES: [&str; 7] = ["kdx", "bleu", "vert", "violet", "ambre", "sarcelle", "charbon"];
+
 /// Entries kept in each of the ignore and alert lists.
 pub const MAX_LIST_ITEMS: usize = 200;
 
@@ -112,6 +115,8 @@ pub struct Settings {
     pub scrollback: u32,
     /// Open the server's console window when connecting.
     pub open_console: bool,
+    /// Colour theme, one of `THEMES`.
+    pub theme: String,
     /// Nicks or masks (`*`, `?`) whose messages are dropped, for every server.
     pub ignores: Vec<String>,
     /// Words that count as a mention besides one's own nick.
@@ -139,6 +144,7 @@ impl Default for Settings {
             show_timestamps: true,
             scrollback: 1000,
             open_console: true,
+            theme: "kdx".into(),
             ignores: Vec::new(),
             alert_words: Vec::new(),
             log_enabled: true,
@@ -159,6 +165,9 @@ impl Settings {
         }
         if !(50..=5000).contains(&self.scrollback) {
             return Err("L'historique doit être compris entre 50 et 5000 lignes".into());
+        }
+        if !THEMES.contains(&self.theme.as_str()) {
+            return Err("Thème inconnu".into());
         }
         if self.log_days > 3650 {
             return Err("La durée de conservation des journaux ne peut pas dépasser 3650 jours".into());
@@ -360,6 +369,13 @@ mod tests {
         assert!(s.validate().is_err());
         let s = Settings { log_days: 9999, ..Default::default() };
         assert!(s.validate().is_err());
+        for t in THEMES {
+            assert!(Settings { theme: t.into(), ..Default::default() }.validate().is_ok(), "{t}");
+        }
+        assert!(Settings { theme: "../x".into(), ..Default::default() }.validate().is_err());
+        // A file written before themes existed has none: it gets the default.
+        let old: Settings = serde_json::from_str(r#"{"nick":"a"}"#).unwrap();
+        assert_eq!(old.theme, "kdx");
     }
 
     #[test]

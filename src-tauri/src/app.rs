@@ -442,8 +442,8 @@ impl Kind {
         !matches!(self, Kind::Launcher | Kind::About | Kind::Join | Kind::Whois(_, _))
     }
 
-    fn url(&self, title: &str) -> String {
-        let t = text::url_encode(title);
+    fn url(&self, title: &str, theme: &str) -> String {
+        let t = format!("{}&th={}", text::url_encode(title), text::url_encode(theme));
         match self {
             Kind::Console(s) => format!("index.html?w=console&s={}&t={t}", text::url_encode(s)),
             Kind::Whois(s, n) => format!("index.html?w=whois&s={}&b={}&t={t}", text::url_encode(s), text::url_encode(n)),
@@ -500,14 +500,17 @@ pub fn open(app: &AppHandle, kind: Kind, focus: bool) -> Result<(), String> {
     let key = kind.key();
     // The lock is released before asking the monitors: that call waits for the main thread,
     // which may itself be waiting for this lock (a window moved at that moment).
-    let remembered = st.config.lock().unwrap().windows.get(&key).copied();
+    let (remembered, theme) = {
+        let c = st.config.lock().unwrap();
+        (c.windows.get(&key).copied(), c.settings.theme.clone())
+    };
     let saved = remembered.filter(|g| on_screen(app, g));
     let title = kind.title(app);
     let (w, h, min_w, min_h) = kind.size();
     let count = app.webview_windows().len() as f64;
     let step = (count % 8.0) * 26.0;
 
-    let mut b = WebviewWindowBuilder::new(app, &label, WebviewUrl::App(kind.url(&title).into()))
+    let mut b = WebviewWindowBuilder::new(app, &label, WebviewUrl::App(kind.url(&title, &theme).into()))
         .title(&title)
         .inner_size(w, h)
         .min_inner_size(min_w, min_h)

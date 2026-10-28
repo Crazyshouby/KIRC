@@ -16,6 +16,14 @@ const BUFFER = params.get("b") || "";
 document.documentElement.dataset.panel = PANEL;
 document.title = params.get("t") || "KIRC";
 for (const el of document.querySelectorAll("[data-title]")) el.textContent = document.title;
+
+// Theme: an accent ramp chosen in the settings (see themes.css). The window is opened with its
+// theme in the address, so it never shows the wrong one first; a change reaches open windows as an event.
+function applyTheme(name) {
+  if (name && name !== "kdx") document.documentElement.dataset.theme = name;
+  else delete document.documentElement.dataset.theme;
+}
+applyTheme(params.get("th"))
 fillPix();
 
 // RFC 1459 case folding, as the server does it.
@@ -97,6 +105,7 @@ function initChrome() {
     g.addEventListener("pointercancel", end);
   }
   listen("active", e => document.body.classList.toggle("active", !!e.payload));
+  listen("theme", e => applyTheme(e.payload));
   listen("shade", e => document.body.classList.toggle("shaded", !!e.payload));
   invoke("win_ready");
 }
@@ -557,6 +566,7 @@ function initSettings() {
     f("sQuit").value = s.quit_message; f("sPart").value = s.part_message;
     f("sStamps").checked = s.show_timestamps; f("sJoins").checked = s.show_joins; f("sScroll").value = s.scrollback;
     f("sNotif").checked = s.notifications; f("sQueries").checked = s.open_queries; f("sConsole").checked = s.open_console;
+    f("sTheme").value = s.theme;
     f("sLog").checked = s.log_enabled; f("sLogDays").value = s.log_days;
     f("sIgnores").value = s.ignores.join("\n"); f("sWords").value = s.alert_words.join("\n");
   }
@@ -566,6 +576,7 @@ function initSettings() {
       quit_message: f("sQuit").value, part_message: f("sPart").value,
       show_timestamps: f("sStamps").checked, show_joins: f("sJoins").checked, scrollback: +f("sScroll").value || 0,
       notifications: f("sNotif").checked, open_queries: f("sQueries").checked, open_console: f("sConsole").checked,
+      theme: f("sTheme").value,
       log_enabled: f("sLog").checked, log_days: +f("sLogDays").value || 0,
       ignores: f("sIgnores").value.split("\n").map(x => x.trim()).filter(Boolean),
       alert_words: f("sWords").value.split("\n").map(x => x.trim()).filter(Boolean),
@@ -576,6 +587,7 @@ function initSettings() {
   f("settingsForm").addEventListener("submit", e => { e.preventDefault(); save(); });
   f("cancelSettings").addEventListener("click", () => invoke("win_close"));
   f("openLogs").addEventListener("click", () => call("open_logs_folder"));
+  f("sTheme").addEventListener("change", () => applyTheme(f("sTheme").value)); // preview, this window only
   load();
 }
 

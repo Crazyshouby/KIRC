@@ -44,6 +44,7 @@ jobs:
         shell: pwsh
         run: |
           python tools/gen_assets.py
+          python tools/gen_themes.py
           python tools/make_notices.py
           git diff --exit-code --ignore-cr-at-eol -- ui THIRD-PARTY-NOTICES.txt src-tauri/icons/source.png
           if ($LASTEXITCODE -ne 0) { throw 'Fichiers générés périmés : relancer tools/gen_assets.py et tools/make_notices.py' }

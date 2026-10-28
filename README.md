@@ -15,6 +15,7 @@ Un client IRC pour Windows, dans le style de **KDX** (Haxial) : chaque fonction 
 - **Commandes** : `/join /part /msg /query /me /nick /away /whois /list /ignore /unignore /topic /kick /ban /op /deop /voice /devoice /mode /invite /names /ctcp /ns /cs /quote /clear /quit` — `/aide` les rappelle.
 - **Notifications** de bureau pour les messages privés et les mentions, désactivables ; compteurs de lignes non lues dans le menu principal et la barre de titre.
 - **Journaux** de conversation sur disque, avec les dernières lignes rappelées à l'ouverture d'une fenêtre ; **liste des salons** du serveur avec recherche ; **ignorer** des pseudos ou masques, **mots d'alerte** ; fiche d'informations `/whois` ; confirmation avant de coller plusieurs lignes.
+- **Thèmes** : sept teintes d'accent reprises des apparences KDX (rouge par défaut, bleu, vert, violet, ambre, sarcelle, charbon), à changer dans les réglages.
 - **Reconnexion automatique** avec délai croissant ; les salons sont rejoints de nouveau.
 - **Mémoire des fenêtres** : position et taille de chacune, retrouvées au démarrage.
 - Zone de notification : le bouton « − » du menu principal range tout, un clic sur l'icône ramène tout.
@@ -49,6 +50,7 @@ npm run build               # installateur NSIS dans src-tauri/target/release/bu
 cd src-tauri && cargo test  # 87 tests unitaires + 4 tests réseau
 node tests/e2e.mjs          # test de bout en bout de la vraie application (voir ci-dessous)
 python tools/gen_assets.py  # régénère polices et pictogrammes (fichiers versionnés)
+python tools/gen_themes.py  # régénère ui/themes.css
 ```
 
 `tests/e2e.mjs` démarre `tools/fake_ircd.py` (un petit serveur IRC scripté, avec TLS) puis l'application avec un dossier de données jetable, la pilote par le port de débogage de WebView2 et enregistre une capture de chaque fenêtre dans `tests/shots/`. Il écrit brièvement dans le coffre Windows (puis le vide) pour vérifier SASL.

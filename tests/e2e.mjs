@@ -292,6 +292,27 @@ async function main() {
   await lst.shot("14-list");
   await lst.fire("window.__TAURI__.core.invoke('win_close')");
 
+  console.log("themes");
+  const mid = page => page.eval("getComputedStyle(document.documentElement).getPropertyValue('--a-mid').trim()");
+  check((await mid(chat)) === "#880000", "the default theme is the KDX red");
+  const seen = new Set(["#880000"]);
+  for (const th of ["bleu", "vert", "violet", "ambre", "sarcelle", "charbon"]) {
+    const r = await inv("save_settings", { settings: { ...ovNow.settings, theme: th } });
+    check(r.ok === true, "theme " + th + " saved");
+    await until(async () => (await chat.eval("document.documentElement.dataset.theme")) === th && (await launcher.eval("document.documentElement.dataset.theme")) === th, "open windows follow the theme " + th, 5000);
+    const m = await mid(chat);
+    check(!seen.has(m), "theme " + th + " has its own accent (" + m + ")");
+    seen.add(m);
+    await chat.shot("20-theme-" + th);
+  }
+  check((await inv("save_settings", { settings: { ...ovNow.settings, theme: "../evil" } })).err !== undefined, "an unknown theme is refused");
+  await inv("open_window", { kind: "about" });
+  const aboutT = await page(win("about"), 10000);
+  check((await aboutT.eval("document.documentElement.dataset.theme")) === "charbon", "a window opened later has the current theme at once");
+  await aboutT.fire("window.__TAURI__.core.invoke('win_close')");
+  await inv("save_settings", { settings: { ...ovNow.settings, theme: "kdx" } });
+  await until(async () => (await mid(chat)) === "#880000", "back to the default theme", 5000);
+
   console.log("unread counters and paste");
   await launcher.send("Page.bringToFront");
   await sleep(500);

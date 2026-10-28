@@ -26,7 +26,7 @@
 /* Status readout: a black console strip with a red frame. */
 .status {
   display: flex; align-items: center; gap: 8px; min-width: 0; background: var(--ink);
-  border: 2px solid var(--red-frame); padding: 5px 9px; color: var(--green);
+  border: 2px solid var(--red-frame); padding: 5px 9px; color: var(--field-ink);
   font: 600 12px "Overpass Mono", Consolas, monospace; font-stretch: 100%;
 }
 .status > span:last-child { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -39,7 +39,7 @@
 .primary {
   position: relative; font: inherit; font-weight: 700; color: #fff; cursor: pointer; height: 28px; padding: 0 16px;
   background: var(--btn); border: 1px solid #000; border-radius: 3px; margin: 0 4px;
-  box-shadow: var(--bevel), 0 0 0 1px #000, 0 0 0 2px #cc0000, 0 0 0 3px #880000, 0 0 0 4px #000;
+  box-shadow: var(--bevel), 0 0 0 1px #000, 0 0 0 2px var(--a-edge), 0 0 0 3px var(--a-mid), 0 0 0 4px #000;
 }
 .primary:hover:not(:disabled) { background: #3b3b3b; }
 .primary:active:not(:disabled) { background: #2a2a2a; }
@@ -50,8 +50,8 @@
 /* ---------- Text inputs: black field, green text, red ring when focused ---------- */
 .text-input {
   flex: 1; min-width: 0; background: var(--ink); border: 2px solid #111;
-  color: var(--green); padding: 4px 7px; font: 600 12px "Overpass Mono", Consolas, monospace; font-stretch: 100%;
-  outline: none; caret-color: #e83c3c; user-select: text;
+  color: var(--field-ink); padding: 4px 7px; font: 600 12px "Overpass Mono", Consolas, monospace; font-stretch: 100%;
+  outline: none; caret-color: var(--bar-top); user-select: text;
 }
 .text-input:focus { border-color: var(--red-frame); }
 .text-input:focus-visible { outline: none; } /* the red ring is the focus mark */
@@ -147,7 +147,7 @@ html[data-panel="chat"] .grip-rz, html[data-panel="list"] .grip-rz, html[data-pa
 .dialog { gap: 10px; }
 .about { align-items: center; text-align: center; gap: 6px; justify-content: center; }
 .about .big { font-size: 22px; letter-spacing: 0.06em; color: #fff; text-shadow: 0 2px 0 #000; }
-.about .ver { color: var(--green); }
+.about .ver { color: var(--field-ink); }
 .about p { color: var(--muted); font-size: 11.5px; line-height: 1.5; max-width: 280px; }
 .about .path { color: var(--faint); font: 600 10.5px "Overpass Mono", Consolas, monospace; font-stretch: 100%; word-break: break-all; user-select: text; }
 
@@ -155,7 +155,7 @@ html[data-panel="chat"] .grip-rz, html[data-panel="list"] .grip-rz, html[data-pa
 .chat { gap: 6px; padding: 6px; position: relative; }
 .topicbar {
   display: flex; align-items: center; gap: 8px; flex: none; min-height: 24px; background: var(--ink); border: 2px solid var(--red-frame);
-  padding: 2px 8px; color: var(--green); font: 600 12px "Overpass Mono", Consolas, monospace; font-stretch: 100%; cursor: default;
+  padding: 2px 8px; color: var(--field-ink); font: 600 12px "Overpass Mono", Consolas, monospace; font-stretch: 100%; cursor: default;
 }
 .topicbar .t { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .topicbar .text-input { border: 0; padding: 0; }
@@ -163,7 +163,7 @@ html[data-panel="chat"] .grip-rz, html[data-panel="list"] .grip-rz, html[data-pa
 .chat-main { flex: 1; min-height: 0; display: flex; gap: 6px; }
 .log {
   flex: 1; min-width: 0; overflow-y: auto; overflow-x: hidden; background: var(--ink); border: 2px solid #111; padding: 4px 0;
-  font: 600 12px/1.45 "Overpass Mono", Consolas, monospace; font-stretch: 100%; color: var(--green); user-select: text; cursor: text;
+  font: 600 12px/1.45 "Overpass Mono", Consolas, monospace; font-stretch: 100%; color: var(--field-ink); user-select: text; cursor: text;
 }
 .log:focus { outline: none; border-color: var(--red-frame); }
 .ln { padding: 0 8px 0 6px; white-space: pre-wrap; overflow-wrap: anywhere; border-left: 3px solid transparent; }
@@ -179,9 +179,9 @@ html[data-panel="chat"] .grip-rz, html[data-panel="list"] .grip-rz, html[data-pa
 .ln.mode, .ln.topic { color: #86a6ff; }
 .ln.error { color: var(--red); border-left-color: var(--red); }
 .ln.motd { color: #00c000; }
-.ln.hl { background: var(--sel-bg); border-left-color: #ff00ff; }
+.ln.hl { background: var(--sel-bg); border-left-color: var(--sel-fg); }
 .ln.hl .tx { color: #fff; }
-.ln.sep { border-top: 1px solid #660000; margin-top: 3px; padding-top: 3px; }
+.ln.sep { border-top: 1px solid var(--a-hover); margin-top: 3px; padding-top: 3px; }
 body.nojoins .ln.join, body.nojoins .ln.part, body.nojoins .ln.quit, body.nojoins .ln.nick { display: none; }
 body.nots .ln .ts { display: none; }
 .ln .fmt-b { font-weight: 800; }
@@ -222,13 +222,13 @@ body.nots .ln .ts { display: none; }
 
 /* ---------- 0.2 ---------- */
 .ln.past { opacity: 0.6; }
-.ln.sep { color: #7f8c8f; text-align: center; border-top: 1px solid #660000; margin: 3px 0; padding-top: 3px; font-style: italic; }
+.ln.sep { color: #7f8c8f; text-align: center; border-top: 1px solid var(--a-hover); margin: 3px 0; padding-top: 3px; font-style: italic; }
 .row-item .count { flex: none; min-width: 18px; text-align: center; padding: 0 5px; font: 700 10.5px "Overpass Mono", Consolas, monospace; font-stretch: 100%; background: #b05a00; color: #fff; border: 1px solid #000; }
-.row-item .count.hot { background: #cc0000; }
+.row-item .count.hot { background: var(--a-edge); }
 .row-item.unread .grow { font-weight: 800; color: var(--warn); }
 .row-item.unread.sel .grow, .row-item.unread:hover .grow { color: inherit; }
 .whois { grid-template-columns: 96px 1fr; gap: 6px 10px; }
-.whois .v { color: var(--green); font: 600 12px "Overpass Mono", Consolas, monospace; font-stretch: 100%; user-select: text; overflow-wrap: anywhere; }
+.whois .v { color: var(--field-ink); font: 600 12px "Overpass Mono", Consolas, monospace; font-stretch: 100%; user-select: text; overflow-wrap: anywhere; }
 .whois .v.warn { color: var(--warn); }
 .listbar { display: flex; gap: 6px; flex: none; margin-bottom: 6px; }
 .listbar .text-input { padding: 3px 7px; }

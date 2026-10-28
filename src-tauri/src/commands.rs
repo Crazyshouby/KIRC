@@ -193,6 +193,8 @@ pub fn clear_buffer(state: State<'_, App>, server: String, buffer: String) {
 pub async fn save_settings(app: AppHandle, state: State<'_, App>, settings: Settings) -> R<bool> {
     settings.validate()?;
     push_filters(&app, &state, &settings.ignores, &settings.alert_words);
+    let theme_changed = state.config.lock().unwrap().settings.theme != settings.theme;
+    let theme = settings.theme.clone();
     let n = settings.scrollback as usize;
     state.config.lock().unwrap().settings = settings;
     for s in state.states.lock().unwrap().values_mut() {
@@ -200,6 +202,9 @@ pub async fn save_settings(app: AppHandle, state: State<'_, App>, settings: Sett
     }
     state.mark_dirty();
     state.flush();
+    if theme_changed {
+        let _ = tauri::Emitter::emit(&app, "theme", theme);
+    }
     Ok(true)
 }
 
