@@ -32,7 +32,7 @@ pub struct ConnectionConfig {
 #[derive(Debug)]
 pub enum Command {
     /// A line typed in a buffer ("" = console).
-    Input { buffer: String, text: String },
+    Input { buffer: String, text: String, reply: Option<(String, String)> },
     /// Leave: QUIT with this message, no reconnection.
     Disconnect(String),
     /// Skip the wait before the next reconnection attempt.
@@ -79,7 +79,7 @@ pub async fn run(conn: ConnectionConfig, mut session: Session, sink: Arc<dyn Sin
                     None | Some(Command::Disconnect(_)) => break None,
                     Some(Command::ConnectNow) => {}
                     Some(Command::SetFilters { ignores, alert_words }) => session.set_filters(ignores, alert_words),
-                    Some(Command::Input { buffer, text }) => offline_input(&mut session, &*sink, &buffer, &text),
+                    Some(Command::Input { buffer, text, .. }) => offline_input(&mut session, &*sink, &buffer, &text),
                 },
             }
         };
@@ -140,7 +140,7 @@ pub async fn run(conn: ConnectionConfig, mut session: Session, sink: Arc<dyn Sin
                     }
                     Some(Command::ConnectNow) => break,
                     Some(Command::SetFilters { ignores, alert_words }) => session.set_filters(ignores, alert_words),
-                    Some(Command::Input { buffer, text }) => offline_input(&mut session, &*sink, &buffer, &text),
+                    Some(Command::Input { buffer, text, .. }) => offline_input(&mut session, &*sink, &buffer, &text),
                 },
             }
         }
@@ -159,13 +159,13 @@ fn offline_input(session: &mut Session, sink: &dyn Sink, buffer: &str, text: &st
 
 fn line_info(text: &str) -> Event {
     Event::Line {
-        line: Line { buffer: String::new(), kind: LineKind::Info, nick: String::new(), text: text.into(), time: now_ms(), highlight: false, own: false },
+        line: Line { buffer: String::new(), kind: LineKind::Info, nick: String::new(), text: text.into(), time: now_ms(), highlight: false, own: false, msgid: String::new(), reply_to: String::new() },
     }
 }
 
 fn line_error(buffer: &str, text: &str) -> Event {
     Event::Line {
-        line: Line { buffer: buffer.into(), kind: LineKind::Error, nick: String::new(), text: text.into(), time: now_ms(), highlight: false, own: false },
+        line: Line { buffer: buffer.into(), kind: LineKind::Error, nick: String::new(), text: text.into(), time: now_ms(), highlight: false, own: false, msgid: String::new(), reply_to: String::new() },
     }
 }
 
@@ -341,8 +341,8 @@ async fn link(
                         }
                         Some(Command::ConnectNow) => {}
                         Some(Command::SetFilters { ignores, alert_words }) => session.set_filters(ignores, alert_words),
-                        Some(Command::Input { buffer, text }) => {
-                            let outs = session.user_input(&buffer, &text, now_ms());
+                        Some(Command::Input { buffer, text, reply }) => {
+                            let outs = session.user_input_reply(&buffer, &text, reply, now_ms());
                             if let Err(e) = dispatch(outs, &mut wr, &mut limiter, sink, &mut quit_at).await {
                                 break 'main End::Lost(e);
                             }

@@ -15,6 +15,11 @@ const MAX_TEXT: usize = 380;
 /// Private conversations remembered per connection.
 const MAX_QUERIES: usize = 300;
 
+/// A message identifier is short and plain: it goes into a tag, so nothing else is accepted.
+pub fn valid_msgid(s: &str) -> bool {
+    !s.is_empty() && s.len() <= 64 && s.chars().all(|c| c.is_ascii_alphanumeric() || "-._~+/=:".contains(c))
+}
+
 /// Rows kept of a channel list (the biggest networks have far more).
 const MAX_LIST: usize = 30_000;
 
@@ -76,6 +81,7 @@ pub struct Session {
     rejoin: Vec<String>,
     keys: HashMap<String, String>,
     last_ctcp_reply: i64,
+    pending_reply: Option<(String, String)>,
     whois: Option<WhoisInfo>,
     list: Option<Vec<ChannelEntry>>,
     /// Where the answer to the last typed command should be shown.
@@ -210,6 +216,7 @@ impl Session {
             rejoin: Vec::new(),
             keys: HashMap::new(),
             last_ctcp_reply: 0,
+            pending_reply: None,
             whois: None,
             list: None,
             reply_buffer: String::new(),
@@ -316,6 +323,14 @@ impl Session {
         mentions(text, &self.nick) || self.cfg.alert_words.iter().any(|w| mentions(text, w))
     }
 
+    fn with_ids(mut o: Out, msgid: &str, reply_to: &str) -> Out {
+        if let Out::Ui(Event::Line { line }) = &mut o {
+            line.msgid = msgid.to_string();
+            line.reply_to = reply_to.to_string();
+        }
+        o
+    }
+
     /// A channel left while the connection was down: it is not rejoined with the next one.
     pub fn forget_channel(&mut self, name: &str) {
         let key = fold(name);
@@ -327,7 +342,7 @@ impl Session {
     #[allow(clippy::too_many_arguments)]
     fn line(&self, buffer: &str, kind: LineKind, nick: &str, text: String, time: i64, highlight: bool, own: bool) -> Out {
         Out::Ui(Event::Line {
-            line: Line { buffer: buffer.to_string(), kind, nick: nick.to_string(), text, time, highlight, own },
+            line: Line { buffer: buffer.to_string(), kind, nick: nick.to_string(), text, time, highlight, own, msgid: String::new(), reply_to: String::new() },
         })
     }
 
@@ -439,7 +454,7 @@ impl Session {
                 if more {
                     return;
                 }
-                let mut want: Vec<&str> = ["server-time", "multi-prefix", "away-notify"]
+                let mut want: Vec<&str> = ["server-time", "multi-prefix", "away-notify", "message-tags"]
                     .into_iter()
                     .filter(|c| self.cap_available.contains_key(*c))
                     .collect();
@@ -718,6 +733,8 @@ impl Session {
         if self.is_ignored(msg) {
             return;
         }
+        let msgid = msg.tag("msgid").filter(|v| valid_msgid(v)).unwrap_or("").to_string();
+        let reply_to = msg.tag("+draft/reply").or_else(|| msg.tag("+reply")).filter(|v| valid_msgid(v)).unwrap_or("").to_string();
         let src_nick = msg.source().map_or("", |s| s.nick).to_string();
         let from_server = msg.source().map_or(true, |s| s.user.is_empty() && s.host.is_empty() && s.nick.contains('.'));
         let target = msg.param(0).to_string();
@@ -736,7 +753,7 @@ impl Session {
             if cmd.eq_ignore_ascii_case("ACTION") {
                 let Some(buffer) = self.message_buffer(&src_nick, &target, out) else { return };
                 let hl = self.mentions_me(rest) || !self.is_channel(&target);
-                out.push(self.line(&buffer, LineKind::Action, &src_nick, rest.to_string(), time, hl, false));
+                out.push(Self::with_ids(self.line(&buffer, LineKind::Action, &src_nick, rest.to_string(), time, hl, false), &msgid, &reply_to));
                 return;
             }
             self.ctcp_reply(&src_nick, cmd, rest, time, out);
@@ -773,7 +790,7 @@ impl Session {
 
         let Some(buffer) = self.message_buffer(&src_nick, &target, out) else { return };
         let hl = !self.is_channel(&target) || self.mentions_me(&text);
-        out.push(self.line(&buffer, LineKind::Msg, &src_nick, text, time, hl, false));
+        out.push(Self::with_ids(self.line(&buffer, LineKind::Msg, &src_nick, text, time, hl, false), &msgid, &reply_to));
     }
 
     /// The buffer an incoming message belongs to; opens a query for a private message.
@@ -1087,6 +1104,15 @@ impl Session {
     // ------------------------------------------------------- typed input
 
     /// A line typed in `buffer` ("" = the console).
+    /// Like `user_input`, for a plain line that answers a message: `reply` is (msgid, nick) of it.
+    /// It only counts for plain text, never for a /command.
+    pub fn user_input_reply(&mut self, buffer: &str, text: &str, reply: Option<(String, String)>, now: i64) -> Vec<Out> {
+        self.pending_reply = reply;
+        let out = self.user_input(buffer, text, now);
+        self.pending_reply = None;
+        out
+    }
+
     pub fn user_input(&mut self, buffer: &str, text: &str, now: i64) -> Vec<Out> {
         let mut out = Vec::new();
         let text = text.trim_end_matches(['\r', '\n']);
@@ -1099,7 +1125,8 @@ impl Session {
             if buffer.is_empty() {
                 out.push(self.error("", "Aucun salon ici : tapez /join #salon ou /msg pseudo texte (/aide pour la liste)", now));
             } else {
-                self.say(buffer, plain, false, now, &mut out);
+                let reply = self.pending_reply.take();
+                self.say_with(buffer, plain, false, reply, now, &mut out);
             }
             return out;
         };
@@ -1111,6 +1138,12 @@ impl Session {
 
     /// Sends `text` to `target` (split into several lines if too long) and echoes it.
     fn say(&mut self, target: &str, text: &str, action: bool, now: i64, out: &mut Vec<Out>) {
+        self.say_with(target, text, action, None, now, out);
+    }
+
+    /// `reply` is (msgid, nick) of the message answered. With the `message-tags` capability it goes out
+    /// as the `+draft/reply` tag; without it the answer starts with "nick: " so it still reads as one.
+    fn say_with(&mut self, target: &str, text: &str, action: bool, reply: Option<(String, String)>, now: i64, out: &mut Vec<Out>) {
         let is_chan = self.is_channel(target);
         let (shown, kind) = (if is_chan { self.channel_name(target) } else { target.to_string() }, if action { LineKind::Action } else { LineKind::Msg });
         let buffer = if is_chan {
@@ -1125,9 +1158,27 @@ impl Session {
             }
             q
         };
-        for part in split_text(text, MAX_TEXT) {
+        // An answer is for a conversation, with a valid identifier; never for a service or an action.
+        let reply = reply.filter(|(id, _)| valid_msgid(id) && !buffer.is_empty() && !action);
+        let tagged = reply.is_some() && self.cap_enabled.contains("message-tags");
+        for (i, part) in split_text(text, MAX_TEXT).into_iter().enumerate() {
+            let mut part = part;
+            let mut reply_id = String::new();
+            if i == 0 {
+                if let Some((id, nick)) = &reply {
+                    if tagged {
+                        reply_id = id.clone();
+                    } else if !nick.is_empty() && !nick.contains(char::is_whitespace) {
+                        part = format!("{nick}: {part}");
+                    }
+                }
+            }
             let wire = if action { format!("\u{1}ACTION {part}\u{1}") } else { part.clone() };
-            out.push(Out::Send(Message::new("PRIVMSG", &[target, &wire]).to_string()));
+            let mut msg = Message::new("PRIVMSG", &[target, &wire]);
+            if !reply_id.is_empty() {
+                msg.tags.push(("+draft/reply".into(), reply_id.clone()));
+            }
+            out.push(Out::Send(msg.to_string()));
             let mut shown_text = part;
             if buffer.is_empty() {
                 // Console echo for services: hide what follows IDENTIFY / REGISTER / GROUP.
@@ -1141,7 +1192,11 @@ impl Session {
                 }
                 shown_text = format!("→ {target} : {shown_text}");
             }
-            out.push(self.line(&buffer, kind, &self.nick.clone(), shown_text, now, false, true));
+            let mut echo = self.line(&buffer, kind, &self.nick.clone(), shown_text, now, false, true);
+            if let Out::Ui(Event::Line { line }) = &mut echo {
+                line.reply_to = reply_id;
+            }
+            out.push(echo);
         }
     }
 
@@ -2059,6 +2114,77 @@ mod tests {
         s.start();
         feed(&mut s, "CAP * LS :");
         assert_eq!(sent(&feed(&mut s, ":srv 001 kirc :Welcome")), vec!["JOIN #b"]);
+    }
+
+    fn registered_with_tags() -> Session {
+        let mut s = Session::new(cfg());
+        s.start();
+        feed(&mut s, ":srv CAP * LS :message-tags multi-prefix");
+        feed(&mut s, ":srv CAP kirc ACK :message-tags");
+        feed(&mut s, ":srv CAP kirc ACK :multi-prefix");
+        feed(&mut s, ":srv 001 kirc :Welcome");
+        joined(&mut s, "#a");
+        s
+    }
+
+    #[test]
+    fn an_answer_goes_out_with_the_reply_tag_when_the_server_has_message_tags() {
+        let mut s = registered_with_tags();
+        let out = s.user_input_reply("#a", "oui, d'accord", Some(("m-42".into(), "bob".into())), 1);
+        assert_eq!(sent(&out), vec!["@+draft/reply=m-42 PRIVMSG #a :oui, d'accord"]);
+        let l = lines(&out);
+        assert_eq!((l[0].reply_to.as_str(), l[0].text.as_str(), l[0].own), ("m-42", "oui, d'accord", true));
+        // Only plain text answers: a command, an action and the next line do not.
+        assert_eq!(sent(&s.user_input_reply("#a", "/me rit", Some(("m-42".into(), "bob".into())), 1)), vec!["PRIVMSG #a :\u{1}ACTION rit\u{1}"]);
+        assert_eq!(sent(&s.user_input("#a", "suite", 1)), vec!["PRIVMSG #a suite"]);
+    }
+
+    #[test]
+    fn without_message_tags_the_answer_starts_with_the_nick() {
+        let mut s = registered(cfg());
+        joined(&mut s, "#a");
+        let out = s.user_input_reply("#a", "oui", Some(("m-42".into(), "bob".into())), 1);
+        assert_eq!(sent(&out), vec!["PRIVMSG #a :bob: oui"]);
+        assert_eq!(lines(&out)[0].reply_to, "");
+        assert_eq!(lines(&out)[0].text, "bob: oui");
+    }
+
+    #[test]
+    fn a_bad_identifier_or_a_service_never_gets_a_tag() {
+        let mut s = registered_with_tags();
+        for id in ["a b", "x;y", "", "\r\nQUIT", &"z".repeat(65)] {
+            let out = s.user_input_reply("#a", "texte", Some((id.to_string(), "bob".into())), 1);
+            assert_eq!(sent(&out), vec!["PRIVMSG #a texte"], "{id:?}");
+        }
+        let out = s.user_input_reply("", "rien", Some(("m1".into(), "bob".into())), 1);
+        assert!(sent(&out).is_empty(), "the console has no conversation");
+        // A reply to a private message works the same way.
+        let out = s.user_input_reply("bob", "salut", Some(("m9".into(), "bob".into())), 1);
+        assert_eq!(sent(&out), vec!["@+draft/reply=m9 PRIVMSG bob salut"]);
+    }
+
+    #[test]
+    fn long_answers_tag_only_the_first_line() {
+        let mut s = registered_with_tags();
+        let out = sent(&s.user_input_reply("#a", &"mot ".repeat(300), Some(("m1".into(), "bob".into())), 1));
+        assert!(out.len() >= 3);
+        assert!(out[0].starts_with("@+draft/reply=m1 PRIVMSG #a "));
+        assert!(out[1..].iter().all(|l| l.starts_with("PRIVMSG #a ")));
+    }
+
+    #[test]
+    fn incoming_ids_and_replies_are_read_and_checked() {
+        let mut s = registered_with_tags();
+        let l = lines(&feed(&mut s, "@msgid=abc123;+draft/reply=zzz9 :bob!b@h PRIVMSG #a :re : salut"));
+        assert_eq!((l[0].msgid.as_str(), l[0].reply_to.as_str()), ("abc123", "zzz9"));
+        let l = lines(&feed(&mut s, "@msgid=m2;+draft/reply=old :bob!b@h PRIVMSG #a :\u{1}ACTION approuve\u{1}"));
+        assert_eq!((l[0].kind, l[0].reply_to.as_str()), (LineKind::Action, "old"));
+        // A value that is not a plain identifier is dropped; no tags, no ids.
+        let long = "q".repeat(70);
+        let l = lines(&feed(&mut s, &format!("@msgid={long};+draft/reply=a\\sb :bob!b@h PRIVMSG #a :x")));
+        assert_eq!((l[0].msgid.as_str(), l[0].reply_to.as_str()), ("", ""));
+        let l = lines(&feed(&mut s, ":bob!b@h PRIVMSG #a :sans étiquettes"));
+        assert_eq!((l[0].msgid.as_str(), l[0].reply_to.as_str()), ("", ""));
     }
 
     #[test]

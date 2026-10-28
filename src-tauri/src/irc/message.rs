@@ -112,6 +112,19 @@ impl Message {
 /// can never smuggle a second command.
 impl fmt::Display for Message {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // Tags first ("@key=value;key2 "); a key that is not valid is left out, values are escaped.
+        let mut first = true;
+        for (k, v) in self.tags.iter().filter(|(k, _)| valid_tag_key(k)) {
+            f.write_str(if first { "@" } else { ";" })?;
+            first = false;
+            f.write_str(k)?;
+            if !v.is_empty() {
+                write!(f, "={}", escape_tag(v))?;
+            }
+        }
+        if !first {
+            f.write_str(" ")?;
+        }
         f.write_str(&clean(&self.command))?;
         let n = self.params.len();
         for (i, p) in self.params.iter().enumerate() {
@@ -130,6 +143,28 @@ impl fmt::Display for Message {
 
 fn clean(s: &str) -> String {
     s.chars().filter(|c| !matches!(c, '\r' | '\n' | '\0')).collect()
+}
+
+/// A tag key is `[+]` then letters, digits, `-`, `.`, `/`.
+pub fn valid_tag_key(k: &str) -> bool {
+    let body = k.strip_prefix('+').unwrap_or(k);
+    !body.is_empty() && body.len() <= 100 && body.chars().all(|c| c.is_ascii_alphanumeric() || "-./".contains(c))
+}
+
+fn escape_tag(v: &str) -> String {
+    let mut out = String::with_capacity(v.len());
+    for c in v.chars() {
+        match c {
+            ';' => out.push_str("\\:"),
+            ' ' => out.push_str("\\s"),
+            '\\' => out.push_str("\\\\"),
+            '\r' => out.push_str("\\r"),
+            '\n' => out.push_str("\\n"),
+            '\0' => {}
+            c => out.push(c),
+        }
+    }
+    out
 }
 
 fn unescape_tag(v: &str) -> String {
@@ -238,6 +273,27 @@ mod tests {
         assert_eq!(Message::new("PRIVMSG", &["#c", "hello"]).to_string(), "PRIVMSG #c hello");
         assert_eq!(Message::new("PRIVMSG", &["#c", ":)"]).to_string(), "PRIVMSG #c ::)");
         assert_eq!(Message::new("TOPIC", &["#c", ""]).to_string(), "TOPIC #c :");
+    }
+
+    #[test]
+    fn tags_are_written_and_escaped() {
+        let mut msg = Message::new("PRIVMSG", &["#c", "salut tout le monde"]);
+        msg.tags.push(("+draft/reply".into(), "abc123".into()));
+        assert_eq!(msg.to_string(), "@+draft/reply=abc123 PRIVMSG #c :salut tout le monde");
+        msg.tags.push(("x".into(), "a b;c\\d".into()));
+        msg.tags.push(("flag".into(), String::new()));
+        let line = msg.to_string();
+        assert_eq!(line, "@+draft/reply=abc123;x=a\\sb\\:c\\\\d;flag PRIVMSG #c :salut tout le monde");
+        // What we write, we read back the same.
+        let back = Message::parse(&line).unwrap();
+        assert_eq!(back.tag("x"), Some("a b;c\\d"));
+        assert_eq!(back.tag("flag"), Some(""));
+        // An invalid key (or an injection attempt through it) is dropped, never written.
+        let mut bad = Message::new("PRIVMSG", &["#c", "x"]);
+        bad.tags.push(("a b".into(), "1".into()));
+        bad.tags.push(("k\r\nQUIT".into(), "1".into()));
+        assert_eq!(bad.to_string(), "PRIVMSG #c x");
+        assert!(valid_tag_key("+draft/reply") && valid_tag_key("msgid") && !valid_tag_key("") && !valid_tag_key("+"));
     }
 
     #[test]

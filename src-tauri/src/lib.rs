@@ -5,6 +5,7 @@ pub mod irc;
 pub mod logs;
 pub mod secrets;
 pub mod store;
+pub mod switcher;
 pub mod text;
 pub mod update;
 
@@ -35,6 +36,7 @@ pub fn run() {
             commands::check_update,
             commands::install_update,
             commands::get_states,
+            commands::switcher_items,
             commands::get_channel_list,
             commands::get_whois,
             commands::read_backlog,

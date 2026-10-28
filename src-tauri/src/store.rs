@@ -284,7 +284,7 @@ mod tests {
 
     fn line(buffer: &str, text: &str) -> Event {
         Event::Line {
-            line: Line { buffer: buffer.into(), kind: LineKind::Msg, nick: "a".into(), text: text.into(), time: 0, highlight: false, own: false },
+            line: Line { buffer: buffer.into(), kind: LineKind::Msg, nick: "a".into(), text: text.into(), time: 0, highlight: false, own: false, msgid: String::new(), reply_to: String::new() },
         }
     }
 
@@ -366,7 +366,7 @@ mod query_tests {
         s.apply(&Event::Joined { buffer: "#a".into() });
         s.apply(&Event::Parted { buffer: "#a".into() });
         s.apply(&Event::Joined { buffer: "#b".into() });
-        let line = Line { buffer: String::new(), kind: crate::irc::event::LineKind::Info, nick: String::new(), text: "x".into(), time: 0, highlight: false, own: false };
+        let line = Line { buffer: String::new(), kind: crate::irc::event::LineKind::Info, nick: String::new(), text: "x".into(), time: 0, highlight: false, own: false, msgid: String::new(), reply_to: String::new() };
         s.apply(&Event::Line { line });
         let sum = s.summary();
         assert_eq!(sum.queries, vec!["Bob"]);

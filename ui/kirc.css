@@ -69,6 +69,7 @@ html[data-panel="settings"] #settingsWin,
 html[data-panel="about"] #aboutWin,
 html[data-panel="join"] #joinWin,
 html[data-panel="console"] #consoleWin,
+html[data-panel="switcher"] #switcherWin,
 html[data-panel="whois"] #whoisWin,
 html[data-panel="list"] #listWin,
 html[data-panel="chat"] #chatWin,
@@ -242,3 +243,22 @@ body.nots .ln .ts { display: none; }
 .chan-row.sel .t { color: #b8b0ff; }
 #lStatus { margin-top: 6px; flex: none; }
 #lMin { flex: none; width: 70px; }
+
+/* ---------- 0.4: answers and the quick switcher ---------- */
+.ln { position: relative; }
+.ln .rq {
+  display: block; margin: 1px 0 2px 6px; padding-left: 6px; border-left: 2px solid var(--a-edge); color: #7f8c8f;
+  font-size: 11px; font-style: italic; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; user-select: none;
+}
+.ln .rp {
+  position: absolute; right: 6px; top: 0; display: none; padding: 0 7px; min-height: 0; line-height: 17px; font: 700 11px "Archivo", sans-serif;
+  color: var(--text); cursor: pointer; background: var(--btn); border: 1px solid #000; box-shadow: var(--bevel); user-select: none;
+}
+.ln:hover .rp { display: block; }
+.ln .rp:hover { background: #3b3b3b; }
+.switcher { gap: 6px; padding: 6px; }
+.switcher .text-input { flex: none; padding: 7px 9px; font-size: 13px; }
+#swList { min-height: 0; }
+#swList .row-item .ic { flex: none; }
+#swList .row-item .sub { display: inline; margin-left: 8px; }
+#swList .row-item.empty-hint { cursor: default; color: var(--faint); }

@@ -1,5 +1,11 @@
 # Journal des modifications
 
+## 0.4.0 — à publier
+
+- **Réponses** (IRCv3 `message-tags`, étiquette `+draft/reply`) : sur un serveur qui les gère (Ergo, par exemple), un bouton « ↩ Répondre » apparaît au survol d'un message. Une barre au-dessus de la saisie indique à qui l'on répond (Échap annule) ; le message part avec l'étiquette et s'affiche, chez ceux qui ont aussi un client compatible, avec une citation de l'original. Les réponses reçues sont citées de la même façon. Sur un serveur sans `message-tags`, la réponse reste lisible : elle commence par « pseudo : ».
+- **Aller à… (Ctrl+K)**, depuis n'importe quelle fenêtre : une petite fenêtre qui trouve un salon, une conversation, la fenêtre des messages d'un serveur ou une action (carnet, réglages, à propos, quitter…) en tapant quelques lettres. Les salons avec mentions puis messages non lus passent d'abord, puis ceux regardés en dernier. `#salon` propose de le rejoindre, `@pseudo` d'écrire à quelqu'un. Flèches et Entrée, Échap ou un clic ailleurs pour fermer.
+- Les messages des serveurs IRCv3 portent désormais leur identifiant (`msgid`), lu et vérifié (valeurs simples uniquement) ; les étiquettes envoyées sont filtrées et échappées.
+
 ## 0.3.0 — 2026-10-28
 
 - **Mise à jour depuis les releases GitHub** : KIRC cherche une version plus récente au démarrage puis toutes les six heures (désactivable dans les réglages ; seul `github.com` est contacté). Une version disponible s'affiche en haut du menu principal ; un clic télécharge l'installateur, vérifie sa **signature** avec la clé publique intégrée au programme, quitte proprement les serveurs puis installe et relance. Bouton « Rechercher une mise à jour » dans À propos. Les versions 0.1 et 0.2 n'ont pas cette fonction : elles se remplacent à la main, une seule fois.

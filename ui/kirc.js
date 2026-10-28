@@ -110,6 +110,13 @@ function initChrome() {
   invoke("win_ready");
 }
 initChrome();
+// Ctrl+K: the quick switcher, from any window (pressed again inside it, it closes).
+document.addEventListener("keydown", e => {
+  if (!((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === "k")) return;
+  e.preventDefault();
+  if (PANEL === "switcher") invoke("win_close");
+  else invoke("open_window", { kind: "switcher" }).catch(err => toast(String(err)));
+});
 // The right-click menu of the browser has nothing to offer here (but keep it in text fields).
 document.addEventListener("contextmenu", e => { if (!e.target.closest("input, textarea")) e.preventDefault(); });
 
@@ -201,10 +208,33 @@ function nickColor(n) {
 const pad2 = n => String(n).padStart(2, "0");
 function stamp(ms) { const d = new Date(ms); return pad2(d.getHours()) + ":" + pad2(d.getMinutes()); }
 
-// One line of a window, as a <div>.
-function renderLine(line) {
+// The messages seen with an identifier, so that an answer can quote what it answers.
+const MSGS = new Map();
+function rememberMsg(l) {
+  if (!l.msgid) return;
+  MSGS.set(l.msgid, { nick: l.nick, text: l.text });
+  if (MSGS.size > 4000) MSGS.delete(MSGS.keys().next().value);
+}
+const stripFormat = s => s.replace(/\x03(?:\d{1,2}(?:,\d{1,2})?)?|[\x02\x1d\x1f\x1e\x11\x16\x0f]/g, "");
+const shorten = (s, n) => (s.length > n ? s.slice(0, n - 1) + "…" : s);
+
+// One line of a window, as a <div>. `replyable`: show the button that answers it.
+function renderLine(line, replyable) {
   const div = document.createElement("div");
   div.className = "ln " + line.kind + (line.own ? " own" : "") + (line.highlight && !line.own ? " hl" : "") + (line.past ? " past" : "");
+  if (line.reply_to) {
+    const q = MSGS.get(line.reply_to);
+    const rq = document.createElement("span");
+    rq.className = "rq";
+    rq.textContent = q ? `↪ ${q.nick} : ${shorten(stripFormat(q.text), 90)}` : "↪ en réponse à un message plus ancien";
+    div.appendChild(rq);
+  }
+  if (replyable && line.msgid && !line.own && ["msg", "action"].includes(line.kind)) {
+    div.dataset.msgid = line.msgid; div.dataset.nick = line.nick; div.dataset.text = line.text;
+    const rp = document.createElement("button");
+    rp.type = "button"; rp.className = "rp"; rp.textContent = "↩ Répondre"; rp.title = "Répondre à ce message";
+    div.appendChild(rp);
+  }
   const ts = document.createElement("span");
   ts.className = "ts";
   ts.textContent = stamp(line.time);
@@ -237,6 +267,7 @@ class Log {
   constructor(el, limit, newBtn) {
     this.el = el; this.limit = limit; this.newBtn = newBtn;
     this.stick = true;
+    this.replyable = false;
     el.addEventListener("scroll", () => {
       this.stick = el.scrollTop + el.clientHeight >= el.scrollHeight - 6;
       if (this.stick && this.newBtn) this.newBtn.hidden = true;
@@ -247,7 +278,7 @@ class Log {
   add(line) { this.addAll([line]); }
   addAll(lines) {
     const frag = document.createDocumentFragment();
-    for (const l of lines) frag.appendChild(renderLine(l));
+    for (const l of lines) { rememberMsg(l); frag.appendChild(renderLine(l, this.replyable)); }
     this.el.appendChild(frag);
     while (this.el.childElementCount > this.limit) this.el.firstElementChild.remove();
     if (this.stick) this.el.scrollTop = this.el.scrollHeight;
@@ -284,7 +315,7 @@ const STATUS_TEXT = { connecting: "Connexion…", registering: "Enregistrement�
 const statusOrb = st => st === "connected" ? "green" : st === "disconnected" ? "" : "amber";
 
 // Sends a typed line; /clear is the page's own business.
-function makeInput(form, input, log, getBuffer) {
+function makeInput(form, input, log, getBuffer, reply) {
   const history = [];
   let hi = 0, draft = "";
   form.addEventListener("submit", async ev => {
@@ -297,7 +328,9 @@ function makeInput(form, input, log, getBuffer) {
     hi = history.length; draft = "";
     const t = text.trim().toLowerCase();
     if (t === "/clear" || t === "/effacer") { log.clear(); call("clear_buffer", { server: SERVER, buffer: getBuffer() }); return; }
-    try { await invoke("send_input", { server: SERVER, buffer: getBuffer(), text }); }
+    const r = reply ? reply.get() : null;
+    if (r) reply.clear();
+    try { await invoke("send_input", { server: SERVER, buffer: getBuffer(), text, replyTo: r ? r.msgid : null, replyNick: r ? r.nick : null }); }
     catch (e) { log.add({ buffer: getBuffer(), kind: "error", nick: "", text: String(e), time: Date.now(), highlight: false, own: false }); }
   });
   input.addEventListener("keydown", ev => {
@@ -704,7 +737,23 @@ function initChat() {
   let myNick = "", buffer = BUFFER;
   const users = new Map();
   const input = $("#msgInput");
-  makeInput($("#inputForm"), input, log, () => buffer);
+  // Answering a message: the bar above the input line shows what is answered (Esc cancels).
+  let replying = null;
+  const setReply = r => {
+    replying = r;
+    $("#replyBar").hidden = !r;
+    if (r) $("#replyText").textContent = `Réponse à ${r.nick} : ${shorten(stripFormat(r.text), 80)}`;
+    input.focus();
+  };
+  log.replyable = true;
+  log.el.addEventListener("click", e => {
+    const b = e.target.closest(".rp");
+    const row = b && b.closest(".ln");
+    if (row) setReply({ msgid: row.dataset.msgid, nick: row.dataset.nick, text: row.dataset.text });
+  });
+  $("#replyCancel").addEventListener("click", () => setReply(null));
+  input.addEventListener("keydown", e => { if (e.key === "Escape" && replying) { e.preventDefault(); setReply(null); } });
+  makeInput($("#inputForm"), input, log, () => buffer, { get: () => replying, clear: () => setReply(null) });
 
   $("#membersBox").hidden = !isChannel;
   $("#topicBar").hidden = !isChannel;
@@ -1008,6 +1057,112 @@ function initList() {
   })();
 }
 
+// ================================================================ quick switcher (Ctrl+K)
+function initSwitcher() {
+  const input = $("#swInput"), box = $("#swList");
+  let items = [], shown = [], sel = 0;
+  const plain = s => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+  const ACTIONS = [
+    { icon: "carnet", label: "Carnet d'adresses", run: () => invoke("open_window", { kind: "servers" }) },
+    { icon: "reglages", label: "Réglages", run: () => invoke("open_window", { kind: "settings" }) },
+    { icon: "info", label: "À propos", run: () => invoke("open_window", { kind: "about" }) },
+    { icon: "salon", label: "Rejoindre un salon…", run: () => invoke("open_window", { kind: "join" }) },
+    { icon: "deconnecter", label: "Masquer dans la zone de notification", run: () => invoke("hide_all") },
+    { icon: "quitter", label: "Quitter KIRC", run: () => invoke("quit_app") },
+  ].map(a => ({ ...a, kind: "action", key: plain(a.label) }));
+
+  // Every word typed must be found, in the name or in the server's: a word at the start of a name
+  // counts more than one in the middle. -1 = does not match.
+  function score(q, text) {
+    let total = 0;
+    for (const w of q.split(/\s+/).filter(Boolean)) {
+      const i = text.indexOf(w);
+      if (i < 0) return -1;
+      total += i === 0 ? 30 : /[\s#@\-_.]/.test(text[i - 1]) ? 20 : 10;
+    }
+    return total;
+  }
+
+  function compute() {
+    const q = plain(input.value.trim());
+    const out = [];
+    for (const it of items) {
+      const key = plain(it.buffer + " " + it.server_name + (it.kind === "console" ? " messages console" : ""));
+      const s = q ? score(q, key) : 0;
+      if (s < 0) continue;
+      // What needs you comes first, then what you looked at last.
+      const boost = (it.mentions ? 60 : 0) + (it.unread ? 30 : 0) + (it.recent != null ? Math.max(0, 25 - it.recent) : 0);
+      out.push({ ...it, rank: s + boost });
+    }
+    if (q) for (const a of ACTIONS) { const s = score(q, a.key); if (s >= 0) out.push({ ...a, rank: s - 5 }); }
+    else for (const a of ACTIONS) out.push({ ...a, rank: -10 });
+    // # to join, @ to write: offered for each connected server.
+    const typed = input.value.trim();
+    if (/^[#&][^\s,]+$/.test(typed)) for (const s of servers()) out.push({ kind: "join", icon: "salon", label: `Rejoindre ${typed}`, sub: s.server_name, server: s.server, buffer: typed, rank: 200 });
+    if (/^@[^\s,]+$/.test(typed)) for (const s of servers()) out.push({ kind: "query", icon: "message", label: `Écrire à ${typed.slice(1)}`, sub: s.server_name, server: s.server, buffer: typed.slice(1), rank: 200 });
+    out.sort((a, b) => b.rank - a.rank || fold(a.label || a.buffer).localeCompare(fold(b.label || b.buffer)));
+    return out.slice(0, 60);
+  }
+  const servers = () => { const seen = new Map(); for (const it of items) if (it.connected && !seen.has(it.server)) seen.set(it.server, it); return [...seen.values()]; };
+
+  function paint() {
+    shown = compute();
+    if (sel >= shown.length) sel = Math.max(0, shown.length - 1);
+    box.textContent = "";
+    if (!shown.length) {
+      const e = document.createElement("div"); e.className = "row-item empty-hint";
+      e.textContent = "Rien ne correspond. # pour rejoindre un salon, @ pour écrire à quelqu'un.";
+      box.appendChild(e);
+    }
+    shown.forEach((it, i) => {
+      const row = document.createElement("div");
+      row.className = "row-item" + (i === sel ? " sel" : "");
+      row.setAttribute("role", "option");
+      const ic = document.createElement("span"); ic.className = "pix ic";
+      ic.innerHTML = pix(it.icon || (it.kind === "console" ? "console" : /^[#&+!]/.test(it.buffer) ? "salon" : "message"), 14);
+      const name = document.createElement("span"); name.className = "grow";
+      name.textContent = it.label || (it.kind === "console" ? "Messages du serveur" : it.buffer);
+      const sub = it.sub != null ? it.sub : it.server_name;
+      if (sub) { const s = document.createElement("span"); s.className = "sub"; s.textContent = sub; name.appendChild(s); }
+      row.append(ic, name);
+      const n = it.unread || 0;
+      if (n) { const c = document.createElement("span"); c.className = "count" + (it.mentions ? " hot" : ""); c.textContent = n > 99 ? "99+" : String(n); row.appendChild(c); }
+      row.addEventListener("click", () => go(it));
+      row.addEventListener("mousemove", () => { if (sel !== i) { sel = i; mark(); } });
+      box.appendChild(row);
+    });
+    const cur = box.children[sel];
+    if (cur && cur.scrollIntoView) cur.scrollIntoView({ block: "nearest" });
+  }
+  const mark = () => [...box.children].forEach((r, i) => r.classList.toggle("sel", i === sel));
+
+  async function go(it) {
+    try {
+      if (it.kind === "chat") await invoke("open_window", { kind: "chat", server: it.server, buffer: it.buffer });
+      else if (it.kind === "console") await invoke("open_window", { kind: "console", server: it.server });
+      else if (it.kind === "join") await invoke("send_input", { server: it.server, buffer: "", text: "/join " + it.buffer, replyTo: null, replyNick: null });
+      else if (it.kind === "query") await invoke("send_input", { server: it.server, buffer: "", text: "/query " + it.buffer, replyTo: null, replyNick: null });
+      else if (it.run) await it.run();
+    } catch (e) { toast(String(e)); return; }
+    invoke("win_close");
+  }
+
+  input.addEventListener("input", () => { sel = 0; paint(); });
+  input.addEventListener("keydown", e => {
+    if (e.key === "ArrowDown") { e.preventDefault(); sel = Math.min(shown.length - 1, sel + 1); mark(); box.children[sel]?.scrollIntoView({ block: "nearest" }); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); sel = Math.max(0, sel - 1); mark(); box.children[sel]?.scrollIntoView({ block: "nearest" }); }
+    else if (e.key === "Enter") { e.preventDefault(); if (shown[sel]) go(shown[sel]); }
+    else if (e.key === "Escape") { e.preventDefault(); invoke("win_close"); }
+  });
+  window.addEventListener("focus", () => input.focus());
+  // A quick switcher is for one gesture: clicking elsewhere dismisses it (once it has had the focus).
+  let hadFocus = document.hasFocus();
+  let away = 0;
+  window.addEventListener("focus", () => { hadFocus = true; clearTimeout(away); });
+  window.addEventListener("blur", () => { if (hadFocus) away = setTimeout(() => { if (!document.hasFocus()) invoke("win_close"); }, 250); });
+  call("switcher_items").then(list => { items = list || []; paint(); input.focus(); });
+}
+
 // ---------------------------------------------------------------- context menu
 function openMenu(x, y, title, items) {
   const m = $("#ctxMenu");
@@ -1029,4 +1184,4 @@ document.addEventListener("pointerdown", e => { if (!e.target.closest("#ctxMenu"
 window.addEventListener("blur", closeMenu);
 
 // ---------------------------------------------------------------- start
-({ launcher: initLauncher, servers: initServers, settings: initSettings, about: initAbout, join: initJoin, console: initConsole, chat: initChat, whois: initWhois, list: initList }[PANEL] || (() => {}))();
+({ launcher: initLauncher, servers: initServers, settings: initSettings, about: initAbout, join: initJoin, console: initConsole, chat: initChat, whois: initWhois, list: initList, switcher: initSwitcher }[PANEL] || (() => {}))();

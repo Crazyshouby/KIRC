@@ -35,6 +35,8 @@ pub struct App {
     pub states: Mutex<HashMap<String, ServerState>>,
     pub servers: Mutex<HashMap<String, UnboundedSender<Command>>>,
     pub logger: Logger,
+    /// (server id, buffer) of the windows looked at, newest first: the "Aller à" window lists them first.
+    pub recent: Mutex<Vec<(String, String)>>,
     pub updates: crate::update::Updates,
     dirty: AtomicBool,
     writable: AtomicBool,
@@ -54,6 +56,7 @@ impl App {
     pub fn new(dir: PathBuf, config: Config) -> Self {
         App {
             logger: Logger::new(dir.join("logs")),
+            recent: Mutex::new(Vec::new()),
             updates: Default::default(),
             dir,
             config: Mutex::new(config),
@@ -93,6 +96,13 @@ impl App {
                 self.dirty.store(true, Ordering::Relaxed);
             }
         }
+    }
+
+    pub fn note_recent(&self, server: &str, buffer: &str) {
+        let mut r = self.recent.lock().unwrap();
+        r.retain(|(s, b)| !(s == server && crate::irc::session::fold(b) == crate::irc::session::fold(buffer)));
+        r.insert(0, (server.to_string(), buffer.to_string()));
+        r.truncate(60);
     }
 
     pub fn logs_dir(&self) -> PathBuf {
@@ -149,7 +159,7 @@ impl Sink for IrcSink {
 /// A line made by the application itself (the answer to a command it handles), shown in a buffer.
 pub fn local_line(app: &AppHandle, server: &str, buffer: &str, kind: LineKind, text: &str) {
     let time = net::now_ms();
-    let line = Line { buffer: buffer.to_string(), kind, nick: String::new(), text: text.to_string(), time, highlight: false, own: false };
+    let line = Line { buffer: buffer.to_string(), kind, nick: String::new(), text: text.to_string(), time, highlight: false, own: false, msgid: String::new(), reply_to: String::new() };
     handle_event(app, server, Event::Line { line });
 }
 
@@ -371,6 +381,8 @@ pub enum Kind {
     Whois(String, String),
     /// The channel list of a server.
     List(String),
+    /// The "Aller à" window (Ctrl+K).
+    Switcher,
     /// A channel or a private conversation: (server id, buffer).
     Chat(String, String),
 }
@@ -387,6 +399,7 @@ impl Kind {
             "console" => Kind::Console(need(server)?),
             "whois" => Kind::Whois(need(server)?, need(buffer)?),
             "list" => Kind::List(need(server)?),
+            "switcher" => Kind::Switcher,
             "chat" => Kind::Chat(need(server)?, need(buffer)?),
             _ => return Err("Fenêtre inconnue".into()),
         })
@@ -402,6 +415,7 @@ impl Kind {
             Kind::Console(s) => format!("console-{}", text::label_part(s)),
             Kind::Whois(s, n) => format!("whois-{}-{}", text::label_part(s), text::label_part(&fold(n))),
             Kind::List(s) => format!("list-{}", text::label_part(s)),
+            Kind::Switcher => "switcher".into(),
             Kind::Chat(s, b) => format!("chat-{}-{}", text::label_part(s), text::label_part(&fold(b))),
         }
     }
@@ -431,6 +445,7 @@ impl Kind {
             Kind::Console(s) => format!("Messages — {}", server_name(s)),
             Kind::Whois(s, n) => format!("{n} — {}", server_name(s)),
             Kind::List(s) => format!("Salons — {}", server_name(s)),
+            Kind::Switcher => "Aller à…".into(),
             Kind::Chat(s, b) => format!("{b} — {}", server_name(s)),
         }
     }
@@ -446,12 +461,13 @@ impl Kind {
             Kind::Console(_) => (640.0, 360.0, 360.0, 160.0),
             Kind::Whois(_, _) => (400.0, 360.0, 400.0, 200.0),
             Kind::List(_) => (680.0, 480.0, 480.0, 240.0),
+            Kind::Switcher => (500.0, 390.0, 500.0, 390.0),
             Kind::Chat(_, _) => (700.0, 420.0, 380.0, 180.0),
         }
     }
 
     fn resizable(&self) -> bool {
-        !matches!(self, Kind::Launcher | Kind::About | Kind::Join | Kind::Whois(_, _))
+        !matches!(self, Kind::Launcher | Kind::About | Kind::Join | Kind::Whois(_, _) | Kind::Switcher)
     }
 
     fn url(&self, title: &str, theme: &str) -> String {
@@ -460,6 +476,7 @@ impl Kind {
             Kind::Console(s) => format!("index.html?w=console&s={}&t={t}", text::url_encode(s)),
             Kind::Whois(s, n) => format!("index.html?w=whois&s={}&b={}&t={t}", text::url_encode(s), text::url_encode(n)),
             Kind::List(s) => format!("index.html?w=list&s={}&t={t}", text::url_encode(s)),
+            Kind::Switcher => format!("index.html?w=switcher&t={t}"),
             Kind::Chat(s, b) => format!("index.html?w=chat&s={}&b={}&t={t}", text::url_encode(s), text::url_encode(b)),
             Kind::Launcher => format!("index.html?w=launcher&t={t}"),
             Kind::Servers => format!("index.html?w=servers&t={t}"),
@@ -516,7 +533,7 @@ pub fn open(app: &AppHandle, kind: Kind, focus: bool) -> Result<(), String> {
         let c = st.config.lock().unwrap();
         (c.windows.get(&key).copied(), c.settings.theme.clone())
     };
-    let saved = remembered.filter(|g| on_screen(app, g));
+    let saved = remembered.filter(|g| on_screen(app, g)).filter(|_| kind != Kind::Switcher);
     let title = kind.title(app);
     let (w, h, min_w, min_h) = kind.size();
     let count = app.webview_windows().len() as f64;
@@ -530,6 +547,7 @@ pub fn open(app: &AppHandle, kind: Kind, focus: bool) -> Result<(), String> {
         .shadow(false)
         .resizable(kind.resizable())
         .skip_taskbar(!matches!(kind, Kind::Launcher))
+        .always_on_top(kind == Kind::Switcher)
         .focused(focus && !hidden)
         .visible(false)
         .background_color(FRAME_BG)
@@ -538,6 +556,9 @@ pub fn open(app: &AppHandle, kind: Kind, focus: bool) -> Result<(), String> {
         b = if matches!(kind, Kind::Launcher) { b.position(24.0, 24.0) } else { b.position(250.0 + step, 40.0 + step) };
     }
     let win = b.build().map_err(|e| e.to_string())?;
+    if kind == Kind::Switcher {
+        let _ = win.center();
+    }
     st.mins.lock().unwrap().insert(label.clone(), (min_w, min_h));
     if let Some(g) = saved {
         let _ = win.set_size(PhysicalSize::new(g.w, g.h));
@@ -546,12 +567,13 @@ pub fn open(app: &AppHandle, kind: Kind, focus: bool) -> Result<(), String> {
 
     let (app2, kind2, label2, key2) = (app.clone(), kind.clone(), label.clone(), key);
     win.on_window_event(move |ev| match ev {
-        WindowEvent::Moved(_) | WindowEvent::Resized(_) => remember_geometry(&app2, &label2, &key2),
+        WindowEvent::Moved(_) | WindowEvent::Resized(_) if kind2 != Kind::Switcher => remember_geometry(&app2, &label2, &key2),
         WindowEvent::Focused(f) => {
             let _ = app2.emit_to(label2.as_str(), "active", *f);
             // Looking at a conversation reads it.
             if *f {
                 if let Kind::Chat(server, buffer) = &kind2 {
+                    app2.state::<App>().note_recent(server, buffer);
                     handle_event(&app2, server, Event::Read { buffer: buffer.clone() });
                 }
             }
@@ -617,7 +639,7 @@ fn on_destroyed(app: &AppHandle, kind: &Kind, label: &str) {
     if let Kind::Chat(server, buffer) = kind {
         let joined = st.states.lock().unwrap().get(server).is_some_and(|s| s.summary().channels.iter().any(|c| fold(c) == fold(buffer)));
         if joined {
-            let _ = send_command(app, server, Command::Input { buffer: buffer.clone(), text: "/part".into() });
+            let _ = send_command(app, server, Command::Input { buffer: buffer.clone(), text: "/part".into(), reply: None });
         }
     }
 }

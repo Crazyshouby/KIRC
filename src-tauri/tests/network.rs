@@ -107,7 +107,7 @@ async fn full_session_over_tcp() {
     sink.wait_for("network name", |e| matches!(e, Event::Me { network, .. } if network == "TestNet")).await;
 
     // Typed text goes out, incoming text comes in.
-    tx.send(Command::Input { buffer: "#test".into(), text: "bonjour tout le monde".into() }).unwrap();
+    tx.send(Command::Input { buffer: "#test".into(), text: "bonjour tout le monde".into(), reply: None }).unwrap();
     read_until(&mut rd, |l| l == "PRIVMSG #test :bonjour tout le monde").await;
     wr.write_all(b":alice!a@h PRIVMSG #test :salut kirc\r\n").await.unwrap();
     sink.wait_for("highlighted message", |e| {

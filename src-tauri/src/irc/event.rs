@@ -46,6 +46,10 @@ pub struct Line {
     pub highlight: bool,
     /// Typed by us.
     pub own: bool,
+    /// The server's identifier of the message (IRCv3 `msgid`), empty when it gave none.
+    pub msgid: String,
+    /// The `msgid` of the message this one answers (`+draft/reply`), empty for none.
+    pub reply_to: String,
 }
 
 /// A member of a channel. `modes` holds the status symbols, highest first

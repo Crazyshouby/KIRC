@@ -114,7 +114,7 @@ pub fn disconnect_server(app: AppHandle, id: String) {
 }
 
 #[tauri::command]
-pub fn send_input(app: AppHandle, state: State<'_, App>, server: String, buffer: String, text: String) -> R<bool> {
+pub fn send_input(app: AppHandle, state: State<'_, App>, server: String, buffer: String, text: String, reply_to: Option<String>, reply_nick: Option<String>) -> R<bool> {
     if text.len() > 4000 {
         return Err("Ligne trop longue (4000 octets au plus)".into());
     }
@@ -122,7 +122,8 @@ pub fn send_input(app: AppHandle, state: State<'_, App>, server: String, buffer:
     if let Some(done) = ignore_command(&app, &state, &server, &buffer, &text) {
         return done.map(|()| true);
     }
-    app::send_command(&app, &server, Command::Input { buffer, text })?;
+    let reply = reply_to.filter(|id| !id.is_empty()).map(|id| (id, reply_nick.unwrap_or_default()));
+    app::send_command(&app, &server, Command::Input { buffer, text, reply })?;
     Ok(true)
 }
 
@@ -321,4 +322,15 @@ pub async fn check_update(app: AppHandle) -> R<Option<crate::update::UpdateInfo>
 #[tauri::command]
 pub async fn install_update(app: AppHandle) -> R<()> {
     crate::update::install(app).await
+}
+
+// ----------------------------------------------------------------- switcher
+
+/// Everything the "Aller à" window can jump to.
+#[tauri::command]
+pub fn switcher_items(state: State<'_, App>) -> Vec<crate::switcher::SwitchItem> {
+    let servers: Vec<(String, String)> = state.config.lock().unwrap().servers.iter().map(|s| (s.id.clone(), s.name.clone())).collect();
+    let states: HashMap<String, ServerSummary> = state.states.lock().unwrap().iter().map(|(k, v)| (k.clone(), v.summary())).collect();
+    let recent = state.recent.lock().unwrap().clone();
+    crate::switcher::build(&servers, &states, &recent)
 }

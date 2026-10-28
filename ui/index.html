@@ -208,6 +208,16 @@
     <div class="grip-rz"></div>
   </section>
 
+  <!-- Quick switcher (Ctrl+K) -->
+  <section class="win" id="switcherWin">
+    <div class="tb"><button class="tb-btn tb-l" data-act="close" data-glyph="x" title="Fermer (Échap)" aria-label="Fermer"></button><span class="tb-title">Aller à…</span></div>
+    <div class="cb switcher">
+      <input class="text-input" id="swInput" maxlength="100" autocomplete="off" spellcheck="false" placeholder="Salon, conversation, action…" aria-label="Aller à">
+      <div class="list" id="swList" role="listbox"></div>
+      <div class="status"><span class="dot"></span><span id="swHint">↑↓ choisir · Entrée · # rejoindre · @ écrire</span></div>
+    </div>
+  </section>
+
   <!-- Server messages (console) -->
   <section class="win" id="consoleWin">
     <div class="tb"><button class="tb-btn tb-l" data-act="close" data-glyph="x" title="Fermer" aria-label="Fermer"></button><span class="tb-title" data-title>Messages</span><button class="tb-btn tb-r" data-act="shade" data-glyph="minus" title="Enrouler" aria-label="Enrouler"></button></div>
@@ -234,6 +244,7 @@
           <div class="list" id="memberList"></div>
         </div>
       </div>
+      <div class="banner" id="replyBar" hidden><span class="orb green"></span><span class="t" id="replyText"></span><button type="button" class="ghost-btn" id="replyCancel" title="Annuler la réponse (Échap)">✕</button></div>
       <div class="banner" id="pasteBar" hidden><span class="orb amber"></span><span class="t" id="pasteText"></span><button type="button" class="ghost-btn" id="pasteSend">Envoyer</button><button type="button" class="ghost-btn" id="pasteCancel">Annuler</button></div>
       <div class="banner" id="chatBanner" hidden><span class="orb amber"></span><span class="t" id="chatBannerText"></span></div>
       <form class="inputbar" id="inputForm" autocomplete="off">

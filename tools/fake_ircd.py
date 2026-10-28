@@ -7,6 +7,7 @@ JOIN/PART/PRIVMSG/NOTICE/TOPIC/MODE/NAMES/WHOIS/KICK/AWAY/QUIT, PING) and three 
 (alice is operator, bob has voice, carol is plain). Extra commands let a test script drive the scene:
 
     XSAY <target> <nick> <text...>       a virtual person speaks (target = channel, or our own nick)
+    XREPLY <target> <nick> <msgid> <text...>  ... answering the message with that msgid (+draft/reply)
     XACT <target> <nick> <text...>       ... with /me
     XJOIN <channel> <nick>   XPART <channel> <nick>   XQUIT <nick>   XNICK <old> <new>
     XKICK <channel> <nick>   XMODE <channel> <modes> <nick>   XTOPIC <channel> <nick> <text...>
@@ -37,6 +38,12 @@ class Client:
     def send(self, line):
         self.writer.write((line + "\r\n").encode("utf-8"))
 
+    def send_tagged(self, line, tags):
+        """With the message-tags capability a message carries its msgid (and the +draft/reply it answers)."""
+        if tags and "message-tags" in self.caps:
+            line = "@" + ";".join(f"{k}={v}" for k, v in tags.items()) + " " + line
+        self.send(line)
+
     @property
     def mask(self):
         return f"{self.nick}!{self.user}@localhost"
@@ -48,6 +55,7 @@ class Server:
         self.channels = {}  # name -> {"topic": str, "members": {nick: modes-string}}
         self.virtual = {"alice": "@", "bob": "+", "carol": ""}
         self.log = []
+        self.msgn = 0
 
     def chan(self, name):
         key = name.lower()
@@ -59,11 +67,18 @@ class Server:
                     self.channels[key]["members"][n] = m
         return self.channels[key]
 
-    def broadcast(self, ch, line, skip=None):
+    def broadcast(self, ch, line, skip=None, tags=None):
         for nick in list(ch["members"]):
             c = self.clients.get(nick.lower())
             if c and c is not skip:
-                c.send(line)
+                c.send_tagged(line, tags)
+
+    def new_tags(self, reply=None):
+        self.msgn += 1
+        tags = {"msgid": f"m{self.msgn}"}
+        if reply:
+            tags["+draft/reply"] = reply
+        return tags
 
     def welcome(self, c):
         c.registered = True
@@ -122,6 +137,12 @@ class Server:
 
     async def handle(self, c, line):
         self.log.append(line)
+        in_tags = {}
+        if line.startswith("@"):
+            tagpart, _, line = line.partition(" ")
+            for kv in tagpart[1:].split(";"):
+                k, _, v = kv.partition("=")
+                in_tags[k] = v
         parts = line.split(" ")
         cmd = parts[0].upper()
         rest = line[len(parts[0]) + 1:] if len(parts) > 1 else ""
@@ -137,7 +158,7 @@ class Server:
             sub = args[0].upper() if args else ""
             if sub == "LS":
                 c.cap_negotiating = True
-                c.send(f":{SERVER} CAP * LS :multi-prefix away-notify server-time sasl=PLAIN")
+                c.send(f":{SERVER} CAP * LS :multi-prefix away-notify server-time message-tags sasl=PLAIN")
             elif sub == "REQ":
                 wanted = tail.split()
                 c.caps.update(wanted)
@@ -199,8 +220,13 @@ class Server:
             if target.startswith("#"):
                 ch = self.channels.get(target.lower())
                 if ch and c.nick in ch["members"]:
-                    self.broadcast(ch, f":{c.mask} {cmd} {ch['name']} :{text}", skip=c)
-                    if cmd == "PRIVMSG" and "alice" in text.lower() and not text.startswith("\x01"):
+                    reply = in_tags.get("+draft/reply")
+                    self.broadcast(ch, f":{c.mask} {cmd} {ch['name']} :{text}", skip=c, tags=self.new_tags(reply))
+                    if cmd == "PRIVMSG" and reply:
+                        # Prove the tag arrived: alice answers it, quoting the same message.
+                        await asyncio.sleep(0.2)
+                        self.broadcast(ch, f":{self.vmask('alice')} PRIVMSG {ch['name']} :ok reply={reply}", tags=self.new_tags(reply))
+                    elif cmd == "PRIVMSG" and "alice" in text.lower() and not text.startswith("\x01"):
                         await asyncio.sleep(0.2)
                         self.broadcast(ch, f":{self.vmask('alice')} PRIVMSG {ch['name']} :{c.nick}: je suis là !")
                 else:
@@ -283,9 +309,20 @@ class Server:
             if target.startswith("#"):
                 ch = self.channels.get(target.lower())
                 if ch:
-                    self.broadcast(ch, line_out)
+                    self.broadcast(ch, line_out, tags=self.new_tags())
             else:
-                c.send(line_out)
+                c.send_tagged(line_out, self.new_tags())
+        elif cmd == "XREPLY":
+            # XREPLY <target> <nick> <replied-msgid> <text...>
+            target, nick, reply = args[0], args[1], args[2]
+            text = rest.split(" ", 3)[3] if len(rest.split(" ", 3)) > 3 else ""
+            line_out = f":{self.vmask(nick)} PRIVMSG {target} :{text}"
+            if target.startswith("#"):
+                ch = self.channels.get(target.lower())
+                if ch:
+                    self.broadcast(ch, line_out, tags=self.new_tags(reply))
+            else:
+                c.send_tagged(line_out, self.new_tags(reply))
         elif cmd == "XJOIN":
             ch = self.chan(args[0])
             ch["members"][args[1]] = ""
