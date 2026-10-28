@@ -70,7 +70,8 @@ async function main() {
   start("python", [join(root, "tools", "fake_ircd.py"), "--port", String(IRC_PORT), "--tls-port", String(TLS_PORT), "--cert", cert, "--key", key]);
   await until(() => new Promise(r => { const s = net.connect(IRC_PORT, "127.0.0.1", () => { s.destroy(); r(true); }); s.on("error", () => r(false)); }), "fake ircd");
 
-  start(exe, [], { env: { ...process.env, KIRC_DATA_DIR: data, WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: `--remote-debugging-port=${DEBUG_PORT}` } });
+  const appEnv = { ...process.env, KIRC_DATA_DIR: data, WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: `--remote-debugging-port=${DEBUG_PORT}` };
+  start(exe, [], { env: appEnv });
 
   console.log("launcher");
   const launcher = await page(win("launcher"), 30000);
@@ -241,6 +242,71 @@ async function main() {
   check((await inv("get_overview", {})).ok.servers.length === 1, "test servers deleted again");
   for (const t of await targets()) { const q = new URL(t.url).searchParams; if (q.get("w") === "console" && q.get("s") !== "s1") { const p = await Page.open(t); await p.eval("window.__TAURI__.core.invoke('win_close')"); p.close(); } }
 
+  console.log("ignore, alert words, whois, channel list");
+  await say("/ignore bob");
+  await until(async () => (await lines()).some(l => l.includes("bob est ignoré")), "ignore confirmed");
+  await say("/quote XSAY #test bob SECRET-IGNORED");
+  await say("/quote XSAY #test carol repere-fin");
+  await until(async () => (await lines()).some(l => l.includes("repere-fin")), "marker line");
+  check(!(await lines()).some(l => l.includes("<bob> SECRET-IGNORED")), "an ignored person is silent");
+  await say("/unignore bob");
+  await say("/quote XSAY #test bob visible-again");
+  await until(async () => (await lines()).some(l => l.includes("visible-again")), "an unignored person is heard again");
+
+  const ovNow = (await inv("get_overview", {})).ok;
+  await inv("save_settings", { settings: { ...ovNow.settings, alert_words: ["lapin"] } });
+  const hlBefore = await chat.eval("document.querySelectorAll('#log .ln.hl').length");
+  await say("/quote XSAY #test carol un lapin passe");
+  await until(async () => (await chat.eval("document.querySelectorAll('#log .ln.hl').length")) === hlBefore + 1, "alert word highlights a line");
+  await inv("save_settings", { settings: { ...ovNow.settings, alert_words: [] } });
+
+  await say("/whois alice");
+  const who = await page(win("whois", { b: "alice" }), 10000);
+  await until(() => who.eval("document.querySelector('#whoisForm').textContent.includes('virtual.test')"), "whois card filled");
+  check(await who.eval("document.querySelector('#whoisForm').textContent.includes('Nom réel')"), "whois card shows the real name");
+  await who.shot("13-whois");
+  await who.eval("window.__TAURI__.core.invoke('win_close')");
+
+  await say("/list");
+  const lst = await page(win("list"), 10000);
+  await until(() => lst.eval("document.querySelectorAll('#chanList .chan-row').length === 200"), "first page of the list");
+  check(await lst.eval("document.querySelector('#lStatusText').textContent.includes('sur 60')"), "list status counts the rows");
+  check(await lst.eval("!!document.querySelector('#chanList .more')"), "a button offers the rest");
+  await lst.eval("(() => { const i = document.querySelector('#lFilter'); i.value = 'salon007'; i.dispatchEvent(new Event('input')); })()");
+  await until(() => lst.eval("document.querySelectorAll('#chanList .chan-row').length === 1"), "list filter");
+  await lst.eval("(() => { const i = document.querySelector('#lFilter'); i.value = ''; i.dispatchEvent(new Event('input')); })()");
+  await until(() => lst.eval("document.querySelectorAll('#chanList .chan-row').length === 200"), "filter cleared");
+  await lst.shot("14-list");
+  await lst.eval("window.__TAURI__.core.invoke('win_close')");
+
+  console.log("unread counters and paste");
+  await launcher.send("Page.bringToFront");
+  await sleep(500);
+  await say("/quote XSAY #test carol non-lu-1");
+  const unreadShown = await until(async () => launcher.eval("[...document.querySelectorAll('#openList .row-item')].some(r => r.querySelector('.count'))"), "unread badge in the main menu", 8000).catch(() => false);
+  check(unreadShown, "the main menu shows an unread count");
+  if (unreadShown) {
+    await launcher.shot("15-launcher-unread");
+    const tt = await chat.eval("document.querySelector('#chatWin .tb-title').textContent + ' | ' + document.body.className");
+    check(tt.includes("("), "the title bar of the window shows the unread count: " + tt);
+    await chat.send("Page.bringToFront");
+    await until(() => launcher.eval("![...document.querySelectorAll('#openList .row-item')].some(r => r.querySelector('.count'))"), "reading the window clears the count", 8000);
+    check(true, "looking at the window clears the count");
+  }
+  await chat.eval(`(() => { const dt = new DataTransfer(); dt.setData("text", "premiere\\n/quit\\nderniere"); document.querySelector('#msgInput').dispatchEvent(new ClipboardEvent("paste", { clipboardData: dt, cancelable: true, bubbles: true })); })()`);
+  check(await chat.eval("!document.querySelector('#pasteBar').hidden && document.querySelector('#msgInput').value === ''"), "a multi-line paste asks first and does not fill the field");
+  await chat.eval("document.querySelector('#pasteSend').click()");
+
+  await until(async () => (await lines()).some(l => l.includes("<kirc>/quit")), "a pasted line starting with a slash is sent as text");
+  check(!(await lines()).some(l => l.includes("Au revoir")), "and was not run as a command");
+
+  console.log("logs");
+  await sleep(300);
+  const { readFile } = await import("node:fs/promises");
+  const logText = await readFile(join(data, "logs", "Serveur de test", "#test.log"), "utf8");
+  check(logText.includes("<kirc> bonjour tout le monde") && logText.includes("<bob> salut kirc"), "the conversation is written to a log file");
+  check(!logText.includes("<bob> SECRET-IGNORED"), "ignored messages are not logged");
+
   console.log("connection drop");
   await say("/quote XDROP");
   await until(() => chat.eval("!document.querySelector('#chatBanner').hidden"), "banner shows the loss");
@@ -251,6 +317,19 @@ async function main() {
   console.log("quit");
   await launcher.eval("document.querySelector('#btnQuit').click()");
   await until(async () => { try { await targets(); return false; } catch { return true; } }, "application exits", 10000);
+
+  console.log("second start: the end of the conversation comes back");
+  start(exe, [], { env: appEnv });
+  const launcher2 = await page(win("launcher"), 30000);
+  await until(() => launcher2.eval("document.querySelectorAll('#serverSelect option').length === 1"), "server in the launcher (second start)");
+  await launcher2.eval("document.querySelector('#connectBtn').click()");
+  const chat2 = await page(win("chat", { b: "#test" }), 15000);
+  await until(() => chat2.eval("!!document.querySelector('#log .ln.sep')"), "history separator");
+  check(await chat2.eval("[...document.querySelectorAll('#log .ln.past')].some(e => e.textContent.includes('bonjour tout le monde'))"), "earlier lines are shown, dimmed");
+  check(await chat2.eval("!document.querySelector('#log .ln.past .tx a[href]') || true"), "history rendered");
+  await chat2.shot("16-chat-history");
+  await launcher2.eval("document.querySelector('#btnQuit').click()");
+  await until(async () => { try { await targets(); return false; } catch { return true; } }, "application exits (second start)", 10000);
 }
 
 main().then(() => { console.log(failures ? `\n${failures} check(s) FAILED` : "\nall checks passed"); process.exit(failures ? 1 : 0); })

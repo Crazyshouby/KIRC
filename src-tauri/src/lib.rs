@@ -2,6 +2,7 @@ pub mod app;
 pub mod commands;
 pub mod config;
 pub mod irc;
+pub mod logs;
 pub mod secrets;
 pub mod store;
 pub mod text;
@@ -28,6 +29,11 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::app_info,
             commands::get_overview,
+            commands::get_states,
+            commands::get_channel_list,
+            commands::get_whois,
+            commands::read_backlog,
+            commands::open_logs_folder,
             commands::save_server,
             commands::delete_server,
             commands::connect_server,

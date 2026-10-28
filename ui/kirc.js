@@ -195,7 +195,7 @@ function stamp(ms) { const d = new Date(ms); return pad2(d.getHours()) + ":" + p
 // One line of a window, as a <div>.
 function renderLine(line) {
   const div = document.createElement("div");
-  div.className = "ln " + line.kind + (line.own ? " own" : "") + (line.highlight && !line.own ? " hl" : "");
+  div.className = "ln " + line.kind + (line.own ? " own" : "") + (line.highlight && !line.own ? " hl" : "") + (line.past ? " past" : "");
   const ts = document.createElement("span");
   ts.className = "ts";
   ts.textContent = stamp(line.time);
@@ -348,13 +348,22 @@ function initLauncher() {
       e.textContent = ov.servers.length ? "Aucun salon ouvert" : "Ajoutez un serveur dans le carnet d'adresses";
       list.appendChild(e);
     }
+    const act = new Map((sv.activity || []).map(a => [fold(a.name), a]));
     for (const [c, icon] of items) {
+      const a = act.get(fold(c));
       const row = document.createElement("div");
-      row.className = "row-item";
+      row.className = "row-item" + (a ? " unread" : "");
       row.tabIndex = 0;
       const ic = document.createElement("span"); ic.className = "pix"; ic.innerHTML = pix(icon, 14);
       const name = document.createElement("span"); name.className = "grow"; name.textContent = c;
       row.append(ic, name);
+      if (a) {
+        const n = document.createElement("span");
+        n.className = "count" + (a.mentions ? " hot" : "");
+        n.textContent = a.unread > 99 ? "99+" : String(a.unread);
+        n.title = a.mentions ? `${a.unread} non lus dont ${a.mentions} mention(s)` : `${a.unread} non lus`;
+        row.appendChild(n);
+      }
       const open = () => call("open_window", { kind: "chat", server: current(), buffer: c });
       row.addEventListener("click", open);
       row.addEventListener("keydown", e => { if (e.key === "Enter") open(); });
@@ -383,6 +392,18 @@ function initLauncher() {
   $("#btnAbout").addEventListener("click", () => call("open_window", { kind: "about" }));
   $("#btnQuit").addEventListener("click", () => invoke("quit_app"));
   listen("irc", e => { if (["status", "joined", "parted", "me", "query"].includes(e.payload.event.kind)) refresh(); });
+  // Unread counters: only the connection states are asked for, at most twice a second.
+  let statesTimer = 0;
+  const refreshStates = () => {
+    if (statesTimer || !ov) return;
+    statesTimer = setTimeout(async () => {
+      statesTimer = 0;
+      const s = await call("get_states");
+      if (s && ov) { ov.states = s; render(); }
+    }, 500);
+  };
+  listen("irc", e => { const k = e.payload.event.kind; if (k === "line" || k === "read") refreshStates(); });
+  $("#btnList").addEventListener("click", () => call("open_window", { kind: "list", server: current() }));
   window.addEventListener("focus", refresh);
   refresh();
 }
@@ -536,6 +557,8 @@ function initSettings() {
     f("sQuit").value = s.quit_message; f("sPart").value = s.part_message;
     f("sStamps").checked = s.show_timestamps; f("sJoins").checked = s.show_joins; f("sScroll").value = s.scrollback;
     f("sNotif").checked = s.notifications; f("sQueries").checked = s.open_queries; f("sConsole").checked = s.open_console;
+    f("sLog").checked = s.log_enabled; f("sLogDays").value = s.log_days;
+    f("sIgnores").value = s.ignores.join("\n"); f("sWords").value = s.alert_words.join("\n");
   }
   async function save() {
     const s = {
@@ -543,12 +566,16 @@ function initSettings() {
       quit_message: f("sQuit").value, part_message: f("sPart").value,
       show_timestamps: f("sStamps").checked, show_joins: f("sJoins").checked, scrollback: +f("sScroll").value || 0,
       notifications: f("sNotif").checked, open_queries: f("sQueries").checked, open_console: f("sConsole").checked,
+      log_enabled: f("sLog").checked, log_days: +f("sLogDays").value || 0,
+      ignores: f("sIgnores").value.split("\n").map(x => x.trim()).filter(Boolean),
+      alert_words: f("sWords").value.split("\n").map(x => x.trim()).filter(Boolean),
     };
     if (await call("save_settings", { settings: s }) !== null) toast("Réglages enregistrés", "ok");
   }
   f("saveSettings").addEventListener("click", save);
   f("settingsForm").addEventListener("submit", e => { e.preventDefault(); save(); });
   f("cancelSettings").addEventListener("click", () => invoke("win_close"));
+  f("openLogs").addEventListener("click", () => call("open_logs_folder"));
   load();
 }
 
@@ -710,6 +737,42 @@ function initChat() {
     inp.addEventListener("blur", () => { if (inp.isConnected) done(false); });
   });
 
+  // ---- unread lines, shown in the title bar while the window is not the active one
+  let unread = 0;
+  const baseTitle = document.title;
+  function showUnread() {
+    const t = unread ? `${baseTitle} (${unread})` : baseTitle;
+    for (const el of document.querySelectorAll("[data-title]")) el.textContent = t;
+  }
+  const readAll = () => { unread = 0; showUnread(); };
+  window.addEventListener("focus", readAll);
+  listen("active", e => { if (e.payload) readAll(); });
+
+  // ---- pasting several lines asks first (a classic way to flood a channel by accident)
+  let pasted = [];
+  const hidePaste = () => { pasted = []; $("#pasteBar").hidden = true; };
+  input.addEventListener("paste", ev => {
+    const lines = (ev.clipboardData.getData("text") || "").split(/\r?\n/).filter(l => l.trim() !== "");
+    if (lines.length < 2) return;
+    ev.preventDefault();
+    pasted = lines;
+    $("#pasteBar").hidden = false;
+    const tooMany = lines.length > 50;
+    $("#pasteText").textContent = tooMany ? `${lines.length} lignes : trop pour un seul collage (50 au plus)` : `Envoyer ${lines.length} lignes d'un coup ?`;
+    $("#pasteSend").hidden = tooMany;
+  });
+  $("#pasteCancel").addEventListener("click", () => { hidePaste(); input.focus(); });
+  $("#pasteSend").addEventListener("click", async () => {
+    const lines = pasted;
+    hidePaste();
+    for (const l of lines) {
+      // A pasted line that starts with a slash is text, never a command.
+      const text = l.startsWith("/") ? "/" + l : l;
+      try { await invoke("send_input", { server: SERVER, buffer, text }); } catch (e) { toast(String(e)); break; }
+    }
+    input.focus();
+  });
+
   // ---- connection banner
   function banner(st, text) {
     const b = $("#chatBanner");
@@ -724,7 +787,12 @@ function initChat() {
   const sub = subscribe(p => {
     const ev = p.event;
     switch (ev.kind) {
-      case "line": if (sameBuffer(ev.line.buffer)) log.add(ev.line); break;
+      case "line":
+        if (sameBuffer(ev.line.buffer)) {
+          log.add(ev.line);
+          if (!ev.line.own && !document.hasFocus() && ["msg", "action", "notice"].includes(ev.line.kind)) { unread++; showUnread(); }
+        }
+        break;
       case "users": if (sameBuffer(ev.buffer)) { users.clear(); for (const u of ev.users) users.set(fold(u.nick), u); paintMembers(); } break;
       case "user_set": if (sameBuffer(ev.buffer)) { users.set(fold(ev.user.nick), ev.user); paintMembers(); } break;
       case "user_del": if (sameBuffer(ev.buffer)) { users.delete(fold(ev.nick)); paintMembers(); } break;
@@ -767,6 +835,16 @@ function initChat() {
     for (const u of snap.buffer.users) users.set(fold(u.nick), u);
     paintMembers();
     banner(snap.server.status, snap.server.status_text);
+    // The end of the conversation as logged earlier, above what this session holds.
+    const first = snap.buffer.lines.length ? snap.buffer.lines[0].time : Date.now();
+    const past = await call("read_backlog", { server: SERVER, buffer: buffer, before: Math.floor(first / 1000) * 1000 });
+    if (past && past.length) {
+      log.addAll(past.map(l => ({ ...l, past: true })));
+      const sep = document.createElement("div");
+      sep.className = "ln sep";
+      sep.textContent = "— historique enregistré —";
+      log.el.appendChild(sep);
+    }
     log.addAll(snap.buffer.lines);
     log.toEnd();
     sub.ready(snap.seq);
@@ -779,6 +857,111 @@ function initChat() {
     if (document.activeElement && document.activeElement.matches("input, textarea")) return;
     input.focus();
   });
+}
+
+// ================================================================ whois
+function initWhois() {
+  const form = $("#whoisForm");
+  const nickOf = BUFFER;
+  const dur = s => {
+    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
+    return h ? `${h} h ${pad2(m)} min` : m ? `${m} min ${pad2(s % 60)} s` : `${s} s`;
+  };
+  function show(info) {
+    form.textContent = "";
+    const rows = [
+      ["Pseudo", info.nick], ["Identifiant", `${info.user}@${info.host}`], ["Nom réel", info.realname],
+      ["Serveur", info.server ? `${info.server}${info.server_info ? " — " + info.server_info : ""}` : ""],
+      ["Inactif", info.idle != null ? dur(info.idle) : ""],
+      ["Connecté depuis", info.signon ? new Date(info.signon * 1000).toLocaleString("fr-FR") : ""],
+      ["Compte", info.account], ["Salons", info.channels],
+      ["Absent", info.away, true],
+      ["Sécurité", info.secure ? "connexion chiffrée" : ""], ["Statut", info.operator ? "opérateur IRC" : ""],
+    ];
+    for (const [k, v, warn] of rows) {
+      if (!v) continue;
+      const l = document.createElement("span"); l.className = "lbl"; l.textContent = k;
+      const d = document.createElement("span"); d.className = "v" + (warn ? " warn" : ""); d.textContent = v;
+      form.append(l, d);
+    }
+  }
+  listen("irc", e => { const p = e.payload; if (p.server === SERVER && p.event.kind === "whois" && fold(p.event.info.nick) === fold(nickOf)) show(p.event.info); });
+  call("get_whois", { server: SERVER, nick: nickOf }).then(i => { if (i) show(i); });
+  $("#whoisClose").addEventListener("click", () => invoke("win_close"));
+  $("#whoisQuery").addEventListener("click", async () => { await call("send_input", { server: SERVER, buffer: "", text: "/query " + nickOf }); invoke("win_close"); });
+  document.addEventListener("keydown", e => { if (e.key === "Escape") invoke("win_close"); });
+}
+
+// ================================================================ channel list
+function initList() {
+  const f = id => $("#" + id);
+  const PAGE = 200;
+  let shown = 0, sel = "", timer = 0, token = 0;
+  async function load(append) {
+    const me = ++token;
+    const off = append ? shown : 0;
+    const page = await call("get_channel_list", { server: SERVER, filter: f("lFilter").value, minUsers: +f("lMin").value || 0, byName: f("lSort").value === "name", offset: off, limit: PAGE });
+    if (!page || me !== token) return;
+    const box = f("chanList");
+    if (!append) { box.textContent = ""; shown = 0; }
+    if (!page.entries.length && !append) {
+      const e = document.createElement("div"); e.className = "empty";
+      e.textContent = page.loading ? "Réception de la liste…" : page.total ? "Aucun salon ne correspond" : "Liste vide : cliquez sur Actualiser";
+      box.appendChild(e);
+    }
+    box.querySelector(".more")?.remove();
+    const frag = document.createDocumentFragment();
+    for (const en of page.entries) {
+      const row = document.createElement("div");
+      row.className = "chan-row" + (en.name === sel ? " sel" : "");
+      row.dataset.name = en.name;
+      const n = document.createElement("span"); n.className = "n"; n.textContent = en.name;
+      const u = document.createElement("span"); u.className = "u"; u.textContent = String(en.users);
+      const t = document.createElement("span"); t.className = "t"; t.title = en.topic;
+      renderIrc(t, en.topic);
+      row.append(n, u, t);
+      frag.appendChild(row);
+    }
+    box.appendChild(frag);
+    shown = off + page.entries.length;
+    if (shown < page.matched) {
+      const more = document.createElement("button");
+      more.className = "ghost-btn more"; more.style.margin = "6px"; more.textContent = `Afficher la suite (${page.matched - shown} restants)`;
+      more.addEventListener("click", () => load(true));
+      box.appendChild(more);
+    }
+    const st = f("lStatus");
+    st.classList.toggle("busy", page.loading); st.classList.toggle("on", !page.loading && page.total > 0);
+    f("lStatusText").textContent = page.loading ? "Réception de la liste…" : `${page.matched} salon${page.matched > 1 ? "s" : ""} sur ${page.total}`;
+  }
+  const later = () => { clearTimeout(timer); timer = setTimeout(() => load(false), 200); };
+  f("lFilter").addEventListener("input", later);
+  f("lMin").addEventListener("input", later);
+  f("lSort").addEventListener("change", () => load(false));
+  f("listBar").addEventListener("submit", e => { e.preventDefault(); load(false); });
+  f("lRefresh").addEventListener("click", () => call("send_input", { server: SERVER, buffer: "", text: "/list" }));
+  f("chanList").addEventListener("click", e => {
+    const row = e.target.closest(".chan-row");
+    if (!row) return;
+    sel = row.dataset.name;
+    for (const r of f("chanList").children) r.classList.toggle("sel", r === row);
+  });
+  f("chanList").addEventListener("dblclick", async e => {
+    const row = e.target.closest(".chan-row");
+    if (row) { if (await call("send_input", { server: SERVER, buffer: "", text: "/join " + row.dataset.name }) !== null) toast("Demande envoyée : " + row.dataset.name, "ok"); }
+  });
+  listen("irc", e => {
+    const p = e.payload;
+    if (p.server !== SERVER) return;
+    if (p.event.kind === "list_start") { f("lStatus").classList.add("busy"); f("lStatusText").textContent = "Réception de la liste…"; f("chanList").textContent = ""; }
+    else if (p.event.kind === "list_ready") load(false);
+  });
+  (async () => {
+    await load(false);
+    const page = await call("get_channel_list", { server: SERVER, filter: "", minUsers: 0, byName: false, offset: 0, limit: 1 });
+    // Opened from the menu with nothing received yet: ask for the list.
+    if (page && !page.total && !page.loading) call("send_input", { server: SERVER, buffer: "", text: "/list" });
+  })();
 }
 
 // ---------------------------------------------------------------- context menu
@@ -802,4 +985,4 @@ document.addEventListener("pointerdown", e => { if (!e.target.closest("#ctxMenu"
 window.addEventListener("blur", closeMenu);
 
 // ---------------------------------------------------------------- start
-({ launcher: initLauncher, servers: initServers, settings: initSettings, about: initAbout, join: initJoin, console: initConsole, chat: initChat }[PANEL] || (() => {}))();
+({ launcher: initLauncher, servers: initServers, settings: initSettings, about: initAbout, join: initJoin, console: initConsole, chat: initChat, whois: initWhois, list: initList }[PANEL] || (() => {}))();

@@ -1,6 +1,6 @@
 [package]
 name = "kirc"
-version = "0.1.0"
+version = "0.2.0"
 description = "KIRC - client IRC au style KDX"
 authors = ["Valentin Large"]
 license = "MIT"
@@ -27,6 +27,7 @@ tokio-native-tls = "0.3"
 base64 = "0.22"
 keyring = { version = "3", features = ["windows-native"] }
 log = "0.4"
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
 
 [profile.release]
 lto = true

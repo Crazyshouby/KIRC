@@ -250,6 +250,15 @@ def trash():
     return c.outline()
 
 
+def listing():
+    """The channel list: a sheet with ruled rows and a hash on each."""
+    c = C()
+    c.rect(2, 0, 13, 14, 'w'); c.rect(13, 1, 13, 14, 'g'); c.rect(2, 14, 13, 14, 'G'); c.rect(2, 0, 2, 14, 'W')
+    for y in (2, 6, 10):
+        c.rect(4, y, 5, y + 2, 'B'); c.set(4, y + 1, 'b'); c.rect(7, y + 1, 11, y + 1, 'd')
+    return c.outline()
+
+
 def kirc_app():
     """The application icon: a red chat bubble holding a hash sign."""
     c = C()
@@ -262,7 +271,7 @@ def kirc_app():
 
 ICONS = dict(serveur=server, salon=channel, membres=users, message=bubble, carnet=book, console=terminal,
              connecter=plug, deconnecter=unplug, quitter=door, info=info, reglages=gear, cle=key, absent=moon,
-             journal=journal, kirc=kirc_app, cloche=bell, editer=pencil, supprimer=trash)
+             journal=journal, kirc=kirc_app, liste=listing, cloche=bell, editer=pencil, supprimer=trash)
 
 
 def all_svgs():

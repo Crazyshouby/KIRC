@@ -89,6 +89,9 @@ impl ServerEntry {
     }
 }
 
+/// Entries kept in each of the ignore and alert lists.
+pub const MAX_LIST_ITEMS: usize = 200;
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[serde(default)]
 pub struct Settings {
@@ -109,6 +112,14 @@ pub struct Settings {
     pub scrollback: u32,
     /// Open the server's console window when connecting.
     pub open_console: bool,
+    /// Nicks or masks (`*`, `?`) whose messages are dropped, for every server.
+    pub ignores: Vec<String>,
+    /// Words that count as a mention besides one's own nick.
+    pub alert_words: Vec<String>,
+    /// Write conversations to %APPDATA%\KIRC\logs and show the end of them when a window opens.
+    pub log_enabled: bool,
+    /// Log files older than this many days are deleted at start (0 = keep everything).
+    pub log_days: u32,
 }
 
 impl Default for Settings {
@@ -128,6 +139,10 @@ impl Default for Settings {
             show_timestamps: true,
             scrollback: 1000,
             open_console: true,
+            ignores: Vec::new(),
+            alert_words: Vec::new(),
+            log_enabled: true,
+            log_days: 90,
         }
     }
 }
@@ -144,6 +159,20 @@ impl Settings {
         }
         if !(50..=5000).contains(&self.scrollback) {
             return Err("L'historique doit être compris entre 50 et 5000 lignes".into());
+        }
+        if self.log_days > 3650 {
+            return Err("La durée de conservation des journaux ne peut pas dépasser 3650 jours".into());
+        }
+        for (what, list) in [("pseudos ignorés", &self.ignores), ("mots d'alerte", &self.alert_words)] {
+            if list.len() > MAX_LIST_ITEMS {
+                return Err(format!("Trop de {what} (au plus {MAX_LIST_ITEMS})"));
+            }
+            if list.iter().any(|w| w.trim().is_empty() || w.chars().count() > 100 || w.chars().any(char::is_control)) {
+                return Err(format!("Chaque entrée des {what} doit faire de 1 à 100 caractères, sans caractère de contrôle"));
+            }
+        }
+        if self.ignores.iter().any(|w| w.chars().any(char::is_whitespace)) {
+            return Err("Un pseudo ou un masque ignoré ne peut pas contenir d'espace".into());
         }
         Ok(())
     }
@@ -320,6 +349,16 @@ mod tests {
         let s = Settings { scrollback: 10, ..Default::default() };
         assert!(s.validate().is_err());
         let s = Settings { alt_nick: "a b".into(), ..Default::default() };
+        assert!(s.validate().is_err());
+        let s = Settings { ignores: vec!["a b".into()], ..Default::default() };
+        assert!(s.validate().is_err(), "a mask has no space");
+        let s = Settings { alert_words: vec!["deux mots".into()], ..Default::default() };
+        assert!(s.validate().is_ok());
+        let s = Settings { alert_words: vec![String::new()], ..Default::default() };
+        assert!(s.validate().is_err());
+        let s = Settings { ignores: vec!["x".into(); MAX_LIST_ITEMS + 1], ..Default::default() };
+        assert!(s.validate().is_err());
+        let s = Settings { log_days: 9999, ..Default::default() };
         assert!(s.validate().is_err());
     }
 

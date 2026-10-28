@@ -37,6 +37,8 @@ pub enum Command {
     Disconnect(String),
     /// Skip the wait before the next reconnection attempt.
     ConnectNow,
+    /// The ignore and alert lists changed.
+    SetFilters { ignores: Vec<String>, alert_words: Vec<String> },
 }
 
 trait Io: AsyncRead + AsyncWrite + Unpin + Send {}
@@ -76,6 +78,7 @@ pub async fn run(conn: ConnectionConfig, mut session: Session, sink: Arc<dyn Sin
                 cmd = cmds.recv() => match cmd {
                     None | Some(Command::Disconnect(_)) => break None,
                     Some(Command::ConnectNow) => {}
+                    Some(Command::SetFilters { ignores, alert_words }) => session.set_filters(ignores, alert_words),
                     Some(Command::Input { buffer, text }) => offline_input(&mut session, &*sink, &buffer, &text),
                 },
             }
@@ -136,6 +139,7 @@ pub async fn run(conn: ConnectionConfig, mut session: Session, sink: Arc<dyn Sin
                         return;
                     }
                     Some(Command::ConnectNow) => break,
+                    Some(Command::SetFilters { ignores, alert_words }) => session.set_filters(ignores, alert_words),
                     Some(Command::Input { buffer, text }) => offline_input(&mut session, &*sink, &buffer, &text),
                 },
             }
@@ -336,6 +340,7 @@ async fn link(
                             break 'main End::Quit;
                         }
                         Some(Command::ConnectNow) => {}
+                        Some(Command::SetFilters { ignores, alert_words }) => session.set_filters(ignores, alert_words),
                         Some(Command::Input { buffer, text }) => {
                             let outs = session.user_input(&buffer, &text, now_ms());
                             if let Err(e) = dispatch(outs, &mut wr, &mut limiter, sink, &mut quit_at).await {

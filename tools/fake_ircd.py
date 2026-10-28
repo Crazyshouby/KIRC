@@ -259,6 +259,13 @@ class Server:
                 c.send(f":{SERVER} 318 {c.nick} {who} :End of /WHOIS list.")
             else:
                 c.send(f":{SERVER} 401 {c.nick} {who} :No such nick/channel")
+        elif cmd == "LIST":
+            c.send(f":{SERVER} 321 {c.nick} Channel :Users  Name")
+            for ch in self.channels.values():
+                c.send(f":{SERVER} 322 {c.nick} {ch['name']} {len(ch['members'])} :[+nt] {ch['topic']}")
+            for i in range(600):
+                c.send(f":{SERVER} 322 {c.nick} #salon{i:03d} {600 - i} :Sujet du salon numéro {i}")
+            c.send(f":{SERVER} 323 {c.nick} :End of /LIST")
         elif cmd == "AWAY":
             c.away = tail or (args[0] if args else None)
             c.send(f":{SERVER} {'306' if c.away else '305'} {c.nick} :You have been marked as {'away' if c.away else 'back'}")

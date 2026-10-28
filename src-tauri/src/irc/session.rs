@@ -3,7 +3,7 @@
 //! is unit-tested without a server (see the tests at the bottom, and
 //! tests/fake_server.rs for the network layer).
 
-use super::event::{ConnState, Event, Line, LineKind, Out, UserEntry};
+use super::event::{ChannelEntry, ConnState, Event, Line, LineKind, Out, UserEntry, WhoisInfo};
 use super::message::{split_text, Message};
 use base64::Engine as _;
 use std::collections::{HashMap, HashSet};
@@ -14,6 +14,9 @@ const MAX_TEXT: usize = 380;
 
 /// Private conversations remembered per connection.
 const MAX_QUERIES: usize = 300;
+
+/// Rows kept of a channel list (the biggest networks have far more).
+const MAX_LIST: usize = 30_000;
 
 const SERVICES: [&str; 6] = ["nickserv", "chanserv", "memoserv", "operserv", "hostserv", "botserv"];
 
@@ -34,6 +37,10 @@ pub struct SessionConfig {
     pub quit_message: String,
     pub part_message: String,
     pub version: String,
+    /// Nick or mask patterns (`*` and `?`) whose messages are dropped.
+    pub ignores: Vec<String>,
+    /// Words that count as a mention, besides our nick.
+    pub alert_words: Vec<String>,
 }
 
 struct Channel {
@@ -69,6 +76,8 @@ pub struct Session {
     rejoin: Vec<String>,
     keys: HashMap<String, String>,
     last_ctcp_reply: i64,
+    whois: Option<WhoisInfo>,
+    list: Option<Vec<ChannelEntry>>,
     /// Where the answer to the last typed command should be shown.
     reply_buffer: String,
     away: bool,
@@ -112,6 +121,44 @@ pub fn mentions(text: &str, nick: &str) -> bool {
         from = start + t[start..].chars().next().map_or(1, |c| c.len_utf8());
     }
     false
+}
+
+/// The full mask a user-typed ignore pattern stands for: "bob" is "bob!*@*", "*@host" is "*!*@host".
+pub fn mask_of(pattern: &str) -> String {
+    let p = fold(pattern.trim());
+    if p.contains('!') {
+        p
+    } else if p.contains('@') {
+        format!("*!{p}")
+    } else {
+        format!("{p}!*@*")
+    }
+}
+
+/// Wildcard match: `*` is any run of characters, `?` exactly one. Both sides are already folded.
+pub fn glob_match(pattern: &str, text: &str) -> bool {
+    let (p, t): (Vec<char>, Vec<char>) = (pattern.chars().collect(), text.chars().collect());
+    let (mut pi, mut ti, mut star, mut mark) = (0, 0, None, 0);
+    while ti < t.len() {
+        if pi < p.len() && (p[pi] == '?' || p[pi] == t[ti]) {
+            pi += 1;
+            ti += 1;
+        } else if pi < p.len() && p[pi] == '*' {
+            star = Some(pi);
+            mark = ti;
+            pi += 1;
+        } else if let Some(sp) = star {
+            pi = sp + 1;
+            mark += 1;
+            ti = mark;
+        } else {
+            return false;
+        }
+    }
+    while pi < p.len() && p[pi] == '*' {
+        pi += 1;
+    }
+    pi == p.len()
 }
 
 /// Milliseconds since the epoch for an IRCv3 `time` tag ("2026-10-28T12:00:00.000Z").
@@ -163,6 +210,8 @@ impl Session {
             rejoin: Vec::new(),
             keys: HashMap::new(),
             last_ctcp_reply: 0,
+            whois: None,
+            list: None,
             reply_buffer: String::new(),
             away: false,
             quitting: false,
@@ -200,6 +249,8 @@ impl Session {
         self.sasl_pending = false;
         self.sasl_ok = false;
         self.nick_tries = 0;
+        self.whois = None;
+        self.list = None;
         self.nick = self.cfg.nick.clone();
         self.prefixes = vec![('o', '@'), ('v', '+')];
         let mut out = vec![Out::SendNow("CAP LS 302".into())];
@@ -242,6 +293,27 @@ impl Session {
         if !self.rejoin.iter().any(|r| fold(r) == fold(name)) {
             self.rejoin.push(name.to_string());
         }
+    }
+
+    /// New ignore and alert lists (the settings changed while connected).
+    pub fn set_filters(&mut self, ignores: Vec<String>, alert_words: Vec<String>) {
+        self.cfg.ignores = ignores;
+        self.cfg.alert_words = alert_words;
+    }
+
+    /// Is this message from someone on the ignore list?
+    fn is_ignored(&self, msg: &Message) -> bool {
+        if self.cfg.ignores.is_empty() {
+            return false;
+        }
+        let Some(src) = msg.source() else { return false };
+        let full = fold(&format!("{}!{}@{}", src.nick, src.user, src.host));
+        self.cfg.ignores.iter().any(|p| glob_match(&mask_of(p), &full))
+    }
+
+    /// Does the text mention us, or one of the alert words?
+    fn mentions_me(&self, text: &str) -> bool {
+        mentions(text, &self.nick) || self.cfg.alert_words.iter().any(|w| mentions(text, w))
     }
 
     /// A channel left while the connection was down: it is not rejoined with the next one.
@@ -643,6 +715,9 @@ impl Session {
     }
 
     fn on_privmsg(&mut self, msg: &Message, time: i64, notice: bool, out: &mut Vec<Out>) {
+        if self.is_ignored(msg) {
+            return;
+        }
         let src_nick = msg.source().map_or("", |s| s.nick).to_string();
         let from_server = msg.source().map_or(true, |s| s.user.is_empty() && s.host.is_empty() && s.nick.contains('.'));
         let target = msg.param(0).to_string();
@@ -660,7 +735,7 @@ impl Session {
             }
             if cmd.eq_ignore_ascii_case("ACTION") {
                 let Some(buffer) = self.message_buffer(&src_nick, &target, out) else { return };
-                let hl = mentions(rest, &self.nick) || !self.is_channel(&target);
+                let hl = self.mentions_me(rest) || !self.is_channel(&target);
                 out.push(self.line(&buffer, LineKind::Action, &src_nick, rest.to_string(), time, hl, false));
                 return;
             }
@@ -691,13 +766,13 @@ impl Session {
             } else {
                 String::new()
             };
-            let hl = self.is_channel(&target) && mentions(&text, &self.nick);
+            let hl = self.is_channel(&target) && self.mentions_me(&text);
             out.push(self.line(&buffer, LineKind::Notice, &src_nick, text, time, hl, false));
             return;
         }
 
         let Some(buffer) = self.message_buffer(&src_nick, &target, out) else { return };
-        let hl = !self.is_channel(&target) || mentions(&text, &self.nick);
+        let hl = !self.is_channel(&target) || self.mentions_me(&text);
         out.push(self.line(&buffer, LineKind::Msg, &src_nick, text, time, hl, false));
     }
 
@@ -798,33 +873,83 @@ impl Session {
             }
             329 => {}
             // WHOIS / WHOWAS
-            311 | 314 => {
-                let t = format!("{} est {}@{} : {}", msg.param(1), msg.param(2), msg.param(3), msg.last());
+            // WHOIS is collected and shown as one card (see Event::Whois); WHOWAS stays a line.
+            311 => {
+                self.whois = Some(WhoisInfo {
+                    nick: msg.param(1).to_string(),
+                    user: msg.param(2).to_string(),
+                    host: msg.param(3).to_string(),
+                    realname: msg.last().to_string(),
+                    ..Default::default()
+                });
+            }
+            314 => {
+                let t = format!("{} était {}@{} : {}", msg.param(1), msg.param(2), msg.param(3), msg.last());
                 out.push(self.line(&self.reply_buffer.clone(), LineKind::Info, "", t, time, false, false));
             }
             312 => {
-                let t = format!("{} est sur {} ({})", msg.param(1), msg.param(2), msg.last());
-                out.push(self.line(&self.reply_buffer.clone(), LineKind::Info, "", t, time, false, false));
+                if let Some(w) = self.whois.as_mut() {
+                    w.server = msg.param(2).to_string();
+                    w.server_info = msg.last().to_string();
+                }
             }
-            313 => out.push(self.line(&self.reply_buffer.clone(), LineKind::Info, "", format!("{} {}", msg.param(1), msg.last()), time, false, false)),
+            313 => {
+                if let Some(w) = self.whois.as_mut() {
+                    w.operator = true;
+                }
+            }
             317 => {
-                let idle: u64 = msg.param(2).parse().unwrap_or(0);
-                let t = format!("{} est inactif depuis {} s", msg.param(1), idle);
-                out.push(self.line(&self.reply_buffer.clone(), LineKind::Info, "", t, time, false, false));
+                if let Some(w) = self.whois.as_mut() {
+                    w.idle = msg.param(2).parse().ok();
+                    w.signon = msg.param(3).parse().ok();
+                }
             }
             319 => {
-                let t = format!("{} est sur : {}", msg.param(1), msg.last());
-                out.push(self.line(&self.reply_buffer.clone(), LineKind::Info, "", t, time, false, false));
+                if let Some(w) = self.whois.as_mut() {
+                    w.channels = msg.last().to_string();
+                }
             }
             330 => {
-                let t = format!("{} {} {}", msg.param(1), msg.last(), msg.param(2));
-                out.push(self.line(&self.reply_buffer.clone(), LineKind::Info, "", t, time, false, false));
+                if let Some(w) = self.whois.as_mut() {
+                    w.account = msg.param(2).to_string();
+                }
             }
-            318 | 369 => {}
+            671 => {
+                if let Some(w) = self.whois.as_mut() {
+                    w.secure = true;
+                }
+            }
+            318 => {
+                if let Some(w) = self.whois.take() {
+                    out.push(Out::Ui(Event::Whois { info: Box::new(w) }));
+                }
+            }
+            369 => {}
             301 => {
-                let t = format!("{} est absent : {}", msg.param(1), msg.last());
-                let b = self.reply_target_for(msg.param(1));
-                out.push(self.line(&b, LineKind::Info, "", t, time, false, false));
+                if let Some(w) = self.whois.as_mut() {
+                    w.away = msg.last().to_string();
+                } else {
+                    let t = format!("{} est absent : {}", msg.param(1), msg.last());
+                    let b = self.reply_target_for(msg.param(1));
+                    out.push(self.line(&b, LineKind::Info, "", t, time, false, false));
+                }
+            }
+            // LIST: collected whole (a big network sends tens of thousands), shown in its own window.
+            321 => {
+                self.list = Some(Vec::new());
+                out.push(Out::Ui(Event::ListStart));
+            }
+            322 => {
+                if let Some(l) = self.list.as_mut() {
+                    if l.len() < MAX_LIST {
+                        l.push(ChannelEntry { name: msg.param(1).to_string(), users: msg.param(2).parse().unwrap_or(0), topic: msg.last().to_string() });
+                    }
+                }
+            }
+            323 => {
+                if let Some(entries) = self.list.take() {
+                    out.push(Out::Ui(Event::ChannelList { entries }));
+                }
             }
             305 => {
                 self.away = false;
@@ -1203,6 +1328,13 @@ impl Session {
                     None => out.push(self.error(buffer, "Précisez le salon : /invite pseudo #salon", now)),
                 }
             }
+            "list" | "liste" => {
+                if rest.is_empty() {
+                    out.push(Out::Send("LIST".into()));
+                } else {
+                    out.push(Out::Send(Message::new("LIST", &[rest]).to_string()));
+                }
+            }
             "names" => {
                 let chan = if self.is_channel(first) { first.to_string() } else { buffer.to_string() };
                 if self.is_channel(&chan) {
@@ -1260,7 +1392,7 @@ const HELP: &[&str] = &[
     "Commandes : /join #salon [clé] · /part [#salon] [message] · /msg pseudo texte · /query pseudo · /me action",
     "            /nick pseudo · /away [message] · /whois pseudo · /topic [sujet] · /invite pseudo [#salon]",
     "            /kick pseudo [raison] · /ban pseudo · /op · /deop · /voice · /devoice · /mode [cible] +/-modes",
-    "            /ns /cs /ms … (services) · /ctcp pseudo VERSION · /quote COMMANDE · /clear · /quit [message]",
+    "            /list [filtre] · /ns /cs /ms … (services) · /ctcp pseudo VERSION · /quote COMMANDE · /clear · /quit [message]",
     "Un texte sans / est envoyé au salon ou à la conversation de la fenêtre. // au début envoie un / littéral.",
 ];
 
@@ -1807,13 +1939,96 @@ mod tests {
     }
 
     #[test]
-    fn whois_replies_land_where_the_command_was_typed() {
+    fn whois_is_collected_into_one_card() {
         let mut s = registered(cfg());
         joined(&mut s, "#a");
         s.user_input("#a", "/whois bob", 1);
-        let l = lines(&feed(&mut s, ":srv 311 kirc bob ~b host.example * :Bob Martin"));
-        assert_eq!(l[0].buffer, "#a");
-        assert!(l[0].text.contains("bob est ~b@host.example"));
+        let mut shown = Vec::new();
+        for l in [
+            ":srv 311 kirc bob ~b host.example * :Bob Martin",
+            ":srv 312 kirc bob irc.example.org :Le serveur",
+            ":srv 301 kirc bob :parti déjeuner",
+            ":srv 313 kirc bob :is an IRC operator",
+            ":srv 317 kirc bob 42 1700000000 :seconds idle, signon time",
+            ":srv 319 kirc bob :@#a +#b",
+            ":srv 330 kirc bob bobaccount :is logged in as",
+            ":srv 671 kirc bob :is using a secure connection",
+        ] {
+            shown.extend(feed(&mut s, l));
+        }
+        assert!(shown.is_empty(), "nothing is shown before the end of the list");
+        let out = feed(&mut s, ":srv 318 kirc bob :End of /WHOIS list.");
+        let Event::Whois { info } = &events(&out)[0] else { panic!("Whois expected") };
+        assert_eq!((info.nick.as_str(), info.user.as_str(), info.host.as_str()), ("bob", "~b", "host.example"));
+        assert_eq!(info.realname, "Bob Martin");
+        assert_eq!((info.server.as_str(), info.idle, info.signon), ("irc.example.org", Some(42), Some(1_700_000_000)));
+        assert_eq!((info.channels.as_str(), info.account.as_str(), info.away.as_str()), ("@#a +#b", "bobaccount", "parti déjeuner"));
+        assert!(info.secure && info.operator);
+        // Outside a WHOIS, an away reply is an ordinary line.
+        let l = lines(&feed(&mut s, ":srv 301 kirc bob :absent"));
+        assert!(l[0].text.contains("est absent"));
+    }
+
+    #[test]
+    fn channel_list_is_collected_and_capped() {
+        let mut s = registered(cfg());
+        let out = feed(&mut s, ":srv 321 kirc Channel :Users  Name");
+        assert!(matches!(events(&out)[0], Event::ListStart));
+        feed(&mut s, ":srv 322 kirc #a 120 :[+nt] le salon A");
+        feed(&mut s, ":srv 322 kirc #b 3 :");
+        feed(&mut s, ":srv 322 kirc #c notanumber :x");
+        let out = feed(&mut s, ":srv 323 kirc :End of /LIST");
+        let Event::ChannelList { entries } = &events(&out)[0] else { panic!("ChannelList expected") };
+        assert_eq!(entries.len(), 3);
+        assert_eq!((entries[0].name.as_str(), entries[0].users, entries[0].topic.as_str()), ("#a", 120, "[+nt] le salon A"));
+        assert_eq!(entries[2].users, 0);
+        // Rows without a start are ignored, a flood is bounded.
+        assert!(events(&feed(&mut s, ":srv 323 kirc :End of /LIST")).is_empty());
+        feed(&mut s, ":srv 321 kirc Channel :Users  Name");
+        for i in 0..(MAX_LIST + 50) {
+            feed(&mut s, &format!(":srv 322 kirc #c{i} 1 :t"));
+        }
+        let out = feed(&mut s, ":srv 323 kirc :End of /LIST");
+        let Event::ChannelList { entries } = &events(&out)[0] else { panic!() };
+        assert_eq!(entries.len(), MAX_LIST);
+        assert_eq!(sent(&s.user_input("", "/list", 1)), vec!["LIST"]);
+        assert_eq!(sent(&s.user_input("", "/list >100", 1)), vec!["LIST >100"]);
+    }
+
+    #[test]
+    fn glob_and_masks() {
+        assert!(glob_match("b*b", "bob"));
+        assert!(glob_match("*", ""));
+        assert!(glob_match("a?c", "abc") && !glob_match("a?c", "ac"));
+        assert!(glob_match("*!*@*.example.org", "bob!~b@host.example.org"));
+        assert!(!glob_match("bob!*@*", "bobby!x@y"));
+        assert!(glob_match("*a*a*a*", "banana") && !glob_match("*a*a*a*a", "banana"));
+        assert_eq!(mask_of("Bob"), "bob!*@*");
+        assert_eq!(mask_of("*@Host"), "*!*@host");
+        assert_eq!(mask_of("A!b@c"), "a!b@c");
+    }
+
+    #[test]
+    fn ignored_people_are_silent_everywhere() {
+        let mut s = registered(SessionConfig { ignores: vec!["Spammer".into(), "*@bad.host".into()], ..cfg() });
+        joined(&mut s, "#a");
+        assert!(feed(&mut s, ":spammer!x@y PRIVMSG #a :achetez").is_empty());
+        assert!(feed(&mut s, ":other!x@bad.host PRIVMSG kirc :psst").is_empty(), "no query is opened either");
+        assert!(feed(&mut s, ":Spammer!x@y NOTICE kirc :promo").is_empty());
+        assert!(feed(&mut s, ":spammer!x@y PRIVMSG #a :\u{1}ACTION danse\u{1}").is_empty());
+        assert_eq!(lines(&feed(&mut s, ":friend!x@y PRIVMSG #a :salut")).len(), 1);
+        s.set_filters(vec![], vec![]);
+        assert_eq!(lines(&feed(&mut s, ":spammer!x@y PRIVMSG #a :de retour")).len(), 1);
+    }
+
+    #[test]
+    fn alert_words_count_as_mentions() {
+        let mut s = registered(SessionConfig { alert_words: vec!["Rust".into()], ..cfg() });
+        joined(&mut s, "#a");
+        assert!(lines(&feed(&mut s, ":p!x@y PRIVMSG #a :j'adore rust !")).first().unwrap().highlight);
+        assert!(!lines(&feed(&mut s, ":p!x@y PRIVMSG #a :trustworthy")).first().unwrap().highlight);
+        s.set_filters(vec![], vec![]);
+        assert!(!lines(&feed(&mut s, ":p!x@y PRIVMSG #a :rust")).first().unwrap().highlight);
     }
 
     #[test]

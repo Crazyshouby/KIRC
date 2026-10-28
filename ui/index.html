@@ -20,6 +20,7 @@
       <div class="lbtns">
         <button class="lbtn" id="btnConsole" title="Messages du serveur"><span class="pix" data-ic="console"></span>Messages</button>
         <button class="lbtn" id="btnJoin" title="Rejoindre un salon"><span class="pix" data-ic="salon"></span>Rejoindre…</button>
+        <button class="lbtn" id="btnList" title="Liste des salons du serveur"><span class="pix" data-ic="liste"></span>Salons…</button>
         <button class="lbtn" id="btnBook" title="Carnet d'adresses"><span class="pix" data-ic="carnet"></span>Carnet d'adresses</button>
       </div>
       <div class="list" id="openList" aria-label="Salons ouverts"></div>
@@ -113,6 +114,14 @@
           <span class="lbl"></span><label class="chk-row"><span class="switch"><input type="checkbox" id="sStamps"><span class="track"></span></span>Afficher l'heure devant les messages</label>
           <span class="lbl"></span><label class="chk-row"><span class="switch"><input type="checkbox" id="sJoins"><span class="track"></span></span>Afficher les arrivées et départs</label>
           <label for="sScroll">Historique</label><div class="inline"><input class="text-input port" id="sScroll" type="number" min="50" max="5000" step="50"> lignes par fenêtre</div>
+          <h3>Conversations</h3>
+          <span class="lbl"></span><label class="chk-row"><span class="switch"><input type="checkbox" id="sLog"><span class="track"></span></span>Enregistrer les conversations dans des fichiers</label>
+          <label for="sLogDays">Conservation</label><div class="inline"><input class="text-input port" id="sLogDays" type="number" min="0" max="3650"> jours (0 = toujours)</div>
+          <span class="lbl"></span><div class="inline"><button type="button" class="ghost-btn" id="openLogs">Ouvrir le dossier des journaux</button></div>
+          <div class="hint">Les dernières lignes d'une conversation réapparaissent à l'ouverture de sa fenêtre.</div>
+          <h3>Ignorer et alertes</h3>
+          <label for="sIgnores">Pseudos ignorés</label><textarea class="text-input" id="sIgnores" rows="3" placeholder="pseudo ou masque, un par ligne&#10;*@hote.example"></textarea>
+          <label for="sWords">Mots d'alerte</label><textarea class="text-input" id="sWords" rows="2" placeholder="un mot par ligne (en plus de votre pseudo)"></textarea>
           <h3>Comportement</h3>
           <span class="lbl"></span><label class="chk-row"><span class="switch"><input type="checkbox" id="sNotif"><span class="track"></span></span>Notifier les messages privés et mentions</label>
           <span class="lbl"></span><label class="chk-row"><span class="switch"><input type="checkbox" id="sQueries"><span class="track"></span></span>Ouvrir une fenêtre par conversation privée</label>
@@ -155,6 +164,34 @@
     </div>
   </section>
 
+  <!-- WHOIS card -->
+  <section class="win" id="whoisWin">
+    <div class="tb"><button class="tb-btn tb-l" data-act="close" data-glyph="x" title="Fermer" aria-label="Fermer"></button><span class="tb-title" data-title>Informations</span></div>
+    <div class="cb dialog">
+      <div class="scroll"><div class="form whois" id="whoisForm"></div></div>
+      <div class="btns">
+        <button class="ghost-btn" id="whoisQuery">Message privé</button>
+        <button class="primary" id="whoisClose">Fermer</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Channel list -->
+  <section class="win" id="listWin">
+    <div class="tb"><button class="tb-btn tb-l" data-act="close" data-glyph="x" title="Fermer" aria-label="Fermer"></button><span class="tb-title" data-title>Salons</span><button class="tb-btn tb-r" data-act="shade" data-glyph="minus" title="Enrouler" aria-label="Enrouler"></button></div>
+    <div class="cb">
+      <form class="listbar" id="listBar" autocomplete="off" spellcheck="false">
+        <input class="text-input" id="lFilter" maxlength="100" placeholder="Rechercher dans les noms et les sujets">
+        <input class="text-input port" id="lMin" type="number" min="0" max="100000" value="0" title="Nombre minimal de membres" style="width:70px">
+        <select class="text-input" id="lSort" style="flex:none"><option value="users">Par membres</option><option value="name">Par nom</option></select>
+        <button type="button" class="ghost-btn" id="lRefresh">Actualiser</button>
+      </form>
+      <div class="list" id="chanList"></div>
+      <div class="status" id="lStatus"><span class="dot"></span><span id="lStatusText"></span></div>
+    </div>
+    <div class="grip-rz"></div>
+  </section>
+
   <!-- Server messages (console) -->
   <section class="win" id="consoleWin">
     <div class="tb"><button class="tb-btn tb-l" data-act="close" data-glyph="x" title="Fermer" aria-label="Fermer"></button><span class="tb-title" data-title>Messages</span><button class="tb-btn tb-r" data-act="shade" data-glyph="minus" title="Enrouler" aria-label="Enrouler"></button></div>
@@ -181,6 +218,7 @@
           <div class="list" id="memberList"></div>
         </div>
       </div>
+      <div class="banner" id="pasteBar" hidden><span class="orb amber"></span><span class="t" id="pasteText"></span><button type="button" class="ghost-btn" id="pasteSend">Envoyer</button><button type="button" class="ghost-btn" id="pasteCancel">Annuler</button></div>
       <div class="banner" id="chatBanner" hidden><span class="orb amber"></span><span class="t" id="chatBannerText"></span></div>
       <form class="inputbar" id="inputForm" autocomplete="off">
         <span class="mynick" id="myNick" title="Votre pseudo"></span>

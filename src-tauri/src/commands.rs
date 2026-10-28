@@ -4,7 +4,8 @@ use crate::app::{self, App, Kind, VERSION};
 use crate::config::{ServerEntry, Settings};
 use crate::irc::net::Command;
 use crate::irc::session::fold;
-use crate::store::{BufferState, ServerSummary};
+use crate::irc::event::{LineKind, WhoisInfo};
+use crate::store::{BufferState, ListPage, ServerSummary};
 use crate::{secrets, text};
 use serde::Serialize;
 use std::collections::HashMap;
@@ -118,8 +119,59 @@ pub fn send_input(app: AppHandle, state: State<'_, App>, server: String, buffer:
         return Err("Ligne trop longue (4000 octets au plus)".into());
     }
     state.note_input();
+    if let Some(done) = ignore_command(&app, &state, &server, &buffer, &text) {
+        return done.map(|()| true);
+    }
     app::send_command(&app, &server, Command::Input { buffer, text })?;
     Ok(true)
+}
+
+/// `/ignore [mask]` and `/unignore mask`: the lists live in the settings and apply to every server.
+/// None when the line is not one of these commands.
+fn ignore_command(app: &AppHandle, state: &App, server: &str, buffer: &str, text: &str) -> Option<Result<(), String>> {
+    let t = text.trim();
+    let (cmd, arg) = t.split_once(' ').map_or((t, ""), |(c, a)| (c, a.trim()));
+    let cmd = cmd.to_ascii_lowercase();
+    if cmd != "/ignore" && cmd != "/unignore" {
+        return None;
+    }
+    let say = |kind: LineKind, msg: &str| app::local_line(app, server, buffer, kind, msg);
+    let mut cfg = state.config.lock().unwrap();
+    if arg.is_empty() {
+        let list = cfg.settings.ignores.clone();
+        drop(cfg);
+        say(LineKind::Info, &if list.is_empty() { "Aucun pseudo ignoré".to_string() } else { format!("Ignorés : {}", list.join(", ")) });
+        return Some(Ok(()));
+    }
+    let key = crate::irc::session::fold(arg);
+    let mut next = cfg.settings.clone();
+    if cmd == "/ignore" {
+        if !next.ignores.iter().any(|i| crate::irc::session::fold(i) == key) {
+            next.ignores.push(arg.to_string());
+        }
+    } else {
+        next.ignores.retain(|i| crate::irc::session::fold(i) != key);
+    }
+    if let Err(e) = next.validate() {
+        drop(cfg);
+        say(LineKind::Error, &e);
+        return Some(Ok(()));
+    }
+    cfg.settings = next;
+    let (ignores, words) = (cfg.settings.ignores.clone(), cfg.settings.alert_words.clone());
+    drop(cfg);
+    state.mark_dirty();
+    push_filters(app, state, &ignores, &words);
+    say(LineKind::Info, &if cmd == "/ignore" { format!("{arg} est ignoré") } else { format!("{arg} n'est plus ignoré") });
+    Some(Ok(()))
+}
+
+/// Tells every running connection about new ignore and alert lists.
+fn push_filters(app: &AppHandle, state: &App, ignores: &[String], words: &[String]) {
+    let _ = app;
+    for tx in state.servers.lock().unwrap().values() {
+        let _ = tx.send(Command::SetFilters { ignores: ignores.to_vec(), alert_words: words.to_vec() });
+    }
 }
 
 #[tauri::command]
@@ -138,8 +190,9 @@ pub fn clear_buffer(state: State<'_, App>, server: String, buffer: String) {
 }
 
 #[tauri::command]
-pub async fn save_settings(state: State<'_, App>, settings: Settings) -> R<bool> {
+pub async fn save_settings(app: AppHandle, state: State<'_, App>, settings: Settings) -> R<bool> {
     settings.validate()?;
+    push_filters(&app, &state, &settings.ignores, &settings.alert_words);
     let n = settings.scrollback as usize;
     state.config.lock().unwrap().settings = settings;
     for s in state.states.lock().unwrap().values_mut() {
@@ -206,4 +259,42 @@ pub fn hide_all(app: AppHandle) {
 #[tauri::command]
 pub async fn quit_app(app: AppHandle) {
     app::quit_all(app).await;
+}
+
+/// Just the connection states (no credential manager involved): cheap enough to ask often.
+#[tauri::command]
+pub fn get_states(state: State<'_, App>) -> HashMap<String, ServerSummary> {
+    state.states.lock().unwrap().iter().map(|(k, v)| (k.clone(), v.summary())).collect()
+}
+
+#[tauri::command]
+pub fn get_channel_list(state: State<'_, App>, server: String, filter: String, min_users: u32, by_name: bool, offset: usize, limit: usize) -> R<ListPage> {
+    let states = state.states.lock().unwrap();
+    let s = states.get(&server).ok_or("Serveur inconnu")?;
+    Ok(s.list_page(&filter, min_users, by_name, offset, limit))
+}
+
+#[tauri::command]
+pub fn get_whois(state: State<'_, App>, server: String, nick: String) -> R<WhoisInfo> {
+    let states = state.states.lock().unwrap();
+    states.get(&server).and_then(|s| s.whois(&nick)).ok_or_else(|| "Aucune information".to_string())
+}
+
+/// The end of the log of a conversation, older than `before` (ms), to show above the live lines.
+#[tauri::command]
+pub async fn read_backlog(state: State<'_, App>, server: String, buffer: String, before: i64) -> R<Vec<crate::irc::event::Line>> {
+    let (enabled, name) = {
+        let c = state.config.lock().unwrap();
+        (c.settings.log_enabled, c.server(&server).map(|e| e.name.clone()))
+    };
+    let Some(name) = name.filter(|_| enabled && !buffer.is_empty()) else { return Ok(Vec::new()) };
+    state.logger.flush();
+    Ok(crate::logs::tail(&state.logs_dir(), &name, &buffer, before, 100))
+}
+
+#[tauri::command]
+pub fn open_logs_folder(app: AppHandle, state: State<'_, App>) -> R<()> {
+    let dir = state.logs_dir();
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    tauri_plugin_opener::OpenerExt::opener(&app).open_path(dir.display().to_string(), None::<&str>).map_err(|e| e.to_string())
 }

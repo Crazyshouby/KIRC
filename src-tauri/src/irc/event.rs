@@ -57,6 +57,34 @@ pub struct UserEntry {
     pub away: bool,
 }
 
+/// What /whois learned about someone, shown as one card.
+#[derive(Serialize, Clone, Debug, Default, PartialEq, Eq)]
+pub struct WhoisInfo {
+    pub nick: String,
+    pub user: String,
+    pub host: String,
+    pub realname: String,
+    pub server: String,
+    pub server_info: String,
+    /// Seconds without activity.
+    pub idle: Option<u64>,
+    /// Connection time, seconds since the epoch.
+    pub signon: Option<i64>,
+    pub channels: String,
+    pub account: String,
+    pub away: String,
+    pub secure: bool,
+    pub operator: bool,
+}
+
+/// One row of the server's channel list.
+#[derive(Serialize, Clone, Debug, PartialEq, Eq)]
+pub struct ChannelEntry {
+    pub name: String,
+    pub users: u32,
+    pub topic: String,
+}
+
 #[derive(Serialize, Clone, Debug)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum Event {
@@ -77,6 +105,15 @@ pub enum Event {
     Me { nick: String, network: String },
     /// We are marked away (or not any more).
     Away { away: bool },
+    /// The answer to /whois.
+    Whois { info: Box<WhoisInfo> },
+    /// A channel list is being received.
+    ListStart,
+    /// The whole list, as received. The application keeps it and tells the pages with `ListReady`.
+    ChannelList { entries: Vec<ChannelEntry> },
+    ListReady { count: usize },
+    /// The window of this buffer was looked at: its unread counters go back to zero.
+    Read { buffer: String },
 }
 
 /// What the session asks the network layer to do.

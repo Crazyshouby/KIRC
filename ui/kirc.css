@@ -69,6 +69,8 @@ html[data-panel="settings"] #settingsWin,
 html[data-panel="about"] #aboutWin,
 html[data-panel="join"] #joinWin,
 html[data-panel="console"] #consoleWin,
+html[data-panel="whois"] #whoisWin,
+html[data-panel="list"] #listWin,
 html[data-panel="chat"] #chatWin,
 html[data-panel="all"] .win { display: flex; }
 html[data-panel="all"] body { overflow: auto; }
@@ -77,7 +79,7 @@ html[data-panel="all"] .win { width: 640px; height: 420px; }
 html[data-panel="all"] #launcherWin { width: 206px; height: 438px; }
 .grip-rz { display: none; }
 html[data-panel="servers"] .grip-rz, html[data-panel="settings"] .grip-rz, html[data-panel="console"] .grip-rz,
-html[data-panel="chat"] .grip-rz, html[data-panel="all"] .grip-rz { display: block; }
+html[data-panel="chat"] .grip-rz, html[data-panel="list"] .grip-rz, html[data-panel="all"] .grip-rz { display: block; }
 #app { height: 100%; }
 
 /* ---------- Launcher: the narrow button column of the main window ---------- */
@@ -217,3 +219,26 @@ body.nots .ln .ts { display: none; }
 .ctx-item { display: flex; align-items: center; gap: 8px; padding: 5px 8px; font-size: 12px; color: var(--text); cursor: pointer; }
 .ctx-item:hover { background: var(--sel-bg); color: var(--sel-fg); }
 .ctx-sep { height: 1px; background: var(--line); margin: 4px 6px; }
+
+/* ---------- 0.2 ---------- */
+.ln.past { opacity: 0.6; }
+.ln.sep { color: #7f8c8f; text-align: center; border-top: 1px solid #660000; margin: 3px 0; padding-top: 3px; font-style: italic; }
+.row-item .count { flex: none; min-width: 18px; text-align: center; padding: 0 5px; font: 700 10.5px "Overpass Mono", Consolas, monospace; font-stretch: 100%; background: #b05a00; color: #fff; border: 1px solid #000; }
+.row-item .count.hot { background: #cc0000; }
+.row-item.unread .grow { font-weight: 800; color: var(--warn); }
+.row-item.unread.sel .grow, .row-item.unread:hover .grow { color: inherit; }
+.whois { grid-template-columns: 96px 1fr; gap: 6px 10px; }
+.whois .v { color: var(--green); font: 600 12px "Overpass Mono", Consolas, monospace; font-stretch: 100%; user-select: text; overflow-wrap: anywhere; }
+.whois .v.warn { color: var(--warn); }
+.listbar { display: flex; gap: 6px; flex: none; margin-bottom: 6px; }
+.listbar .text-input { padding: 3px 7px; }
+.chan-row { display: grid; grid-template-columns: 170px 56px 1fr; gap: 10px; align-items: baseline; padding: 4px 8px 4px 6px; border-left: 6px solid transparent; border-bottom: 1px solid var(--line); cursor: pointer; }
+.chan-row:hover { background: var(--accent-2); color: var(--hover-fg); }
+.chan-row.sel { background: var(--sel-bg); color: var(--sel-fg); }
+.chan-row .n { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 800; }
+.chan-row .u { text-align: right; font: 600 11px "Overpass Mono", Consolas, monospace; font-stretch: 100%; }
+.chan-row .t { color: var(--faint); font-size: 11.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chan-row:hover .t { color: var(--hover-fg); }
+.chan-row.sel .t { color: #b8b0ff; }
+#lStatus { margin-top: 6px; flex: none; }
+#lMin { flex: none; width: 70px; }

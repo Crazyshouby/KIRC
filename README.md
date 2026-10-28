@@ -12,8 +12,9 @@ Un client IRC pour Windows, dans le style de **KDX** (Haxial) : chaque fonction 
 - **Salons** et **messages privés**, chacun dans sa fenêtre ; liste des membres colorée par statut (propriétaire, administrateur, opérateur, demi-opérateur, voix, absent) ; sujet modifiable par double-clic ; complétion des pseudos avec Tab ; historique de saisie avec les flèches.
 - **Fenêtre des messages du serveur** (console) pour chaque connexion.
 - Couleurs et styles mIRC, liens cliquables (http et https seulement), actions `/me`, CTCP (VERSION, PING, TIME).
-- **Commandes** : `/join /part /msg /query /me /nick /away /whois /topic /kick /ban /op /deop /voice /devoice /mode /invite /names /ctcp /ns /cs /quote /clear /quit` — `/aide` les rappelle.
-- **Notifications** de bureau pour les messages privés et les mentions, désactivables.
+- **Commandes** : `/join /part /msg /query /me /nick /away /whois /list /ignore /unignore /topic /kick /ban /op /deop /voice /devoice /mode /invite /names /ctcp /ns /cs /quote /clear /quit` — `/aide` les rappelle.
+- **Notifications** de bureau pour les messages privés et les mentions, désactivables ; compteurs de lignes non lues dans le menu principal et la barre de titre.
+- **Journaux** de conversation sur disque, avec les dernières lignes rappelées à l'ouverture d'une fenêtre ; **liste des salons** du serveur avec recherche ; **ignorer** des pseudos ou masques, **mots d'alerte** ; fiche d'informations `/whois` ; confirmation avant de coller plusieurs lignes.
 - **Reconnexion automatique** avec délai croissant ; les salons sont rejoints de nouveau.
 - **Mémoire des fenêtres** : position et taille de chacune, retrouvées au démarrage.
 - Zone de notification : le bouton « − » du menu principal range tout, un clic sur l'icône ramène tout.
@@ -31,10 +32,11 @@ L'exécutable n'est pas signé : SmartScreen peut demander une confirmation (« 
 | Quoi | Où |
 |---|---|
 | Carnet d'adresses, réglages, positions des fenêtres | `%APPDATA%\KIRC\config.json` |
+| Journaux de conversation | `%APPDATA%\KIRC\logs\<serveur>\<salon>.log` |
 | Mots de passe | Gestionnaire d'identifiants Windows (`KIRC`) |
 | Cache de la vue web | `%LOCALAPPDATA%\fr.valentinlarge.kirc` |
 
-L'historique des conversations n'est gardé qu'en mémoire (1000 lignes par fenêtre par défaut, réglable) : il disparaît à la fermeture de KIRC.
+Chaque fenêtre garde en mémoire 1000 lignes par défaut (réglable). Les conversations sont aussi écrites dans les journaux (réglages : désactivation, durée de conservation) ; les messages privés y sont donc enregistrés tant que l'option est active.
 
 ## Compiler
 
@@ -44,7 +46,7 @@ Prérequis : Rust (MSVC), Node.js 20 ou plus, Python 3 (outils seulement). WebVi
 npm install
 npm run dev                 # lance l'application en mode développement
 npm run build               # installateur NSIS dans src-tauri/target/release/bundle/nsis/
-cd src-tauri && cargo test  # 75 tests unitaires + 4 tests réseau
+cd src-tauri && cargo test  # 87 tests unitaires + 4 tests réseau
 node tests/e2e.mjs          # test de bout en bout de la vraie application (voir ci-dessous)
 python tools/gen_assets.py  # régénère polices et pictogrammes (fichiers versionnés)
 ```
@@ -60,6 +62,7 @@ src-tauri/src/irc/net.rs       connexion TCP/TLS, limiteur de débit, délais, r
 src-tauri/src/app.rs           état, serveurs, fenêtres sans bordure et leur mémoire
 src-tauri/src/commands.rs      ce que les pages peuvent appeler
 src-tauri/src/config.rs        carnet d'adresses et réglages (JSON), secrets.rs : coffre Windows
+src-tauri/src/logs.rs          journaux de conversation (écriture, relecture, purge)
 ui/                            les pages (une seule page, une fenêtre par fonction)
 tools/                         générateur de pictogrammes, serveur IRC factice
 ```

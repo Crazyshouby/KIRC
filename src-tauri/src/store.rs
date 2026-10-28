@@ -2,7 +2,7 @@
 //! and, per buffer, the topic, the member list and the recent lines. It is fed
 //! by the same events as the pages, so both always agree.
 
-use crate::irc::event::{ConnState, Event, Line, UserEntry};
+use crate::irc::event::{ChannelEntry, ConnState, Event, Line, UserEntry, WhoisInfo};
 use crate::irc::session::fold;
 use serde::Serialize;
 use std::collections::{HashMap, VecDeque};
@@ -27,6 +27,8 @@ struct Buf {
     users: HashMap<String, UserEntry>,
     lines: VecDeque<Line>,
     joined: bool,
+    unread: u32,
+    mentions: u32,
 }
 
 pub struct ServerState {
@@ -37,8 +39,29 @@ pub struct ServerState {
     pub away: bool,
     /// Counts the events applied: a page that fetched a snapshot ignores older events.
     pub seq: u64,
+    channel_list: Vec<ChannelEntry>,
+    list_loading: bool,
+    whois: HashMap<String, WhoisInfo>,
     buffers: HashMap<String, Buf>,
     scrollback: usize,
+}
+
+#[derive(Serialize, Clone, Debug)]
+pub struct Activity {
+    pub name: String,
+    pub unread: u32,
+    pub mentions: u32,
+}
+
+/// One page of the channel list, filtered and sorted.
+#[derive(Serialize, Clone, Debug)]
+pub struct ListPage {
+    /// Rows received.
+    pub total: usize,
+    /// Rows that match the filter.
+    pub matched: usize,
+    pub loading: bool,
+    pub entries: Vec<ChannelEntry>,
 }
 
 #[derive(Serialize, Clone, Debug)]
@@ -49,6 +72,8 @@ pub struct ServerSummary {
     pub network: String,
     pub away: bool,
     pub channels: Vec<String>,
+    /// Buffers with lines nobody looked at yet.
+    pub activity: Vec<Activity>,
     /// Private conversations that exist (a window may or may not be open for them).
     pub queries: Vec<String>,
 }
@@ -62,6 +87,9 @@ impl ServerState {
             network: String::new(),
             away: false,
             seq: 0,
+            channel_list: Vec::new(),
+            list_loading: false,
+            whois: HashMap::new(),
             buffers: HashMap::new(),
             scrollback,
         }
@@ -86,7 +114,15 @@ impl ServerState {
             .map(|b| b.name.clone())
             .collect();
         queries.sort_by_key(|q| fold(q));
+        let mut activity: Vec<Activity> = self
+            .buffers
+            .values()
+            .filter(|b| b.unread > 0 && !b.name.is_empty())
+            .map(|b| Activity { name: b.name.clone(), unread: b.unread, mentions: b.mentions })
+            .collect();
+        activity.sort_by_key(|a| fold(&a.name));
         ServerSummary {
+            activity,
             queries,
             status: self.status,
             status_text: self.status_text.clone(),
@@ -126,6 +162,40 @@ impl ServerState {
                 }
             }
             None => BufferState { name: name.to_string(), ..Default::default() },
+        }
+    }
+
+    /// A line arrived in a window nobody is looking at.
+    pub fn bump(&mut self, name: &str, highlight: bool) {
+        let b = self.buf(name);
+        b.unread = b.unread.saturating_add(1);
+        if highlight {
+            b.mentions = b.mentions.saturating_add(1);
+        }
+    }
+
+    pub fn whois(&self, nick: &str) -> Option<WhoisInfo> {
+        self.whois.get(&fold(nick)).cloned()
+    }
+
+    /// Filters (case-insensitive text in the name or topic, minimum members) and sorts the list.
+    pub fn list_page(&self, filter: &str, min_users: u32, by_name: bool, offset: usize, limit: usize) -> ListPage {
+        let f = filter.trim().to_lowercase();
+        let mut rows: Vec<&ChannelEntry> = self
+            .channel_list
+            .iter()
+            .filter(|e| e.users >= min_users && (f.is_empty() || e.name.to_lowercase().contains(&f) || e.topic.to_lowercase().contains(&f)))
+            .collect();
+        if by_name {
+            rows.sort_by_key(|e| fold(&e.name));
+        } else {
+            rows.sort_by(|a, b| b.users.cmp(&a.users).then_with(|| fold(&a.name).cmp(&fold(&b.name))));
+        }
+        ListPage {
+            total: self.channel_list.len(),
+            matched: rows.len(),
+            loading: self.list_loading,
+            entries: rows.into_iter().skip(offset).take(limit.min(500)).cloned().collect(),
         }
     }
 
@@ -182,6 +252,27 @@ impl ServerState {
                 }
             }
             Event::Away { away } => self.away = *away,
+            Event::Whois { info } => {
+                if self.whois.len() >= 20 {
+                    self.whois.clear();
+                }
+                self.whois.insert(fold(&info.nick), (**info).clone());
+            }
+            Event::ListStart => {
+                self.list_loading = true;
+                self.channel_list.clear();
+            }
+            Event::ChannelList { entries } => {
+                self.channel_list = entries.clone();
+                self.list_loading = false;
+            }
+            Event::ListReady { .. } => {}
+            Event::Read { buffer } => {
+                if let Some(b) = self.buffers.get_mut(&fold(buffer)) {
+                    b.unread = 0;
+                    b.mentions = 0;
+                }
+            }
         }
     }
 }
@@ -280,5 +371,56 @@ mod query_tests {
         let sum = s.summary();
         assert_eq!(sum.queries, vec!["Bob"]);
         assert_eq!(sum.channels, vec!["#b"]);
+    }
+}
+
+#[cfg(test)]
+mod v02_tests {
+    use super::*;
+
+    fn entry(name: &str, users: u32, topic: &str) -> ChannelEntry {
+        ChannelEntry { name: name.into(), users, topic: topic.into() }
+    }
+
+    #[test]
+    fn unread_counters_go_up_and_reset() {
+        let mut s = ServerState::new(10);
+        s.apply(&Event::Joined { buffer: "#a".into() });
+        s.bump("#A", false);
+        s.bump("#a", true);
+        s.bump("Bob", true);
+        let sum = s.summary();
+        let a = sum.activity.iter().find(|x| x.name == "#a").unwrap();
+        assert_eq!((a.unread, a.mentions), (2, 1));
+        assert_eq!(sum.activity.len(), 2);
+        s.apply(&Event::Read { buffer: "#A".into() });
+        assert_eq!(s.summary().activity.len(), 1);
+        s.apply(&Event::Read { buffer: "inconnu".into() });
+    }
+
+    #[test]
+    fn channel_list_pages_filter_and_sort() {
+        let mut s = ServerState::new(10);
+        s.apply(&Event::ListStart);
+        assert!(s.list_page("", 0, false, 0, 10).loading);
+        s.apply(&Event::ChannelList { entries: vec![entry("#rust", 500, "Le langage"), entry("#python", 900, "Un serpent"), entry("#vide", 1, "rust aussi"), entry("#A", 900, "")] });
+        let p = s.list_page("", 0, false, 0, 10);
+        assert!(!p.loading);
+        assert_eq!((p.total, p.matched), (4, 4));
+        assert_eq!(p.entries.iter().map(|e| e.name.as_str()).collect::<Vec<_>>(), vec!["#A", "#python", "#rust", "#vide"], "by members, then name");
+        let p = s.list_page("RUST", 0, false, 0, 10);
+        assert_eq!(p.entries.iter().map(|e| e.name.as_str()).collect::<Vec<_>>(), vec!["#rust", "#vide"], "name or topic, any case");
+        assert_eq!(s.list_page("", 100, false, 0, 10).matched, 3);
+        assert_eq!(s.list_page("", 0, true, 0, 2).entries[0].name, "#A");
+        assert_eq!(s.list_page("", 0, false, 3, 10).entries.len(), 1);
+        assert_eq!(s.list_page("", 0, false, 0, 100_000).entries.len(), 4, "page size is bounded");
+    }
+
+    #[test]
+    fn whois_cards_are_kept_by_nick() {
+        let mut s = ServerState::new(10);
+        s.apply(&Event::Whois { info: Box::new(WhoisInfo { nick: "Bob".into(), realname: "B".into(), ..Default::default() }) });
+        assert_eq!(s.whois("bob").unwrap().realname, "B");
+        assert!(s.whois("alice").is_none());
     }
 }
