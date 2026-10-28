@@ -1,6 +1,6 @@
 # Journal des modifications
 
-## 0.3.0 — à publier
+## 0.3.0 — 2026-10-28
 
 - **Mise à jour depuis les releases GitHub** : KIRC cherche une version plus récente au démarrage puis toutes les six heures (désactivable dans les réglages ; seul `github.com` est contacté). Une version disponible s'affiche en haut du menu principal ; un clic télécharge l'installateur, vérifie sa **signature** avec la clé publique intégrée au programme, quitte proprement les serveurs puis installe et relance. Bouton « Rechercher une mise à jour » dans À propos. Les versions 0.1 et 0.2 n'ont pas cette fonction : elles se remplacent à la main, une seule fois.
 - **Sélecteur de thème** (Réglages > Affichage) : Rouge KDX (défaut, inchangé), Bleu électrique, Vert électrique, Violet électrique, Ambre CRT, Sarcelle et Charbon. Chaque thème applique à une autre teinte la rampe d'accent de KDX (cadre actif, barre de titre, jauges, cases cochées, couleur du texte des champs et des consoles, ligne sélectionnée). Les teintes viennent des fichiers d'apparence KDX « Electric … », « Amber CRT », « Mach Teal » et « Charcoal ». Aperçu immédiat dans la fenêtre des réglages, puis application à toutes les fenêtres ouvertes à l'enregistrement ; les nouvelles fenêtres s'ouvrent directement avec le bon thème.
