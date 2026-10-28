@@ -1,0 +1,35 @@
+[package]
+name = "kirc"
+version = "0.1.0"
+description = "KIRC - client IRC au style KDX"
+authors = ["Valentin Large"]
+license = "MIT"
+edition = "2021"
+rust-version = "1.80"
+
+[lib]
+name = "kirc_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-notification = "2"
+tauri-plugin-single-instance = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["rt-multi-thread", "net", "io-util", "time", "sync", "macros"] }
+native-tls = "0.2"
+tokio-native-tls = "0.3"
+base64 = "0.22"
+keyring = { version = "3", features = ["windows-native"] }
+log = "0.4"
+
+[profile.release]
+lto = true
+codegen-units = 1
+opt-level = "s"
+panic = "abort"
+strip = true
