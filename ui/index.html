@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>KIRC</title>
+<link rel="stylesheet" href="fonts.css">
+<link rel="stylesheet" href="theme.css">
+<link rel="stylesheet" href="kirc.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- The launcher: the main window, a column of buttons like KDX's. -->
+  <section class="win" id="launcherWin">
+    <div class="tb"><span class="tb-title">KIRC</span><button class="tb-btn tb-r" data-act="close" data-glyph="minus" title="Réduire dans la zone de notification" aria-label="Réduire dans la zone de notification"></button></div>
+    <div class="cb launcher">
+      <div class="status" id="statusPill"><span class="dot"></span><span id="statusText">Aucune connexion</span></div>
+      <select id="serverSelect" class="lsel" title="Serveur du carnet d'adresses" aria-label="Serveur"></select>
+      <button class="primary" id="connectBtn">Connecter</button>
+      <div class="lbtns">
+        <button class="lbtn" id="btnConsole" title="Messages du serveur"><span class="pix" data-ic="console"></span>Messages</button>
+        <button class="lbtn" id="btnJoin" title="Rejoindre un salon"><span class="pix" data-ic="salon"></span>Rejoindre…</button>
+        <button class="lbtn" id="btnBook" title="Carnet d'adresses"><span class="pix" data-ic="carnet"></span>Carnet d'adresses</button>
+      </div>
+      <div class="list" id="openList" aria-label="Salons ouverts"></div>
+      <div class="lbtns">
+        <button class="lbtn" id="btnSettings"><span class="pix" data-ic="reglages"></span>Réglages</button>
+        <button class="lbtn" id="btnAbout"><span class="pix" data-ic="info"></span>À propos</button>
+        <button class="lbtn" id="btnQuit" title="Quitte tous les serveurs et ferme KIRC"><span class="pix" data-ic="quitter"></span>Quitter</button>
+      </div>
+      <div class="counters mono"><span id="cntServers" title="Serveurs connectés">[0]</span><span id="cntChannels" title="Salons rejoints">[0]</span></div>
+    </div>
+  </section>
+
+  <!-- Address book -->
+  <section class="win" id="serversWin">
+    <div class="tb"><button class="tb-btn tb-l" data-act="close" data-glyph="x" title="Fermer" aria-label="Fermer"></button><span class="tb-title">Carnet d'adresses</span><button class="tb-btn tb-r" data-act="shade" data-glyph="minus" title="Enrouler" aria-label="Enrouler"></button></div>
+    <div class="cb book">
+      <div class="side">
+        <div class="list" id="serverList"></div>
+        <button class="ghost-btn" id="newServer"><span class="pix" data-ic="serveur" style="vertical-align:-3px;margin-right:6px"></span>Nouveau serveur</button>
+      </div>
+      <div class="main">
+        <div class="scroll">
+          <form class="form" id="serverForm" autocomplete="off" spellcheck="false">
+            <label for="fPreset">Modèle</label>
+            <select class="text-input" id="fPreset">
+              <option value="">— Choisir un réseau —</option>
+              <option value="Libera.Chat|irc.libera.chat|6697">Libera.Chat</option>
+              <option value="OFTC|irc.oftc.net|6697">OFTC</option>
+              <option value="Rizon|irc.rizon.net|6697">Rizon</option>
+              <option value="IRCnet|open.ircnet.net|6697">IRCnet</option>
+            </select>
+            <h3>Serveur</h3>
+            <label for="fName">Nom</label><input class="text-input" id="fName" maxlength="60">
+            <label for="fHost">Adresse</label><input class="text-input" id="fHost" maxlength="253" placeholder="irc.exemple.org">
+            <label for="fPort">Port</label>
+            <input class="text-input port" id="fPort" type="number" min="1" max="65535">
+            <span class="lbl"></span>
+            <label class="chk-row"><span class="switch"><input type="checkbox" id="fTls"><span class="track"></span></span>Connexion chiffrée (TLS)</label>
+            <div class="hint" id="tlsHint">Sans TLS, les mots de passe transitent en clair.</div>
+            <span class="lbl"></span>
+            <label class="chk-row" title="À n'utiliser que pour un serveur personnel au certificat auto-signé"><span class="switch"><input type="checkbox" id="fInvalid"><span class="track"></span></span>Accepter un certificat non valide</label>
+            <label for="fServerPass">Mot de passe</label><input class="text-input" id="fServerPass" type="password" maxlength="200" placeholder="(serveur protégé seulement)">
+            <h3>Identité</h3>
+            <label for="fNick">Pseudo</label><input class="text-input" id="fNick" maxlength="30" placeholder="(réglages par défaut)">
+            <label for="fAlt">Pseudo de secours</label><input class="text-input" id="fAlt" maxlength="30">
+            <label for="fUser">Identifiant</label><input class="text-input" id="fUser" maxlength="30">
+            <label for="fReal">Nom réel</label><input class="text-input" id="fReal" maxlength="100">
+            <h3>Authentification</h3>
+            <label for="fAuth">Méthode</label>
+            <select class="text-input" id="fAuth">
+              <option value="none">Aucune</option>
+              <option value="sasl">SASL (compte et mot de passe)</option>
+              <option value="nickserv">NickServ (mot de passe)</option>
+            </select>
+            <label for="fAccount" id="lAccount">Compte</label><input class="text-input" id="fAccount" maxlength="60" placeholder="(le pseudo)">
+            <label for="fAuthPass" id="lAuthPass">Mot de passe</label><input class="text-input" id="fAuthPass" type="password" maxlength="200">
+            <div class="hint">Les mots de passe sont gardés dans le coffre de Windows, jamais dans un fichier.</div>
+            <h3>Connexion</h3>
+            <span class="lbl"></span>
+            <label class="chk-row"><span class="switch"><input type="checkbox" id="fAuto"><span class="track"></span></span>Se connecter au démarrage de KIRC</label>
+            <label for="fJoin">Salons</label><textarea class="text-input" id="fJoin" rows="3" placeholder="#salon, #autre clé"></textarea>
+          </form>
+        </div>
+        <div class="btns">
+          <button class="ghost-btn push" id="delServer">Supprimer</button>
+          <button class="ghost-btn" id="saveServer">Enregistrer</button>
+          <button class="primary" id="connectServer">Connecter</button>
+        </div>
+      </div>
+    </div>
+    <div class="grip-rz"></div>
+  </section>
+
+  <!-- Settings -->
+  <section class="win" id="settingsWin">
+    <div class="tb"><button class="tb-btn tb-l" data-act="close" data-glyph="x" title="Fermer" aria-label="Fermer"></button><span class="tb-title">Réglages</span><button class="tb-btn tb-r" data-act="shade" data-glyph="minus" title="Enrouler" aria-label="Enrouler"></button></div>
+    <div class="cb">
+      <div class="scroll">
+        <form class="form" id="settingsForm" autocomplete="off" spellcheck="false">
+          <h3>Identité par défaut</h3>
+          <label for="sNick">Pseudo</label><input class="text-input" id="sNick" maxlength="30">
+          <label for="sAlt">Pseudo de secours</label><input class="text-input" id="sAlt" maxlength="30">
+          <label for="sUser">Identifiant</label><input class="text-input" id="sUser" maxlength="30" placeholder="(le pseudo)">
+          <label for="sReal">Nom réel</label><input class="text-input" id="sReal" maxlength="100">
+          <h3>Départs</h3>
+          <label for="sQuit">En quittant IRC</label><input class="text-input" id="sQuit" maxlength="200">
+          <label for="sPart">En quittant un salon</label><input class="text-input" id="sPart" maxlength="200">
+          <h3>Affichage</h3>
+          <span class="lbl"></span><label class="chk-row"><span class="switch"><input type="checkbox" id="sStamps"><span class="track"></span></span>Afficher l'heure devant les messages</label>
+          <span class="lbl"></span><label class="chk-row"><span class="switch"><input type="checkbox" id="sJoins"><span class="track"></span></span>Afficher les arrivées et départs</label>
+          <label for="sScroll">Historique</label><div class="inline"><input class="text-input port" id="sScroll" type="number" min="50" max="5000" step="50"> lignes par fenêtre</div>
+          <h3>Comportement</h3>
+          <span class="lbl"></span><label class="chk-row"><span class="switch"><input type="checkbox" id="sNotif"><span class="track"></span></span>Notifier les messages privés et mentions</label>
+          <span class="lbl"></span><label class="chk-row"><span class="switch"><input type="checkbox" id="sQueries"><span class="track"></span></span>Ouvrir une fenêtre par conversation privée</label>
+          <span class="lbl"></span><label class="chk-row"><span class="switch"><input type="checkbox" id="sConsole"><span class="track"></span></span>Ouvrir les messages du serveur à la connexion</label>
+        </form>
+      </div>
+      <div class="btns">
+        <button class="ghost-btn" id="cancelSettings">Fermer</button>
+        <button class="primary" id="saveSettings">Enregistrer</button>
+      </div>
+    </div>
+    <div class="grip-rz"></div>
+  </section>
+
+  <!-- About -->
+  <section class="win" id="aboutWin">
+    <div class="tb"><button class="tb-btn tb-l" data-act="close" data-glyph="x" title="Fermer" aria-label="Fermer"></button><span class="tb-title">À propos de KIRC</span></div>
+    <div class="cb about">
+      <span class="pix" data-ic="kirc" data-size="48"></span>
+      <div class="big">KIRC</div>
+      <div class="ver mono" id="aboutVersion"></div>
+      <p>Client IRC pour Windows, dans le style de KDX (Haxial).<br>Licence MIT — © Valentin Large.<br>Polices Archivo et Overpass Mono (SIL OFL).</p>
+      <div class="path" id="aboutPath"></div>
+    </div>
+  </section>
+
+  <!-- Join a channel -->
+  <section class="win" id="joinWin">
+    <div class="tb"><button class="tb-btn tb-l" data-act="close" data-glyph="x" title="Fermer" aria-label="Fermer"></button><span class="tb-title">Rejoindre un salon</span></div>
+    <div class="cb dialog">
+      <form class="form" id="joinForm" autocomplete="off" spellcheck="false">
+        <label for="jServer">Serveur</label><select class="text-input" id="jServer"></select>
+        <label for="jChannel">Salon</label><input class="text-input" id="jChannel" maxlength="200" placeholder="#salon">
+        <label for="jKey">Clé</label><input class="text-input" id="jKey" maxlength="100" placeholder="(si nécessaire)">
+      </form>
+      <div class="btns" style="margin-top:auto">
+        <button class="ghost-btn" id="joinCancel">Annuler</button>
+        <button class="primary" id="joinOk">Rejoindre</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Server messages (console) -->
+  <section class="win" id="consoleWin">
+    <div class="tb"><button class="tb-btn tb-l" data-act="close" data-glyph="x" title="Fermer" aria-label="Fermer"></button><span class="tb-title" data-title>Messages</span><button class="tb-btn tb-r" data-act="shade" data-glyph="minus" title="Enrouler" aria-label="Enrouler"></button></div>
+    <div class="cb chat">
+      <div class="status" id="consoleStatus"><span class="dot"></span><span id="consoleStatusText"></span></div>
+      <div class="chat-main"><div class="log" id="consoleLog" tabindex="0"></div></div>
+      <form class="inputbar" id="consoleForm" autocomplete="off">
+        <input class="text-input" id="consoleInput" maxlength="2000" spellcheck="false" placeholder="/join #salon · /msg pseudo texte · /aide">
+        <button class="ghost-btn" type="submit">Envoyer</button>
+      </form>
+    </div>
+    <div class="grip-rz"></div>
+  </section>
+
+  <!-- A channel or a private conversation -->
+  <section class="win" id="chatWin">
+    <div class="tb"><button class="tb-btn tb-l" data-act="close" data-glyph="x" title="Fermer (quitte le salon)" aria-label="Fermer"></button><span class="tb-title" data-title>Salon</span><button class="tb-btn tb-r" data-act="shade" data-glyph="minus" title="Enrouler" aria-label="Enrouler"></button></div>
+    <div class="cb chat">
+      <div class="topicbar" id="topicBar" title="Double-clic pour modifier le sujet"><span class="pix" data-ic="salon"></span><span class="t" id="topicText"></span></div>
+      <div class="chat-main">
+        <div class="log" id="log" tabindex="0"></div>
+        <div class="members" id="membersBox">
+          <div class="mem-h"><span>Membres</span><span class="mono" id="memCount">[0]</span></div>
+          <div class="list" id="memberList"></div>
+        </div>
+      </div>
+      <div class="banner" id="chatBanner" hidden><span class="orb amber"></span><span class="t" id="chatBannerText"></span></div>
+      <form class="inputbar" id="inputForm" autocomplete="off">
+        <span class="mynick" id="myNick" title="Votre pseudo"></span>
+        <input class="text-input" id="msgInput" maxlength="2000" spellcheck="false" aria-label="Message">
+        <button class="ghost-btn" type="submit">Envoyer</button>
+      </form>
+      <button class="ghost-btn newmsg" id="newMsg" hidden>▼ Nouveaux messages</button>
+    </div>
+    <div class="grip-rz"></div>
+  </section>
+
+</div>
+<div id="ctxMenu"></div>
+<div id="toasts"></div>
+<script src="icons.js"></script>
+<script src="kirc.js"></script>
+</body>
+</html>

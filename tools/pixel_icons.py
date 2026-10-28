@@ -262,7 +262,7 @@ def kirc_app():
 
 ICONS = dict(serveur=server, salon=channel, membres=users, message=bubble, carnet=book, console=terminal,
              connecter=plug, deconnecter=unplug, quitter=door, info=info, reglages=gear, cle=key, absent=moon,
-             journal=journal, cloche=bell, editer=pencil, supprimer=trash)
+             journal=journal, kirc=kirc_app, cloche=bell, editer=pencil, supprimer=trash)
 
 
 def all_svgs():

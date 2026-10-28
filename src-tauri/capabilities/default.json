@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Les pages locales de KIRC : événements et commandes de l'application, rien d'autre.",
+  "windows": ["*"],
+  "permissions": ["core:event:default", "core:app:default"]
+}
