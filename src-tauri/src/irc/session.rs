@@ -12,6 +12,9 @@ use std::collections::{HashMap, HashSet};
 /// server adds when relaying (nick!user@host PRIVMSG target :) with room to spare.
 const MAX_TEXT: usize = 380;
 
+/// Private conversations remembered per connection.
+const MAX_QUERIES: usize = 300;
+
 const SERVICES: [&str; 6] = ["nickserv", "chanserv", "memoserv", "operserv", "hostserv", "botserv"];
 
 #[derive(Clone, Debug, Default)]
@@ -53,7 +56,9 @@ pub struct Session {
     channels: HashMap<String, Channel>,
     queries: HashMap<String, String>,
     // Capability negotiation.
-    cap_available: HashSet<String>,
+    cap_available: HashMap<String, String>,
+    /// CAP REQ sent and not yet answered.
+    cap_pending: usize,
     cap_enabled: HashSet<String>,
     cap_ended: bool,
     sasl_pending: bool,
@@ -147,7 +152,8 @@ impl Session {
             chanmodes: Default::default(),
             channels: HashMap::new(),
             queries: HashMap::new(),
-            cap_available: HashSet::new(),
+            cap_available: HashMap::new(),
+            cap_pending: 0,
             cap_enabled: HashSet::new(),
             cap_ended: false,
             sasl_pending: false,
@@ -188,6 +194,7 @@ impl Session {
     pub fn start(&mut self) -> Vec<Out> {
         self.registered = false;
         self.cap_available.clear();
+        self.cap_pending = 0;
         self.cap_enabled.clear();
         self.cap_ended = false;
         self.sasl_pending = false;
@@ -237,6 +244,12 @@ impl Session {
         }
     }
 
+    /// A channel left while the connection was down: it is not rejoined with the next one.
+    pub fn forget_channel(&mut self, name: &str) {
+        let key = fold(name);
+        self.rejoin.retain(|r| fold(r.split(' ').next().unwrap_or("")) != key);
+    }
+
     // ------------------------------------------------------------- helpers
 
     #[allow(clippy::too_many_arguments)]
@@ -268,6 +281,10 @@ impl Session {
     }
 
     fn query_name(&mut self, nick: &str) -> String {
+        // A flood of senders must not grow this table without bound.
+        if self.queries.len() >= MAX_QUERIES && !self.queries.contains_key(&fold(nick)) {
+            self.queries.clear();
+        }
         self.queries.entry(fold(nick)).or_insert_with(|| nick.to_string()).clone()
     }
 
@@ -344,38 +361,53 @@ impl Session {
             "LS" => {
                 let more = msg.param(2) == "*";
                 for cap in msg.last().split_whitespace() {
-                    self.cap_available.insert(cap.split('=').next().unwrap_or(cap).to_string());
+                    let (name, value) = cap.split_once('=').unwrap_or((cap, ""));
+                    self.cap_available.insert(name.to_string(), value.to_string());
                 }
                 if more {
                     return;
                 }
-                let mut want: Vec<&str> = Vec::new();
-                for c in ["server-time", "multi-prefix", "away-notify"] {
-                    if self.cap_available.contains(c) {
-                        want.push(c);
+                let mut want: Vec<&str> = ["server-time", "multi-prefix", "away-notify"]
+                    .into_iter()
+                    .filter(|c| self.cap_available.contains_key(*c))
+                    .collect();
+                if self.cfg.sasl.is_some() {
+                    // "sasl=PLAIN,EXTERNAL": the list, when given, must include PLAIN.
+                    let plain = self.cap_available.get("sasl").map(|v| v.is_empty() || v.split(',').any(|m| m.eq_ignore_ascii_case("PLAIN")));
+                    match plain {
+                        Some(true) => want.push("sasl"),
+                        _ => out.push(self.error("", "Ce serveur ne propose pas SASL PLAIN : authentification impossible", 0)),
                     }
                 }
-                if self.cfg.sasl.is_some() && self.cap_available.contains("sasl") {
-                    want.push("sasl");
-                }
+                // One request per capability: a refusal of one does not cancel the others.
+                self.cap_pending = want.len();
                 if want.is_empty() {
                     self.cap_end(out);
-                } else {
-                    out.push(Out::SendNow(format!("CAP REQ :{}", want.join(" "))));
+                }
+                for c in want {
+                    out.push(Out::SendNow(format!("CAP REQ :{c}")));
                 }
             }
-            "ACK" => {
+            "ACK" | "NAK" => {
+                let acked = sub == "ACK";
                 for cap in msg.last().split_whitespace() {
-                    self.cap_enabled.insert(cap.trim_start_matches(['-', '~', '=']).to_string());
+                    let name = cap.trim_start_matches(['-', '~', '=']);
+                    if acked {
+                        self.cap_enabled.insert(name.to_string());
+                    } else if name == "sasl" && self.cfg.sasl.is_some() {
+                        out.push(self.error("", "Le serveur a refusé SASL : authentification impossible", 0));
+                    }
+                    self.cap_pending = self.cap_pending.saturating_sub(1);
                 }
-                if self.cap_enabled.contains("sasl") && self.cfg.sasl.is_some() && !self.sasl_ok {
-                    self.sasl_pending = true;
-                    out.push(Out::SendNow("AUTHENTICATE PLAIN".into()));
-                } else {
-                    self.cap_end(out);
+                if self.cap_pending == 0 {
+                    if self.cap_enabled.contains("sasl") && self.cfg.sasl.is_some() && !self.sasl_ok {
+                        self.sasl_pending = true;
+                        out.push(Out::SendNow("AUTHENTICATE PLAIN".into()));
+                    } else {
+                        self.cap_end(out);
+                    }
                 }
             }
-            "NAK" => self.cap_end(out),
             _ => {}
         }
     }
@@ -627,7 +659,7 @@ impl Session {
                 return;
             }
             if cmd.eq_ignore_ascii_case("ACTION") {
-                let buffer = self.message_buffer(&src_nick, &target, out);
+                let Some(buffer) = self.message_buffer(&src_nick, &target, out) else { return };
                 let hl = mentions(rest, &self.nick) || !self.is_channel(&target);
                 out.push(self.line(&buffer, LineKind::Action, &src_nick, rest.to_string(), time, hl, false));
                 return;
@@ -652,7 +684,8 @@ impl Session {
                 }
             }
             let buffer = if self.is_channel(&target) {
-                self.channel_name(&target)
+                // A notice to a channel we are not on goes to the console, never to a new buffer.
+                self.channels.get(&fold(&target)).map_or_else(String::new, |c| c.name.clone())
             } else if self.queries.contains_key(&fold(&src_nick)) {
                 self.queries[&fold(&src_nick)].clone()
             } else {
@@ -663,22 +696,26 @@ impl Session {
             return;
         }
 
-        let buffer = self.message_buffer(&src_nick, &target, out);
+        let Some(buffer) = self.message_buffer(&src_nick, &target, out) else { return };
         let hl = !self.is_channel(&target) || mentions(&text, &self.nick);
         out.push(self.line(&buffer, LineKind::Msg, &src_nick, text, time, hl, false));
     }
 
     /// The buffer an incoming message belongs to; opens a query for a private message.
-    fn message_buffer(&mut self, from: &str, target: &str, out: &mut Vec<Out>) -> String {
+    /// `None` for what must be ignored: a message to a channel we are not on, or without a sender.
+    fn message_buffer(&mut self, from: &str, target: &str, out: &mut Vec<Out>) -> Option<String> {
         if self.is_channel(target) {
-            return self.channel_name(target);
+            return self.channels.get(&fold(target)).map(|c| c.name.clone());
+        }
+        if from.is_empty() {
+            return None;
         }
         let fresh = !self.queries.contains_key(&fold(from));
         let q = self.query_name(from);
         if fresh {
             out.push(Out::Ui(Event::Query { buffer: q.clone() }));
         }
-        q
+        Some(q)
     }
 
     fn ctcp_reply(&mut self, from: &str, cmd: &str, args: &str, now: i64, out: &mut Vec<Out>) {
@@ -1342,14 +1379,44 @@ mod tests {
         let mut s = Session::new(SessionConfig { sasl: Some(("bob".into(), "pw".into())), ..cfg() });
         s.start();
         let out = sent(&feed(&mut s, ":srv CAP * LS :sasl multi-prefix"));
-        assert_eq!(out, vec!["CAP REQ :multi-prefix sasl"]);
-        assert_eq!(sent(&feed(&mut s, ":srv CAP kirc ACK :multi-prefix sasl")), vec!["AUTHENTICATE PLAIN"]);
+        assert_eq!(out, vec!["CAP REQ :multi-prefix", "CAP REQ :sasl"]);
+        assert!(sent(&feed(&mut s, ":srv CAP kirc ACK :multi-prefix")).is_empty(), "waits for the other answer");
+        assert_eq!(sent(&feed(&mut s, ":srv CAP kirc ACK :sasl")), vec!["AUTHENTICATE PLAIN"]);
         let out = sent(&feed(&mut s, "AUTHENTICATE +"));
         assert_eq!(out.len(), 1);
         let payload = out[0].strip_prefix("AUTHENTICATE ").unwrap();
         let raw = base64::engine::general_purpose::STANDARD.decode(payload).unwrap();
         assert_eq!(raw, b"bob\0bob\0pw");
         assert_eq!(sent(&feed(&mut s, ":srv 903 kirc :SASL authentication successful")), vec!["CAP END"]);
+    }
+
+    #[test]
+    fn a_refused_capability_does_not_cancel_the_others_and_a_refused_sasl_is_reported() {
+        let mut s = Session::new(SessionConfig { sasl: Some(("bob".into(), "pw".into())), ..cfg() });
+        s.start();
+        feed(&mut s, ":srv CAP * LS :sasl=PLAIN,EXTERNAL multi-prefix");
+        let out = feed(&mut s, ":srv CAP kirc NAK :sasl");
+        assert!(lines(&out).iter().any(|l| l.kind == LineKind::Error && l.text.contains("SASL")));
+        assert!(sent(&out).is_empty());
+        assert_eq!(sent(&feed(&mut s, ":srv CAP kirc ACK :multi-prefix")), vec!["CAP END"]);
+    }
+
+    #[test]
+    fn sasl_without_the_plain_mechanism_is_reported() {
+        let mut s = Session::new(SessionConfig { sasl: Some(("bob".into(), "pw".into())), ..cfg() });
+        s.start();
+        let out = feed(&mut s, ":srv CAP * LS :sasl=EXTERNAL");
+        assert!(lines(&out).iter().any(|l| l.kind == LineKind::Error && l.text.contains("SASL PLAIN")));
+        assert_eq!(sent(&out), vec!["CAP END"]);
+    }
+
+    #[test]
+    fn hostile_messages_create_no_buffers() {
+        let mut s = registered(cfg());
+        assert!(lines(&feed(&mut s, ":x!y@z PRIVMSG #nowhere :spam")).is_empty());
+        assert!(lines(&feed(&mut s, "PRIVMSG kirc :sans expéditeur")).is_empty());
+        let l = lines(&feed(&mut s, ":x!y@z NOTICE #nowhere :spam"));
+        assert_eq!(l[0].buffer, "");
     }
 
     #[test]
@@ -1765,6 +1832,18 @@ mod tests {
         joined(&mut s, "#a");
         let l = lines(&feed(&mut s, "@time=2026-10-28T12:00:00.000Z :plain!p@h PRIVMSG #a :ancien message"));
         assert_eq!(l[0].time, 1_793_188_800_000);
+    }
+
+    #[test]
+    fn a_channel_left_while_offline_is_not_rejoined() {
+        let mut s = registered(cfg());
+        joined(&mut s, "#a");
+        joined(&mut s, "#b");
+        s.on_disconnect("Ping timeout", 2_000);
+        s.forget_channel("#A");
+        s.start();
+        feed(&mut s, "CAP * LS :");
+        assert_eq!(sent(&feed(&mut s, ":srv 001 kirc :Welcome")), vec!["JOIN #b"]);
     }
 
     #[test]

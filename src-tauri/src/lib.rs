@@ -14,7 +14,9 @@ use tauri::{Manager, RunEvent};
 
 pub fn run() {
     let dir = config::data_dir();
-    let cfg = config::load(&dir);
+    let (cfg, writable) = config::load_checked(&dir);
+    let state = App::new(dir, cfg);
+    state.set_writable(writable);
 
     let built = tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
@@ -22,7 +24,7 @@ pub fn run() {
         }))
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_opener::init())
-        .manage(App::new(dir, cfg))
+        .manage(state)
         .invoke_handler(tauri::generate_handler![
             commands::app_info,
             commands::get_overview,

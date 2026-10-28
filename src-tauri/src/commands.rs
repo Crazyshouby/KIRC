@@ -65,39 +65,41 @@ pub async fn get_overview(state: State<'_, App>) -> R<Overview> {
     Ok(Overview { settings, servers, states })
 }
 
+#[derive(Serialize)]
+pub struct SaveResult {
+    id: String,
+    /// The entry is saved, but something around it failed (the credential manager).
+    warning: Option<String>,
+}
+
 /// `pass` and `auth_secret`: None keeps the stored password, "" removes it.
 #[tauri::command]
-pub async fn save_server(state: State<'_, App>, entry: ServerEntry, pass: Option<String>, auth_secret: Option<String>) -> R<String> {
+pub async fn save_server(state: State<'_, App>, entry: ServerEntry, pass: Option<String>, auth_secret: Option<String>) -> R<SaveResult> {
     let id = state.config.lock().unwrap().upsert_server(entry)?;
     state.mark_dirty();
     state.flush();
     let mut problems = Vec::new();
-    if let Some(p) = pass {
-        if let Err(e) = secrets::set(&id, "pass", &p) {
-            problems.push(e);
+    for (kind, value) in [("pass", pass), ("auth", auth_secret)] {
+        if let Some(v) = value {
+            if let Err(e) = secrets::set(&id, kind, &v) {
+                problems.push(e);
+            }
         }
     }
-    if let Some(p) = auth_secret {
-        if let Err(e) = secrets::set(&id, "auth", &p) {
-            problems.push(e);
-        }
-    }
-    if problems.is_empty() {
-        Ok(id)
-    } else {
-        Err(format!("Serveur enregistré, mais {}", problems.join(" ; ")))
-    }
+    let warning = (!problems.is_empty()).then(|| format!("Serveur enregistré, mais {}", problems.join(" ; ")));
+    Ok(SaveResult { id, warning })
 }
 
 #[tauri::command]
-pub async fn delete_server(app: AppHandle, state: State<'_, App>, id: String) -> R<()> {
+pub async fn delete_server(app: AppHandle, state: State<'_, App>, id: String) -> R<bool> {
     app::stop_server(&app, &id);
     state.config.lock().unwrap().remove_server(&id);
     state.states.lock().unwrap().remove(&id);
     state.mark_dirty();
     state.flush();
     secrets::forget_server(&id);
-    Ok(())
+    app::close_server_windows(&app, &id);
+    Ok(true)
 }
 
 #[tauri::command]
@@ -111,12 +113,13 @@ pub fn disconnect_server(app: AppHandle, id: String) {
 }
 
 #[tauri::command]
-pub fn send_input(app: AppHandle, state: State<'_, App>, server: String, buffer: String, text: String) -> R<()> {
+pub fn send_input(app: AppHandle, state: State<'_, App>, server: String, buffer: String, text: String) -> R<bool> {
     if text.len() > 4000 {
         return Err("Ligne trop longue (4000 octets au plus)".into());
     }
     state.note_input();
-    app::send_command(&app, &server, Command::Input { buffer, text })
+    app::send_command(&app, &server, Command::Input { buffer, text })?;
+    Ok(true)
 }
 
 #[tauri::command]
@@ -135,7 +138,7 @@ pub fn clear_buffer(state: State<'_, App>, server: String, buffer: String) {
 }
 
 #[tauri::command]
-pub async fn save_settings(state: State<'_, App>, settings: Settings) -> R<()> {
+pub async fn save_settings(state: State<'_, App>, settings: Settings) -> R<bool> {
     settings.validate()?;
     let n = settings.scrollback as usize;
     state.config.lock().unwrap().settings = settings;
@@ -144,7 +147,7 @@ pub async fn save_settings(state: State<'_, App>, settings: Settings) -> R<()> {
     }
     state.mark_dirty();
     state.flush();
-    Ok(())
+    Ok(true)
 }
 
 #[tauri::command]

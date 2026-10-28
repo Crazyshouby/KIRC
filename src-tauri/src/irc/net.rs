@@ -67,9 +67,26 @@ pub async fn run(conn: ConnectionConfig, mut session: Session, sink: Arc<dyn Sin
         let text = format!("Connexion à {}:{}…", conn.host, conn.port);
         sink.emit(Event::Status { state, text });
 
-        let end = match connect(&conn).await {
+        // Connecting can take a while (TCP, TLS): Cancel and typed lines are handled meanwhile.
+        let connecting = connect(&conn);
+        tokio::pin!(connecting);
+        let result = loop {
+            tokio::select! {
+                r = &mut connecting => break Some(r),
+                cmd = cmds.recv() => match cmd {
+                    None | Some(Command::Disconnect(_)) => break None,
+                    Some(Command::ConnectNow) => {}
+                    Some(Command::Input { buffer, text }) => offline_input(&mut session, &*sink, &buffer, &text),
+                },
+            }
+        };
+        let Some(result) = result else {
+            sink.emit(Event::Status { state: ConnState::Disconnected, text: "Connexion annulée".into() });
+            return;
+        };
+
+        let end = match result {
             Ok(stream) => {
-                attempt = 0;
                 if !conn.tls {
                     sink.emit(line_info("Connexion non chiffrée : les messages et mots de passe transitent en clair"));
                 }
@@ -85,6 +102,11 @@ pub async fn run(conn: ConnectionConfig, mut session: Session, sink: Arc<dyn Sin
             End::Quit => "Déconnecté".to_string(),
             End::Lost(r) => r.clone(),
         };
+        // The delay only goes back to the start once the server has accepted us: one that
+        // drops the connection right after the handshake (ban, throttle) is not hammered.
+        if session.is_registered() {
+            attempt = 0;
+        }
         for out in session.on_disconnect(&reason, now_ms()) {
             if let Out::Ui(ev) = out {
                 sink.emit(ev);
@@ -114,12 +136,20 @@ pub async fn run(conn: ConnectionConfig, mut session: Session, sink: Arc<dyn Sin
                         return;
                     }
                     Some(Command::ConnectNow) => break,
-                    Some(Command::Input { buffer, .. }) => {
-                        sink.emit(line_error(&buffer, "Non connecté : le message n'a pas été envoyé"));
-                    }
+                    Some(Command::Input { buffer, text }) => offline_input(&mut session, &*sink, &buffer, &text),
                 },
             }
         }
+    }
+}
+
+/// A line typed while there is no connection: not sent, and not kept for later.
+fn offline_input(session: &mut Session, sink: &dyn Sink, buffer: &str, text: &str) {
+    // Leaving a channel while offline: do not rejoin it when the link is back.
+    if text.trim().eq_ignore_ascii_case("/part") {
+        session.forget_channel(buffer);
+    } else {
+        sink.emit(line_error(buffer, "Non connecté : le message n'a pas été envoyé"));
     }
 }
 
@@ -136,7 +166,9 @@ fn line_error(buffer: &str, text: &str) -> Event {
 }
 
 async fn connect(conn: &ConnectionConfig) -> Result<Box<dyn Io>, String> {
-    let tcp = timeout(CONNECT_TIMEOUT, TcpStream::connect((conn.host.as_str(), conn.port)))
+    // "[::1]" is how an IPv6 address is written in the address book; the resolver wants it bare.
+    let host = conn.host.trim_start_matches('[').trim_end_matches(']');
+    let tcp = timeout(CONNECT_TIMEOUT, TcpStream::connect((host, conn.port)))
         .await
         .map_err(|_| "délai de connexion dépassé".to_string())?
         .map_err(|e| format!("connexion impossible : {e}"))?;
@@ -150,7 +182,7 @@ async fn connect(conn: &ConnectionConfig) -> Result<Box<dyn Io>, String> {
         b.danger_accept_invalid_certs(true).danger_accept_invalid_hostnames(true);
     }
     let connector = tokio_native_tls::TlsConnector::from(b.build().map_err(|e| format!("TLS indisponible : {e}"))?);
-    let tls = timeout(CONNECT_TIMEOUT, connector.connect(&conn.host, tcp))
+    let tls = timeout(CONNECT_TIMEOUT, connector.connect(host, tcp))
         .await
         .map_err(|_| "délai de la négociation TLS dépassé".to_string())?
         .map_err(|e| format!("échec TLS : {e}"))?;
@@ -364,7 +396,15 @@ async fn dispatch<W: AsyncWrite + Unpin>(
 ) -> Result<(), String> {
     for out in outs {
         match out {
-            Out::SendNow(l) => write_line(wr, &l).await?,
+            Out::SendNow(l) => {
+                // What was typed just before leaving goes out before the QUIT.
+                if l.starts_with("QUIT") {
+                    while let Some(queued) = limiter.queue.pop_front() {
+                        write_line(wr, &queued).await?;
+                    }
+                }
+                write_line(wr, &l).await?
+            }
             Out::Send(l) => {
                 if limiter.queue.len() >= MAX_QUEUE {
                     sink.emit(line_error("", "Trop de messages en attente : certains ont été abandonnés"));

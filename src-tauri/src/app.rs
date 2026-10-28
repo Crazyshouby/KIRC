@@ -22,6 +22,8 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 const FRAME_BG: Color = Color(0x22, 0x22, 0x22, 0xff);
 /// Height of a rolled-up window: border, title bar and bottom frame, in logical pixels.
 const SHADED_HEIGHT: f64 = 28.0;
+/// Channel and conversation windows opened on their own; more stay reachable from the main menu.
+const MAX_CHAT_WINDOWS: usize = 40;
 
 type Point = (f64, f64);
 type Anchors<T> = Mutex<HashMap<String, (Point, T)>>;
@@ -32,6 +34,7 @@ pub struct App {
     pub states: Mutex<HashMap<String, ServerState>>,
     pub servers: Mutex<HashMap<String, UnboundedSender<Command>>>,
     dirty: AtomicBool,
+    writable: AtomicBool,
     /// Per window, while its title bar is held: cursor and window position at the start.
     drags: Anchors<(i32, i32)>,
     /// Per window, while its grip is held: cursor and window size at the start.
@@ -52,6 +55,7 @@ impl App {
             states: Mutex::new(HashMap::new()),
             servers: Mutex::new(HashMap::new()),
             dirty: AtomicBool::new(false),
+            writable: AtomicBool::new(true),
             drags: Mutex::new(HashMap::new()),
             resizes: Mutex::new(HashMap::new()),
             shaded: Mutex::new(HashMap::new()),
@@ -63,12 +67,20 @@ impl App {
         }
     }
 
+    /// Turned off when the existing configuration could not be read (see `config::load_checked`).
+    pub fn set_writable(&self, writable: bool) {
+        self.writable.store(writable, Ordering::Relaxed);
+    }
+
     pub fn mark_dirty(&self) {
         self.dirty.store(true, Ordering::Relaxed);
     }
 
     /// Writes the configuration if it changed since the last time.
     pub fn flush(&self) {
+        if !self.writable.load(Ordering::Relaxed) {
+            return;
+        }
         if self.dirty.swap(false, Ordering::Relaxed) {
             let cfg = self.config.lock().unwrap().clone();
             if let Err(e) = config::save(&self.dir, &cfg) {
@@ -122,26 +134,28 @@ impl Sink for IrcSink {
 
 fn handle_event(app: &AppHandle, server: &str, ev: Event) {
     let st = app.state::<App>();
-    let (open_queries, notifications, scrollback) = {
+    let (open_queries, notifications) = {
         let c = st.config.lock().unwrap();
-        (c.settings.open_queries, c.settings.notifications, c.settings.scrollback as usize)
+        (c.settings.open_queries, c.settings.notifications)
     };
     let seq = {
         let mut states = st.states.lock().unwrap();
-        let s = states.entry(server.to_string()).or_insert_with(|| ServerState::new(scrollback));
+        // A server deleted while its connection winds down must not come back as a ghost.
+        let Some(s) = states.get_mut(server) else { return };
         s.apply(&ev);
         s.seq
     };
 
     match &ev {
-        Event::Joined { buffer } => {
-            if let Err(e) = open(app, Kind::Chat(server.to_string(), buffer.clone()), st.recent_input()) {
-                log::error!("fenêtre de {buffer} : {e}");
-            }
-        }
-        Event::Query { buffer } if open_queries => {
-            if let Err(e) = open(app, Kind::Chat(server.to_string(), buffer.clone()), st.recent_input()) {
-                log::error!("fenêtre de {buffer} : {e}");
+        Event::Joined { buffer } | Event::Query { buffer } if matches!(ev, Event::Joined { .. }) || open_queries => {
+            // A server (or a flood of senders) must not be able to open windows without end:
+            // beyond the cap the conversation still exists and is listed in the main menu.
+            let wanted = Kind::Chat(server.to_string(), buffer.clone());
+            let open_now = app.webview_windows().keys().filter(|l| l.starts_with("chat-")).count();
+            if open_now < MAX_CHAT_WINDOWS || app.get_webview_window(&wanted.label()).is_some() {
+                if let Err(e) = open(app, wanted, st.recent_input()) {
+                    log::error!("fenêtre de {buffer} : {e}");
+                }
             }
         }
         Event::Parted { buffer } => {
@@ -183,13 +197,24 @@ fn notify(app: &AppHandle, buffer: &str, nick: &str, body: &str) {
 /// Connects one server of the address book.
 pub fn start_server(app: &AppHandle, id: &str) -> Result<(), String> {
     let st = app.state::<App>();
-    if st.servers.lock().unwrap().contains_key(id) {
-        return Err("Ce serveur est déjà connecté".into());
-    }
     let (entry, settings) = {
         let c = st.config.lock().unwrap();
         (c.server(id).cloned().ok_or("Serveur inconnu")?, c.settings.clone())
     };
+    // Reserve the connection before the slow part (the credential manager): two quick clicks
+    // must not start two sessions with the same nick.
+    let (tx, rx) = mpsc::unbounded_channel();
+    {
+        let mut servers = st.servers.lock().unwrap();
+        if servers.contains_key(id) {
+            return Err("Ce serveur est déjà connecté".into());
+        }
+        servers.insert(id.to_string(), tx);
+    }
+    {
+        let mut states = st.states.lock().unwrap();
+        states.entry(id.to_string()).or_insert_with(|| ServerState::new(settings.scrollback as usize));
+    }
     let pick = |own: &str, default: &str| if own.trim().is_empty() { default.to_string() } else { own.trim().to_string() };
     let nick = pick(&entry.nick, &settings.nick);
     let alt = pick(&entry.alt_nick, &settings.alt_nick);
@@ -220,12 +245,6 @@ pub fn start_server(app: &AppHandle, id: &str) -> Result<(), String> {
         autoreconnect: true,
     };
 
-    let (tx, rx) = mpsc::unbounded_channel();
-    st.servers.lock().unwrap().insert(id.to_string(), tx);
-    {
-        let mut states = st.states.lock().unwrap();
-        states.entry(id.to_string()).or_insert_with(|| ServerState::new(settings.scrollback as usize));
-    }
     let sink = std::sync::Arc::new(IrcSink { app: app.clone(), server: id.to_string() });
     let app2 = app.clone();
     let id2 = id.to_string();
@@ -414,7 +433,10 @@ pub fn open(app: &AppHandle, kind: Kind, focus: bool) -> Result<(), String> {
     }
     let hidden = st.is_hidden();
     let key = kind.key();
-    let saved = st.config.lock().unwrap().windows.get(&key).copied().filter(|g| on_screen(app, g));
+    // The lock is released before asking the monitors: that call waits for the main thread,
+    // which may itself be waiting for this lock (a window moved at that moment).
+    let remembered = st.config.lock().unwrap().windows.get(&key).copied();
+    let saved = remembered.filter(|g| on_screen(app, g));
     let title = kind.title(app);
     let (w, h, min_w, min_h) = kind.size();
     let count = app.webview_windows().len() as f64;
@@ -510,6 +532,17 @@ fn on_destroyed(app: &AppHandle, kind: &Kind, label: &str) {
         let joined = st.states.lock().unwrap().get(server).is_some_and(|s| s.summary().channels.iter().any(|c| fold(c) == fold(buffer)));
         if joined {
             let _ = send_command(app, server, Command::Input { buffer: buffer.clone(), text: "/part".into() });
+        }
+    }
+}
+
+/// Closes the console and the chat windows of a server (deleted from the address book).
+pub fn close_server_windows(app: &AppHandle, id: &str) {
+    let hex = text::label_part(id);
+    let (chat, console) = (format!("chat-{hex}-"), format!("console-{hex}"));
+    for (label, w) in app.webview_windows() {
+        if label.starts_with(&chat) || label == console {
+            let _ = w.destroy();
         }
     }
 }

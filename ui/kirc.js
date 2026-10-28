@@ -258,8 +258,9 @@ function subscribe(handler) {
   const state = { ready: false, queue: [], seq: 0 };
   listen("irc", e => {
     const p = e.payload;
+    if (p.server !== SERVER) return; // every window hears every server: seq counters are per server
     if (state.ready) { if (p.seq > state.seq) handler(p); }
-    else state.queue.push(p);
+    else if (state.queue.length < 5000) state.queue.push(p);
   });
   return {
     ready(seq) {
@@ -339,18 +340,19 @@ function initLauncher() {
 
     const list = $("#openList");
     list.textContent = "";
-    const chans = ov.servers.length ? stateOf(current()).channels : [];
-    if (!chans.length) {
+    const sv = ov.servers.length ? stateOf(current()) : { channels: [], queries: [] };
+    const items = [...sv.channels.map(c => [c, "salon"]), ...(sv.queries || []).map(q => [q, "message"])];
+    if (!items.length) {
       const e = document.createElement("div");
       e.className = "empty";
       e.textContent = ov.servers.length ? "Aucun salon ouvert" : "Ajoutez un serveur dans le carnet d'adresses";
       list.appendChild(e);
     }
-    for (const c of chans) {
+    for (const [c, icon] of items) {
       const row = document.createElement("div");
       row.className = "row-item";
       row.tabIndex = 0;
-      const ic = document.createElement("span"); ic.className = "pix"; ic.innerHTML = pix("salon", 14);
+      const ic = document.createElement("span"); ic.className = "pix"; ic.innerHTML = pix(icon, 14);
       const name = document.createElement("span"); name.className = "grow"; name.textContent = c;
       row.append(ic, name);
       const open = () => call("open_window", { kind: "chat", server: current(), buffer: c });
@@ -380,7 +382,7 @@ function initLauncher() {
   $("#btnSettings").addEventListener("click", () => call("open_window", { kind: "settings" }));
   $("#btnAbout").addEventListener("click", () => call("open_window", { kind: "about" }));
   $("#btnQuit").addEventListener("click", () => invoke("quit_app"));
-  listen("irc", e => { if (["status", "joined", "parted", "me"].includes(e.payload.event.kind)) refresh(); });
+  listen("irc", e => { if (["status", "joined", "parted", "me", "query"].includes(e.payload.event.kind)) refresh(); });
   window.addEventListener("focus", refresh);
   refresh();
 }
@@ -399,6 +401,8 @@ function initServers() {
     f("fServerPass").value = ""; f("fAuthPass").value = "";
     f("fServerPass").placeholder = entry.has_pass ? "(enregistré — laisser vide pour le garder)" : "(serveur protégé seulement)";
     f("fAuthPass").placeholder = entry.has_auth ? "(enregistré — laisser vide pour le garder)" : "";
+    f("fForgetPass").checked = false; f("fForgetAuth").checked = false;
+    f("rowForgetPass").hidden = !entry.has_pass; f("rowForgetAuth").hidden = !entry.has_auth;
     f("fAuto").checked = !!entry.autoconnect; f("fJoin").value = entry.autojoin || "";
     f("fPreset").value = "";
     syncAuth(); syncTls();
@@ -463,12 +467,16 @@ function initServers() {
   }
   async function save() {
     const e = entryFromForm();
-    const pass = f("fServerPass").value, auth = f("fAuthPass").value;
-    const id = await call("save_server", { entry: e, pass: pass === "" ? null : pass, authSecret: auth === "" ? null : auth });
-    if (id === null) return null;
-    await refresh(id);
-    toast("Serveur enregistré", "ok");
-    return id;
+    // null keeps the stored password, "" removes it.
+    const forgetPass = f("fForgetPass").checked, forgetAuth = f("fForgetAuth").checked || e.auth === "none";
+    const typedPass = f("fServerPass").value, typedAuth = f("fAuthPass").value;
+    const pass = forgetPass ? "" : typedPass === "" ? null : typedPass;
+    const authSecret = forgetAuth ? "" : typedAuth === "" ? null : typedAuth;
+    const r = await call("save_server", { entry: e, pass, authSecret });
+    if (!r) return null;
+    await refresh(r.id);
+    if (r.warning) toast(r.warning); else toast("Serveur enregistré", "ok");
+    return r.id;
   }
   async function refresh(keep) {
     const o = await call("get_overview");
@@ -507,7 +515,11 @@ function initServers() {
       return;
     }
     clearTimeout(armed); armed = 0; f("delServer").textContent = "Supprimer";
-    if (await call("delete_server", { id: selected }) !== null) { selected = ""; await refresh(); if (!selected) startNew(); }
+    if (await call("delete_server", { id: selected }) !== null) {
+      selected = "";
+      await refresh();
+      if (selected) select(selected); else startNew(); // the form must not keep showing the deleted server
+    }
   });
   listen("irc", e => { if (e.payload.event.kind === "status") call("get_overview").then(o => { if (o) { ov = o; renderList(); } }); });
   refresh().then(() => { if (!ov.servers.length) startNew(); });

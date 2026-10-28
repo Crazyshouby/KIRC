@@ -17,6 +17,9 @@ pub struct BufferState {
     pub joined: bool,
 }
 
+/// Buffers kept per server (the console, joined channels, conversations).
+const MAX_BUFFERS: usize = 300;
+
 #[derive(Default)]
 struct Buf {
     name: String,
@@ -46,6 +49,8 @@ pub struct ServerSummary {
     pub network: String,
     pub away: bool,
     pub channels: Vec<String>,
+    /// Private conversations that exist (a window may or may not be open for them).
+    pub queries: Vec<String>,
 }
 
 impl ServerState {
@@ -74,7 +79,15 @@ impl ServerState {
     pub fn summary(&self) -> ServerSummary {
         let mut channels: Vec<String> = self.buffers.values().filter(|b| b.joined).map(|b| b.name.clone()).collect();
         channels.sort_by_key(|c| fold(c));
+        let mut queries: Vec<String> = self
+            .buffers
+            .values()
+            .filter(|b| !b.joined && !b.name.is_empty() && !b.name.starts_with(['#', '&', '+', '!']))
+            .map(|b| b.name.clone())
+            .collect();
+        queries.sort_by_key(|q| fold(q));
         ServerSummary {
+            queries,
             status: self.status,
             status_text: self.status_text.clone(),
             nick: self.nick.clone(),
@@ -85,7 +98,14 @@ impl ServerState {
     }
 
     fn buf(&mut self, name: &str) -> &mut Buf {
-        let b = self.buffers.entry(fold(name)).or_default();
+        let key = fold(name);
+        if self.buffers.len() >= MAX_BUFFERS && !self.buffers.contains_key(&key) {
+            // Forget a conversation that is not a joined channel (nor the console) to make room.
+            if let Some(old) = self.buffers.iter().find(|(k, b)| !b.joined && !k.is_empty()).map(|(k, _)| k.clone()) {
+                self.buffers.remove(&old);
+            }
+        }
+        let b = self.buffers.entry(key).or_default();
         if b.name.is_empty() {
             b.name = name.to_string();
         }
@@ -240,5 +260,25 @@ mod tests {
         let snap = s.snapshot("#a");
         assert!(snap.lines.is_empty());
         assert_eq!(snap.users.len(), 1);
+    }
+}
+
+#[cfg(test)]
+mod query_tests {
+    use super::*;
+
+    #[test]
+    fn summary_lists_private_conversations_but_not_the_console_or_left_channels() {
+        let mut s = ServerState::new(10);
+        s.apply(&Event::Status { state: ConnState::Connected, text: String::new() });
+        s.apply(&Event::Query { buffer: "Bob".into() });
+        s.apply(&Event::Joined { buffer: "#a".into() });
+        s.apply(&Event::Parted { buffer: "#a".into() });
+        s.apply(&Event::Joined { buffer: "#b".into() });
+        let line = Line { buffer: String::new(), kind: crate::irc::event::LineKind::Info, nick: String::new(), text: "x".into(), time: 0, highlight: false, own: false };
+        s.apply(&Event::Line { line });
+        let sum = s.summary();
+        assert_eq!(sum.queries, vec!["Bob"]);
+        assert_eq!(sum.channels, vec!["#b"]);
     }
 }

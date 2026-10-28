@@ -129,6 +129,10 @@ async function main() {
   check(await chat.eval("document.querySelector('#log img') === null"), "no element injected");
   await say("/unknown");
   await until(async () => (await lines()).some(l => l.includes("Commande inconnue")), "unknown command reported");
+  // An event of another server (same channel name) must not show up here.
+  await chat.eval(`window.__TAURI__.event.emit("irc", { server: "autre", seq: 999999, event: { kind: "line", line: { buffer: "#test", kind: "msg", nick: "intrus", text: "FOREIGN", time: Date.now(), highlight: false, own: false } } })`);
+  await sleep(400);
+  check(!(await lines()).some(l => l.includes("FOREIGN")), "events of another server are ignored");
   await say("/topic Nouveau sujet");
   await until(() => chat.eval("document.querySelector('#topicText').textContent === 'Nouveau sujet'"), "topic changes");
   await chat.eval("document.querySelector('#log').dispatchEvent(new Event('scroll'))");
@@ -169,7 +173,7 @@ async function main() {
   await other.eval("document.querySelector('.tb-btn[data-act=close]').click()");
   await until(async () => !(await targets()).some(t => new URL(t.url).searchParams.get("b") === "#autre"), "window gone");
   await chat.eval("1");
-  await until(() => launcher.eval("[...document.querySelectorAll('#openList .row-item')].map(e => e.textContent).join() === '#test'"), "launcher back to #test");
+  await until(() => launcher.eval("[...document.querySelectorAll('#openList .row-item')].map(e => e.textContent).join() === '#test,alice'"), "launcher back to #test, plus the private conversation");
 
   console.log("saving settings");
   await settings.eval("document.querySelector('#sNick').value = 'kirc2'; document.querySelector('#saveSettings').click()");
@@ -203,14 +207,14 @@ async function main() {
   };
   const base = { name: "", host: "127.0.0.1", port: TLS_PORT, tls: true, accept_invalid_certs: false, nick: "", alt_nick: "", username: "", realname: "", auth: "none", account: "", autoconnect: false, autojoin: "" };
 
-  const strict = (await inv("save_server", { entry: { ...base, name: "TLS strict" } })).ok;
+  const strict = (await inv("save_server", { entry: { ...base, name: "TLS strict" } })).ok.id;
   await inv("connect_server", { id: strict });
   const strictText = await until(async () => { const o = (await inv("get_overview", {})).ok; const st = o.states[strict]; return st && st.status_text.includes("TLS") && st.status_text; }, "TLS refusal reported", 15000);
   check(/TLS/.test(strictText), "an untrusted certificate is refused: " + strictText.slice(0, 60));
   await inv("disconnect_server", { id: strict });
   await until(async () => (await status(strict)) === "disconnected", "strict server stops", 10000);
 
-  const lax = (await inv("save_server", { entry: { ...base, name: "TLS lax", accept_invalid_certs: true } })).ok;
+  const lax = (await inv("save_server", { entry: { ...base, name: "TLS lax", accept_invalid_certs: true } })).ok.id;
   await inv("connect_server", { id: lax });
   await until(async () => (await status(lax)) === "connected", "TLS connection with the accepted certificate", 15000);
   const laxText = await consoleText(lax, "Bienvenue sur FakeNet");
@@ -218,7 +222,7 @@ async function main() {
   await inv("disconnect_server", { id: lax });
   await until(async () => (await status(lax)) === "disconnected", "lax server stops", 10000);
 
-  const sasl = (await inv("save_server", { entry: { ...base, name: "SASL", port: IRC_PORT, tls: false, auth: "sasl", account: "kirc" }, authSecret: "secret" })).ok;
+  const sasl = (await inv("save_server", { entry: { ...base, name: "SASL", port: IRC_PORT, tls: false, auth: "sasl", account: "kirc" }, authSecret: "secret" })).ok.id;
   const view = (await inv("get_overview", {})).ok.servers.find(v => v.id === sasl);
   check(view.has_auth === true && view.has_pass === false, "password stored in the credential manager (flags only reach the page)");
   check(!JSON.stringify((await inv("get_overview", {})).ok).includes("secret"), "the secret never comes back to the page");

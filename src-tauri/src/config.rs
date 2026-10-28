@@ -231,23 +231,31 @@ pub fn data_dir() -> PathBuf {
 }
 
 pub fn load(dir: &Path) -> Config {
+    load_checked(dir).0
+}
+
+/// The configuration, and whether it may be written back. A file that exists but could not be read
+/// (locked by an antivirus, no rights) leaves the defaults in memory: writing them over the real
+/// address book would destroy it, so in that case nothing is saved this session.
+pub fn load_checked(dir: &Path) -> (Config, bool) {
     let path = dir.join("config.json");
+    let fresh = || Config { version: 1, ..Default::default() };
     match fs::read_to_string(&path) {
         Ok(text) => match serde_json::from_str::<Config>(&text) {
             Ok(mut c) => {
                 c.version = 1;
-                c
+                (c, true)
             }
             Err(e) => {
                 log::error!("config.json illisible ({e}) : conservé en config.json.bad");
-                let _ = fs::rename(&path, dir.join("config.json.bad"));
-                Config { version: 1, ..Default::default() }
+                let moved = fs::rename(&path, dir.join("config.json.bad")).is_ok();
+                (fresh(), moved)
             }
         },
-        Err(e) if e.kind() == io::ErrorKind::NotFound => Config { version: 1, ..Default::default() },
+        Err(e) if e.kind() == io::ErrorKind::NotFound => (fresh(), true),
         Err(e) => {
             log::error!("config.json non lu : {e}");
-            Config { version: 1, ..Default::default() }
+            (fresh(), false)
         }
     }
 }

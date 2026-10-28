@@ -124,6 +124,8 @@ html[data-panel="chat"] .grip-rz, html[data-panel="all"] .grip-rz { display: blo
 .form > label, .form .lbl { color: var(--muted); font-size: 12px; }
 .form .span2 { grid-column: 1 / -1; }
 .form .inline { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.form .col2 { grid-column: 2; }
+[hidden] { display: none !important; }
 .form .port { flex: none; width: 90px; }
 .form .hint { grid-column: 2; color: var(--faint); font-size: 11px; font-weight: 600; line-height: 1.4; margin-top: -3px; }
 .form h3 { grid-column: 1 / -1; font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--accent-2); padding-bottom: 3px; border-bottom: 1px solid var(--line); margin-top: 6px; }

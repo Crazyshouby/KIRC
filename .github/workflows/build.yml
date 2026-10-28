@@ -1,0 +1,121 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-2022
+    outputs:
+      version: ${{ steps.ver.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # The version lives in src-tauri/Cargo.toml only. A release tag must match it
+      # (v0.1.0, or v0.1.0-rc1 for a pre-release of 0.1.0).
+      - name: Read version
+        id: ver
+        shell: pwsh
+        run: |
+          $toml = Get-Content src-tauri/Cargo.toml -Raw
+          if ($toml -notmatch '(?m)^version = "(\d+\.\d+\.\d+)"') { throw 'Version introuvable dans Cargo.toml' }
+          $v = $Matches[1]
+          "version=$v" >> $env:GITHUB_OUTPUT
+          if ($env:GITHUB_REF -like 'refs/tags/v*') {
+            $base = ($env:GITHUB_REF_NAME -replace '^v', '') -replace '-.*$', ''
+            if ($base -ne $v) { throw "Le tag $env:GITHUB_REF_NAME ne correspond pas à la version de Cargo.toml ($v)" }
+          }
+
+      # Generated files are committed: regenerating them must change nothing.
+      - name: Generated assets are up to date
+        shell: pwsh
+        run: |
+          python tools/gen_assets.py
+          python tools/make_notices.py
+          git diff --exit-code --ignore-cr-at-eol -- ui THIRD-PARTY-NOTICES.txt src-tauri/icons/source.png
+          if ($LASTEXITCODE -ne 0) { throw 'Fichiers générés périmés : relancer tools/gen_assets.py et tools/make_notices.py' }
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Lint and unit tests
+        shell: pwsh
+        working-directory: src-tauri
+        run: |
+          cargo clippy --all-targets -- -D warnings
+          cargo test
+
+      - name: Installer
+        shell: pwsh
+        run: |
+          npm ci
+          npx tauri build
+
+      # The real application against tools/fake_ircd.py (see tests/e2e.mjs). OpenSSL comes with Git for Windows.
+      - name: End-to-end test
+        shell: pwsh
+        run: |
+          $env:PATH = "C:\Program Files\Git\usr\bin;$env:PATH"
+          node tests/e2e.mjs src-tauri/target/release/kirc.exe
+
+      - name: Checksum
+        shell: pwsh
+        run: |
+          $setup = Get-ChildItem src-tauri/target/release/bundle/nsis/*-setup.exe | Select-Object -First 1
+          $hash = (Get-FileHash $setup -Algorithm SHA256).Hash.ToLower()
+          [IO.File]::WriteAllText("$($setup.FullName).sha256", "$hash *$($setup.Name)`n")
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: KIRC-installer
+          path: |
+            src-tauri/target/release/bundle/nsis/*-setup.exe
+            src-tauri/target/release/bundle/nsis/*-setup.exe.sha256
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: e2e-screenshots
+          path: tests/shots
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: KIRC-installer
+          path: dist
+      - name: Verify checksum
+        run: cd dist && sha256sum -c *.sha256
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          notes="Installateur Windows (par utilisateur, sans droits d'administrateur). L'exécutable n'est pas signé : SmartScreen peut demander une confirmation. Empreinte SHA-256 dans le fichier .sha256."
+          flags=""
+          case "$GITHUB_REF_NAME" in *-*) flags="--prerelease";; esac
+          gh release create "$GITHUB_REF_NAME" dist/* --title "KIRC ${GITHUB_REF_NAME#v}" --notes "$notes" $flags
