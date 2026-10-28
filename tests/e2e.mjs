@@ -47,6 +47,8 @@ class Page {
       this.waiting.set(id, { resolve: v => { clearTimeout(t); resolve(v); }, reject: e => { clearTimeout(t); reject(e); } });
     });
   }
+  // For actions that close the window itself: nothing can answer once it is gone.
+  async fire(expr) { try { await this.eval(`setTimeout(() => { ${expr} }, 30); 0`); } catch { /* the window is gone */ } }
   async eval(expr) { const r = await this.send("Runtime.evaluate", { expression: expr, awaitPromise: true, returnByValue: true }); if (r.exceptionDetails) throw new Error(r.exceptionDetails.exception?.description || "eval failed"); return r.result.value; }
   // Screenshots are a courtesy: where the window cannot be drawn they are skipped, not fatal.
   async shot(name) { try { const r = await this.send("Page.captureScreenshot", { format: "png" }); writeFileSync(join(shots, name + ".png"), Buffer.from(r.data, "base64")); } catch (e) { console.log("   (no screenshot " + name + ": " + e.message + ")"); } }
@@ -182,7 +184,7 @@ async function main() {
   await joinWin.eval("document.querySelector('#jChannel').value='autre'; document.querySelector('#joinForm').requestSubmit()");
   const other = await page(win("chat", { b: "#autre" }), 10000);
   await until(() => other.eval("document.querySelectorAll('#memberList .mem').length === 1"), "second channel joined");
-  await other.eval("document.querySelector('.tb-btn[data-act=close]').click()");
+  await other.fire("document.querySelector('.tb-btn[data-act=close]').click()");
   await until(async () => !(await targets()).some(t => new URL(t.url).searchParams.get("b") === "#autre"), "window gone");
   await chat.eval("1");
   await until(() => launcher.eval("[...document.querySelectorAll('#openList .row-item')].map(e => e.textContent).join() === '#test,alice'"), "launcher back to #test, plus the private conversation");
@@ -251,7 +253,7 @@ async function main() {
   await until(async () => (await status(sasl)) === "disconnected", "sasl server stops again", 10000);
   for (const id of [strict, lax, sasl]) await inv("delete_server", { id });
   check((await inv("get_overview", {})).ok.servers.length === 1, "test servers deleted again");
-  for (const t of await targets()) { const q = new URL(t.url).searchParams; if (q.get("w") === "console" && q.get("s") !== "s1") { const p = await Page.open(t); await p.eval("window.__TAURI__.core.invoke('win_close')"); p.close(); } }
+  for (const t of await targets()) { const q = new URL(t.url).searchParams; if (q.get("w") === "console" && q.get("s") !== "s1") { const p = await Page.open(t); await p.fire("window.__TAURI__.core.invoke('win_close')"); p.close(); } }
 
   console.log("ignore, alert words, whois, channel list");
   await say("/ignore bob");
@@ -276,7 +278,7 @@ async function main() {
   await until(() => who.eval("document.querySelector('#whoisForm').textContent.includes('virtual.test')"), "whois card filled");
   check(await who.eval("document.querySelector('#whoisForm').textContent.includes('Nom réel')"), "whois card shows the real name");
   await who.shot("13-whois");
-  await who.eval("window.__TAURI__.core.invoke('win_close')");
+  await who.fire("window.__TAURI__.core.invoke('win_close')");
 
   await say("/list");
   const lst = await page(win("list"), 10000);
@@ -288,7 +290,7 @@ async function main() {
   await lst.eval("(() => { const i = document.querySelector('#lFilter'); i.value = ''; i.dispatchEvent(new Event('input')); })()");
   await until(() => lst.eval("document.querySelectorAll('#chanList .chan-row').length === 200"), "filter cleared");
   await lst.shot("14-list");
-  await lst.eval("window.__TAURI__.core.invoke('win_close')");
+  await lst.fire("window.__TAURI__.core.invoke('win_close')");
 
   console.log("unread counters and paste");
   await launcher.send("Page.bringToFront");
