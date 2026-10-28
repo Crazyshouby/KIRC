@@ -1,6 +1,6 @@
 # Journal des modifications
 
-## 0.3.0 — à publier
+## 0.3.0 — 2026-10-28
 
 - **Sélecteur de thème** (Réglages > Affichage) : Rouge KDX (défaut, inchangé), Bleu électrique, Vert électrique, Violet électrique, Ambre CRT, Sarcelle et Charbon. Chaque thème applique à une autre teinte la rampe d'accent de KDX (cadre actif, barre de titre, jauges, cases cochées, couleur du texte des champs et des consoles, ligne sélectionnée). Les teintes viennent des fichiers d'apparence KDX « Electric … », « Amber CRT », « Mach Teal » et « Charcoal ». Aperçu immédiat dans la fenêtre des réglages, puis application à toutes les fenêtres ouvertes à l'enregistrement ; les nouvelles fenêtres s'ouvrent directement avec le bon thème.
 
