@@ -14,18 +14,42 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["nsis"],
+    "targets": [
+      "nsis"
+    ],
     "publisher": "Valentin Large",
     "copyright": "Copyright (c) 2026 Valentin Large",
     "license": "../LICENSE",
     "shortDescription": "Client IRC au style KDX",
-    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.ico"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.ico"
+    ],
     "windows": {
-      "webviewInstallMode": { "type": "downloadBootstrapper", "silent": true },
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper",
+        "silent": true
+      },
       "nsis": {
         "installMode": "currentUser",
-        "languages": ["French"],
+        "languages": [
+          "French"
+        ],
         "displayLanguageSelector": false
+      }
+    },
+    "createUpdaterArtifacts": false
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEE0OENCQjUwNUJGMDE2QTgKUldTb0Z2QmJVTHVNcEdLSHRCUHhJSEJoc0lvdXIyVHFiMUhhbnlrSnBXUVNmUjNRVDlYZWFnUUgK",
+      "endpoints": [
+        "https://github.com/Crazyshouby/KIRC/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
       }
     }
   }

@@ -16,6 +16,7 @@ Un client IRC pour Windows, dans le style de **KDX** (Haxial) : chaque fonction 
 - **Notifications** de bureau pour les messages privés et les mentions, désactivables ; compteurs de lignes non lues dans le menu principal et la barre de titre.
 - **Journaux** de conversation sur disque, avec les dernières lignes rappelées à l'ouverture d'une fenêtre ; **liste des salons** du serveur avec recherche ; **ignorer** des pseudos ou masques, **mots d'alerte** ; fiche d'informations `/whois` ; confirmation avant de coller plusieurs lignes.
 - **Thèmes** : sept teintes d'accent reprises des apparences KDX (rouge par défaut, bleu, vert, violet, ambre, sarcelle, charbon), à changer dans les réglages.
+- **Mise à jour automatique** depuis les releases GitHub : l'installateur téléchargé est vérifié avec une signature avant d'être lancé (réglable : les réglages permettent de ne plus rien contacter).
 - **Reconnexion automatique** avec délai croissant ; les salons sont rejoints de nouveau.
 - **Mémoire des fenêtres** : position et taille de chacune, retrouvées au démarrage.
 - Zone de notification : le bouton « − » du menu principal range tout, un clic sur l'icône ramène tout.
@@ -26,7 +27,7 @@ Fermer la fenêtre d'un **salon** le quitte (comme dans la plupart des clients) 
 
 Télécharger `KIRC_<version>_x64-setup.exe` depuis les [releases](https://github.com/Crazyshouby/KIRC/releases), puis le lancer : installation par utilisateur, sans droits d'administrateur. WebView2 est installé s'il manque (Windows 11 l'a déjà).
 
-L'exécutable n'est pas signé : SmartScreen peut demander une confirmation (« Informations complémentaires », puis « Exécuter quand même »).
+L'exécutable n'est pas signé par une autorité de certification : SmartScreen peut demander une confirmation (« Informations complémentaires », puis « Exécuter quand même »).
 
 ## Données
 

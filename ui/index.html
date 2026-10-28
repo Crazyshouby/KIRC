@@ -16,6 +16,7 @@
     <div class="tb"><span class="tb-title">KIRC</span><button class="tb-btn tb-r" data-act="close" data-glyph="minus" title="Réduire dans la zone de notification" aria-label="Réduire dans la zone de notification"></button></div>
     <div class="cb launcher">
       <div class="status" id="statusPill"><span class="dot"></span><span id="statusText">Aucune connexion</span></div>
+      <div class="banner" id="updateBar" hidden><span class="orb amber"></span><span class="t" id="updateText"></span><button class="ghost-btn" id="updateBtn">Installer</button></div>
       <select id="serverSelect" class="lsel" title="Serveur du carnet d'adresses" aria-label="Serveur"></select>
       <button class="primary" id="connectBtn">Connecter</button>
       <div class="lbtns">
@@ -137,6 +138,7 @@
           <h3>Comportement</h3>
           <span class="lbl"></span><label class="chk-row"><span class="switch"><input type="checkbox" id="sNotif"><span class="track"></span></span>Notifier les messages privés et mentions</label>
           <span class="lbl"></span><label class="chk-row"><span class="switch"><input type="checkbox" id="sQueries"><span class="track"></span></span>Ouvrir une fenêtre par conversation privée</label>
+          <span class="lbl"></span><label class="chk-row"><span class="switch"><input type="checkbox" id="sUpdates"><span class="track"></span></span>Rechercher les mises à jour (contacte github.com)</label>
           <span class="lbl"></span><label class="chk-row"><span class="switch"><input type="checkbox" id="sConsole"><span class="track"></span></span>Ouvrir les messages du serveur à la connexion</label>
         </form>
       </div>
@@ -156,6 +158,8 @@
       <div class="big">KIRC</div>
       <div class="ver mono" id="aboutVersion"></div>
       <p>Client IRC pour Windows, dans le style de KDX (Haxial).<br>Licence MIT — © Valentin Large.<br>Polices Archivo et Overpass Mono (SIL OFL).</p>
+      <div class="inline"><button class="ghost-btn" id="checkUpdate">Rechercher une mise à jour</button></div>
+      <div class="ver mono" id="updateLine"></div>
       <div class="path" id="aboutPath"></div>
     </div>
   </section>

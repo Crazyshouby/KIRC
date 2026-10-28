@@ -83,7 +83,7 @@ async function main() {
   start("python", [join(root, "tools", "fake_ircd.py"), "--port", String(IRC_PORT), "--tls-port", String(TLS_PORT), "--cert", cert, "--key", key]);
   await until(() => new Promise(r => { const s = net.connect(IRC_PORT, "127.0.0.1", () => { s.destroy(); r(true); }); s.on("error", () => r(false)); }), "fake ircd");
 
-  const appEnv = { ...process.env, KIRC_DATA_DIR: data, WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: `--remote-debugging-port=${DEBUG_PORT}` };
+  const appEnv = { ...process.env, KIRC_NO_UPDATE_CHECK: "1", KIRC_DATA_DIR: data, WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: `--remote-debugging-port=${DEBUG_PORT}` };
   start(exe, [], { env: appEnv });
 
   console.log("launcher");
@@ -312,6 +312,15 @@ async function main() {
   await aboutT.fire("window.__TAURI__.core.invoke('win_close')");
   await inv("save_settings", { settings: { ...ovNow.settings, theme: "kdx" } });
   await until(async () => (await mid(chat)) === "#880000", "back to the default theme", 5000);
+
+  console.log("update check");
+  // The release channel may or may not have a manifest yet: either answer is fine, a hang or a crash is not.
+  const upd = await inv("check_update", {});
+  check(upd.ok !== undefined || typeof upd.err === "string", "a manual update check answers (" + (upd.err ? upd.err.slice(0, 60) : JSON.stringify(upd.ok)) + ")");
+  check((await inv("update_info", {})).ok === null || typeof (await inv("update_info", {})).ok === "object", "update_info answers");
+  const aboutU = await (async () => { await inv("open_window", { kind: "about" }); return page(win("about"), 10000); })();
+  check(await aboutU.eval("!!document.querySelector('#checkUpdate')"), "the About window has the update button");
+  await aboutU.fire("window.__TAURI__.core.invoke('win_close')");
 
   console.log("unread counters and paste");
   await launcher.send("Page.bringToFront");

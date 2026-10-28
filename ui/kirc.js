@@ -413,6 +413,26 @@ function initLauncher() {
   };
   listen("irc", e => { const k = e.payload.event.kind; if (k === "line" || k === "read") refreshStates(); });
   $("#btnList").addEventListener("click", () => call("open_window", { kind: "list", server: current() }));
+
+  // A newer release on GitHub: announced here, installed on request.
+  const bar = $("#updateBar"), btn = $("#updateBtn");
+  function showUpdate(info) {
+    bar.hidden = !info;
+    if (info) { $("#updateText").textContent = `Version ${info.version} disponible (vous avez ${info.current})`; btn.disabled = false; btn.textContent = "Installer"; btn.hidden = false; }
+  }
+  btn.addEventListener("click", async () => {
+    btn.disabled = true;
+    $("#updateText").textContent = "Téléchargement…";
+    if (await call("install_update") === null) { /* the error comes as an event and a toast */ }
+  });
+  listen("update", e => {
+    const p = e.payload;
+    if (p.kind === "available") showUpdate(p.info);
+    else if (p.kind === "progress") { bar.hidden = false; btn.hidden = true; $("#updateText").textContent = p.total ? `Téléchargement ${Math.floor(p.done * 100 / p.total)} %` : "Téléchargement…"; }
+    else if (p.kind === "installing") { btn.hidden = true; $("#updateText").textContent = "Installation : KIRC va redémarrer"; }
+    else if (p.kind === "error") { toast(p.message); call("update_info").then(showUpdate); }
+  });
+  call("update_info").then(showUpdate);
   window.addEventListener("focus", refresh);
   refresh();
 }
@@ -567,6 +587,7 @@ function initSettings() {
     f("sStamps").checked = s.show_timestamps; f("sJoins").checked = s.show_joins; f("sScroll").value = s.scrollback;
     f("sNotif").checked = s.notifications; f("sQueries").checked = s.open_queries; f("sConsole").checked = s.open_console;
     f("sTheme").value = s.theme;
+    f("sUpdates").checked = s.check_updates;
     f("sLog").checked = s.log_enabled; f("sLogDays").value = s.log_days;
     f("sIgnores").value = s.ignores.join("\n"); f("sWords").value = s.alert_words.join("\n");
   }
@@ -577,6 +598,7 @@ function initSettings() {
       show_timestamps: f("sStamps").checked, show_joins: f("sJoins").checked, scrollback: +f("sScroll").value || 0,
       notifications: f("sNotif").checked, open_queries: f("sQueries").checked, open_console: f("sConsole").checked,
       theme: f("sTheme").value,
+      check_updates: f("sUpdates").checked,
       log_enabled: f("sLog").checked, log_days: +f("sLogDays").value || 0,
       ignores: f("sIgnores").value.split("\n").map(x => x.trim()).filter(Boolean),
       alert_words: f("sWords").value.split("\n").map(x => x.trim()).filter(Boolean),
@@ -595,6 +617,16 @@ function initSettings() {
 async function initAbout() {
   const info = await call("app_info");
   if (info) { $("#aboutVersion").textContent = "version " + info.version; $("#aboutPath").textContent = info.data_dir; }
+  $("#checkUpdate").addEventListener("click", async () => {
+    const line = $("#updateLine");
+    line.textContent = "Recherche…";
+    $("#checkUpdate").disabled = true;
+    try {
+      const u = await invoke("check_update");
+      line.textContent = u ? `Version ${u.version} disponible : installez-la depuis le menu principal` : "Vous avez la dernière version";
+    } catch (e) { line.textContent = ""; toast(String(e)); }
+    $("#checkUpdate").disabled = false;
+  });
 }
 
 // ================================================================ join

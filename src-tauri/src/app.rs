@@ -35,6 +35,7 @@ pub struct App {
     pub states: Mutex<HashMap<String, ServerState>>,
     pub servers: Mutex<HashMap<String, UnboundedSender<Command>>>,
     pub logger: Logger,
+    pub updates: crate::update::Updates,
     dirty: AtomicBool,
     writable: AtomicBool,
     /// Per window, while its title bar is held: cursor and window position at the start.
@@ -53,6 +54,7 @@ impl App {
     pub fn new(dir: PathBuf, config: Config) -> Self {
         App {
             logger: Logger::new(dir.join("logs")),
+            updates: Default::default(),
             dir,
             config: Mutex::new(config),
             states: Mutex::new(HashMap::new()),
@@ -95,6 +97,11 @@ impl App {
 
     pub fn logs_dir(&self) -> PathBuf {
         self.dir.join("logs")
+    }
+
+    /// The application did not exit after all (an installer that failed to start).
+    pub fn reopen_after_failed_exit(&self) {
+        self.quitting.store(false, Ordering::Relaxed);
     }
 
     pub fn is_quitting(&self) -> bool {
@@ -327,13 +334,13 @@ pub fn send_command(app: &AppHandle, id: &str, cmd: Command) -> Result<(), Strin
     }
 }
 
-/// Leaves every server politely, saves, and exits.
-pub async fn quit_all(app: AppHandle) {
+/// Leaves every server politely (QUIT, up to 2.5 s) and saves; from then on the application is quitting.
+pub async fn leave_servers(app: &AppHandle) {
     let st = app.state::<App>();
     st.quitting.store(true, Ordering::Relaxed);
     let ids: Vec<String> = st.servers.lock().unwrap().keys().cloned().collect();
     for id in &ids {
-        stop_server(&app, id);
+        stop_server(app, id);
     }
     for _ in 0..25 {
         if st.servers.lock().unwrap().is_empty() {
@@ -342,6 +349,11 @@ pub async fn quit_all(app: AppHandle) {
         tokio::time::sleep(Duration::from_millis(100)).await;
     }
     st.flush();
+}
+
+/// Leaves every server politely, saves, and exits.
+pub async fn quit_all(app: AppHandle) {
+    leave_servers(&app).await;
     app.exit(0);
 }
 
@@ -429,7 +441,7 @@ impl Kind {
             Kind::Launcher => (206.0, 466.0, 206.0, 80.0),
             Kind::Servers => (640.0, 480.0, 520.0, 320.0),
             Kind::Settings => (440.0, 660.0, 400.0, 300.0),
-            Kind::About => (340.0, 300.0, 340.0, 200.0),
+            Kind::About => (340.0, 370.0, 340.0, 250.0),
             Kind::Join => (380.0, 190.0, 340.0, 150.0),
             Kind::Console(_) => (640.0, 360.0, 360.0, 160.0),
             Kind::Whois(_, _) => (400.0, 360.0, 400.0, 200.0),

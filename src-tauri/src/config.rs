@@ -117,6 +117,8 @@ pub struct Settings {
     pub open_console: bool,
     /// Colour theme, one of `THEMES`.
     pub theme: String,
+    /// Look for a newer release on GitHub at start and every six hours.
+    pub check_updates: bool,
     /// Nicks or masks (`*`, `?`) whose messages are dropped, for every server.
     pub ignores: Vec<String>,
     /// Words that count as a mention besides one's own nick.
@@ -145,6 +147,7 @@ impl Default for Settings {
             scrollback: 1000,
             open_console: true,
             theme: "kdx".into(),
+            check_updates: true,
             ignores: Vec::new(),
             alert_words: Vec::new(),
             log_enabled: true,

@@ -6,6 +6,7 @@ pub mod logs;
 pub mod secrets;
 pub mod store;
 pub mod text;
+pub mod update;
 
 use app::{App, Kind};
 use std::time::Duration;
@@ -25,10 +26,14 @@ pub fn run() {
         }))
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(state)
         .invoke_handler(tauri::generate_handler![
             commands::app_info,
             commands::get_overview,
+            commands::update_info,
+            commands::check_update,
+            commands::install_update,
             commands::get_states,
             commands::get_channel_list,
             commands::get_whois,
@@ -81,6 +86,7 @@ pub fn run() {
 
             app::open(&handle, Kind::Launcher, true).map_err(|e| e.to_string())?;
             app::restore(&handle);
+            update::spawn_background(&handle);
 
             // The configuration is written a moment after it changes, not on every pixel of a drag.
             let h2 = handle.clone();

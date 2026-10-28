@@ -303,3 +303,22 @@ pub fn open_logs_folder(app: AppHandle, state: State<'_, App>) -> R<()> {
     std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
     tauri_plugin_opener::OpenerExt::opener(&app).open_path(dir.display().to_string(), None::<&str>).map_err(|e| e.to_string())
 }
+
+// ------------------------------------------------------------------ updates
+
+/// The update found by the last check, if any.
+#[tauri::command]
+pub fn update_info(state: State<'_, App>) -> Option<crate::update::UpdateInfo> {
+    state.updates.info()
+}
+
+/// A check asked for by the user.
+#[tauri::command]
+pub async fn check_update(app: AppHandle) -> R<Option<crate::update::UpdateInfo>> {
+    crate::update::check(&app, true).await
+}
+
+#[tauri::command]
+pub async fn install_update(app: AppHandle) -> R<()> {
+    crate::update::install(app).await
+}

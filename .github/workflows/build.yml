@@ -67,11 +67,22 @@ jobs:
           cargo clippy --all-targets -- -D warnings
           cargo test
 
+      # The installer is signed for the updater when the repository holds the private key
+      # (secret TAURI_SIGNING_PRIVATE_KEY, see RELEASING.md): the application only installs updates
+      # signed by it. Without the secret (a fork's pull request) the installer is built unsigned.
       - name: Installer
         shell: pwsh
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
         run: |
           npm ci
-          npx tauri build
+          if ($env:TAURI_SIGNING_PRIVATE_KEY) {
+            '{"bundle":{"createUpdaterArtifacts":true}}' | Set-Content -Encoding utf8 ci-updater.json
+            npx tauri build --config ci-updater.json
+          } else {
+            Write-Host 'Pas de clé de signature : installateur sans artefact de mise à jour'
+            npx tauri build
+          }
 
       # The real application against tools/fake_ircd.py (see tests/e2e.mjs). OpenSSL comes with Git for Windows.
       - name: End-to-end test
@@ -94,6 +105,7 @@ jobs:
           path: |
             src-tauri/target/release/bundle/nsis/*-setup.exe
             src-tauri/target/release/bundle/nsis/*-setup.exe.sha256
+            src-tauri/target/release/bundle/nsis/*-setup.exe.sig
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
@@ -114,11 +126,16 @@ jobs:
           path: dist
       - name: Verify checksum
         run: cd dist && sha256sum -c *.sha256
+      # latest.json is what installed copies read to find the newest release (it points at the
+      # installer and carries its signature). A pre-release is never "latest", so none is offered.
+      - name: Update manifest
+        run: python3 tools/make_latest_json.py dist "$GITHUB_REF_NAME" "$GITHUB_REPOSITORY"
       - name: Publish
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          notes="Installateur Windows (par utilisateur, sans droits d'administrateur). L'exécutable n'est pas signé : SmartScreen peut demander une confirmation. Empreinte SHA-256 dans le fichier .sha256."
+          notes="Installateur Windows (par utilisateur, sans droits d'administrateur). L'exécutable n'est pas signé par une autorité : SmartScreen peut demander une confirmation. Empreinte SHA-256 dans le fichier .sha256 ; les copies déjà installées proposent la mise à jour d'elles-mêmes (signature vérifiée avec la clé publique intégrée)."
           flags=""
           case "$GITHUB_REF_NAME" in *-*) flags="--prerelease";; esac
-          gh release create "$GITHUB_REF_NAME" dist/* --title "KIRC ${GITHUB_REF_NAME#v}" --notes "$notes" $flags
+          files=$(ls dist/*)
+          gh release create "$GITHUB_REF_NAME" $files --title "KIRC ${GITHUB_REF_NAME#v}" --notes "$notes" $flags
