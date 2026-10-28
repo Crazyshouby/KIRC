@@ -101,7 +101,7 @@ pub fn mentions(text: &str, nick: &str) -> bool {
         let end = start + n.len();
         let before = t[..start].chars().next_back();
         let after = t[end..].chars().next();
-        if !before.map_or(false, is_nick_char) && !after.map_or(false, is_nick_char) {
+        if !before.is_some_and(is_nick_char) && !after.is_some_and(is_nick_char) {
             return true;
         }
         from = start + t[start..].chars().next().map_or(1, |c| c.len_utf8());
@@ -255,7 +255,7 @@ impl Session {
     }
 
     fn is_channel(&self, name: &str) -> bool {
-        name.chars().next().map_or(false, |c| self.chantypes.contains(c))
+        name.chars().next().is_some_and(|c| self.chantypes.contains(c))
     }
 
     fn is_me(&self, nick: &str) -> bool {
@@ -294,7 +294,7 @@ impl Session {
 
     fn sorted_users(ch: &Channel) -> Vec<UserEntry> {
         let mut v: Vec<UserEntry> = ch.users.values().cloned().collect();
-        v.sort_by(|a, b| fold(&a.nick).cmp(&fold(&b.nick)));
+        v.sort_by_key(|a| fold(&a.nick));
         v
     }
 
@@ -581,9 +581,11 @@ impl Session {
                             changes.push((nick.to_string(), sym, adding));
                         }
                         arg_i += 1;
-                    } else if self.chanmodes[0].contains(c) || self.chanmodes[1].contains(c) {
-                        arg_i += 1;
-                    } else if self.chanmodes[2].contains(c) && adding {
+                    } else if self.chanmodes[0].contains(c)
+                        || self.chanmodes[1].contains(c)
+                        || (self.chanmodes[2].contains(c) && adding)
+                    {
+                        // List and key modes always take a parameter, limit-like ones only when set.
                         arg_i += 1;
                     }
                 }
@@ -1294,7 +1296,7 @@ mod tests {
         assert!(!mentions("kircher est là", "kirc"));
         assert!(!mentions("le_kirc_bot", "kirc"));
         assert!(!mentions("rien", ""));
-        assert!(mentions("x kirc-", "kirc") == false, "'-' is a nick character");
+        assert!(!mentions("x kirc-", "kirc"), "'-' is a nick character");
     }
 
     #[test]

@@ -56,7 +56,7 @@ impl ServerEntry {
     /// The channels to join after connecting, one "#channel[ key]" per item.
     pub fn autojoin_list(&self) -> Vec<String> {
         self.autojoin
-            .split(|c| c == ',' || c == '\n' || c == ';')
+            .split([',', '\n', ';'])
             .map(|s| s.split_whitespace().collect::<Vec<_>>().join(" "))
             .filter(|s| !s.is_empty())
             .collect()

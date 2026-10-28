@@ -23,14 +23,19 @@ const FRAME_BG: Color = Color(0x22, 0x22, 0x22, 0xff);
 /// Height of a rolled-up window: border, title bar and bottom frame, in logical pixels.
 const SHADED_HEIGHT: f64 = 28.0;
 
+type Point = (f64, f64);
+type Anchors<T> = Mutex<HashMap<String, (Point, T)>>;
+
 pub struct App {
     pub dir: PathBuf,
     pub config: Mutex<Config>,
     pub states: Mutex<HashMap<String, ServerState>>,
     pub servers: Mutex<HashMap<String, UnboundedSender<Command>>>,
     dirty: AtomicBool,
-    drags: Mutex<HashMap<String, ((f64, f64), (i32, i32))>>,
-    resizes: Mutex<HashMap<String, ((f64, f64), (u32, u32))>>,
+    /// Per window, while its title bar is held: cursor and window position at the start.
+    drags: Anchors<(i32, i32)>,
+    /// Per window, while its grip is held: cursor and window size at the start.
+    resizes: Anchors<(u32, u32)>,
     shaded: Mutex<HashMap<String, u32>>,
     mins: Mutex<HashMap<String, (f64, f64)>>,
     last_input: Mutex<Option<Instant>>,
@@ -87,7 +92,7 @@ impl App {
     }
 
     fn recent_input(&self) -> bool {
-        self.last_input.lock().unwrap().map_or(false, |t| t.elapsed() < Duration::from_secs(3))
+        self.last_input.lock().unwrap().is_some_and(|t| t.elapsed() < Duration::from_secs(3))
     }
 
     pub fn is_shaded(&self, label: &str) -> bool {
@@ -147,7 +152,7 @@ fn handle_event(app: &AppHandle, server: &str, ev: Event) {
         Event::Line { line } if notifications && line.highlight && !line.own => {
             let watched = app
                 .get_webview_window(&Kind::Chat(server.to_string(), line.buffer.clone()).label())
-                .map_or(false, |w| w.is_focused().unwrap_or(false));
+                .is_some_and(|w| w.is_focused().unwrap_or(false));
             if !watched && matches!(line.kind, LineKind::Msg | LineKind::Action | LineKind::Notice | LineKind::Kick | LineKind::Info) {
                 notify(app, line.buffer.as_str(), &line.nick, &line.text);
             }
@@ -162,7 +167,7 @@ fn notify(app: &AppHandle, buffer: &str, nick: &str, body: &str) {
     let st = app.state::<App>();
     {
         let mut last = st.last_notification.lock().unwrap();
-        if last.map_or(false, |t| t.elapsed() < Duration::from_millis(800)) {
+        if last.is_some_and(|t| t.elapsed() < Duration::from_millis(800)) {
             return;
         }
         *last = Some(Instant::now());
@@ -502,7 +507,7 @@ fn on_destroyed(app: &AppHandle, kind: &Kind, label: &str) {
     }
     // Closing the window of a channel leaves the channel.
     if let Kind::Chat(server, buffer) = kind {
-        let joined = st.states.lock().unwrap().get(server).map_or(false, |s| s.summary().channels.iter().any(|c| fold(c) == fold(buffer)));
+        let joined = st.states.lock().unwrap().get(server).is_some_and(|s| s.summary().channels.iter().any(|c| fold(c) == fold(buffer)));
         if joined {
             let _ = send_command(app, server, Command::Input { buffer: buffer.clone(), text: "/part".into() });
         }

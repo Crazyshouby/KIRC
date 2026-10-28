@@ -96,7 +96,7 @@ impl ServerState {
         match self.buffers.get(&fold(name)) {
             Some(b) => {
                 let mut users: Vec<UserEntry> = b.users.values().cloned().collect();
-                users.sort_by(|a, b| fold(&a.nick).cmp(&fold(&b.nick)));
+                users.sort_by_key(|a| fold(&a.nick));
                 BufferState {
                     name: b.name.clone(),
                     topic: b.topic.clone(),

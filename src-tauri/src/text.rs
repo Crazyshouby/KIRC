@@ -1,5 +1,23 @@
 //! Small text helpers for what comes from the network.
 
+type Chars<'a> = std::iter::Peekable<std::str::Chars<'a>>;
+
+/// Consumes up to `max` characters that satisfy `ok`; returns how many.
+fn eat(it: &mut Chars<'_>, max: usize, ok: fn(&char) -> bool) -> usize {
+    let mut n = 0;
+    while n < max && it.peek().is_some_and(ok) {
+        it.next();
+        n += 1;
+    }
+    n
+}
+
+/// Is the next character a comma followed by one that satisfies `ok`?
+fn comma_then(it: &Chars<'_>, ok: fn(&char) -> bool) -> bool {
+    let mut look = it.clone();
+    look.next() == Some(',') && look.peek().is_some_and(ok)
+}
+
 /// Removes mIRC formatting (bold, colours, reverse...) so a notification shows plain text.
 pub fn strip_formatting(s: &str) -> String {
     let mut out = String::with_capacity(s.len());
@@ -8,43 +26,17 @@ pub fn strip_formatting(s: &str) -> String {
         match c {
             '\u{2}' | '\u{1d}' | '\u{1f}' | '\u{1e}' | '\u{11}' | '\u{16}' | '\u{f}' => {}
             '\u{3}' => {
-                // \x03 fg[,bg], each one or two digits
-                for _ in 0..2 {
-                    if it.peek().map_or(false, |d| d.is_ascii_digit()) {
-                        it.next();
-                    }
-                }
-                if it.peek() == Some(&',') {
-                    let mut look = it.clone();
-                    look.next();
-                    if look.peek().map_or(false, |d| d.is_ascii_digit()) {
-                        it.next();
-                        for _ in 0..2 {
-                            if it.peek().map_or(false, |d| d.is_ascii_digit()) {
-                                it.next();
-                            }
-                        }
-                    }
+                // \x03 fg[,bg], each one or two digits; ",bg" only counts after a foreground
+                if eat(&mut it, 2, char::is_ascii_digit) > 0 && comma_then(&it, char::is_ascii_digit) {
+                    it.next();
+                    eat(&mut it, 2, char::is_ascii_digit);
                 }
             }
             '\u{4}' => {
                 // \x04 RRGGBB[,RRGGBB]
-                for _ in 0..6 {
-                    if it.peek().map_or(false, |d| d.is_ascii_hexdigit()) {
-                        it.next();
-                    }
-                }
-                if it.peek() == Some(&',') {
-                    let mut look = it.clone();
-                    look.next();
-                    if look.peek().map_or(false, |d| d.is_ascii_hexdigit()) {
-                        it.next();
-                        for _ in 0..6 {
-                            if it.peek().map_or(false, |d| d.is_ascii_hexdigit()) {
-                                it.next();
-                            }
-                        }
-                    }
+                if eat(&mut it, 6, char::is_ascii_hexdigit) > 0 && comma_then(&it, char::is_ascii_hexdigit) {
+                    it.next();
+                    eat(&mut it, 6, char::is_ascii_hexdigit);
                 }
             }
             c if c.is_control() && c != '\t' => {}
