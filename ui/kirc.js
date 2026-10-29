@@ -323,7 +323,39 @@ function renderLine(line, replyable) {
     default: tx.appendChild(document.createTextNode(["join", "part", "quit", "nick"].includes(line.kind) ? "+++ " : "*** ")); renderIrc(tx, line.text);
   }
   div.appendChild(tx);
+  if (line.media && line.media.kind === "image" && line.msgid) div.appendChild(imageBox(line));
   return div;
+}
+
+// An image in a line: the small preview that came with it (base64 of a JPEG, checked before use), then the whole image
+// in the viewer when it is clicked. Nothing from outside is ever put in the page as markup.
+const BASE64 = /^[A-Za-z0-9+/]*={0,2}$/;
+function imageBox(line) {
+  const box = document.createElement("button");
+  box.type = "button"; box.className = "thumb"; box.title = "Afficher l'image";
+  const t = line.media.thumb;
+  if (typeof t === "string" && t.length > 0 && t.length <= 90000 && BASE64.test(t)) {
+    const img = document.createElement("img");
+    img.alt = "image"; img.src = "data:image/jpeg;base64," + t;
+    box.appendChild(img);
+  } else {
+    box.textContent = "Afficher l'image";
+  }
+  box.addEventListener("click", ev => { ev.stopPropagation(); openImage(line.msgid); });
+  return box;
+}
+
+async function openImage(msgid) {
+  const viewer = $("#viewer");
+  if (!viewer) return;
+  const img = $("#viewerImg"), msg = $("#viewerMsg");
+  img.removeAttribute("src");
+  msg.textContent = "Chargement de l'image…";
+  viewer.hidden = false;
+  const url = await call("get_media", { server: SERVER, msgid });
+  if (viewer.hidden) return; // closed while loading
+  if (typeof url === "string" && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(url)) { msg.textContent = ""; img.src = url; }
+  else viewer.hidden = true;
 }
 
 // A scrolling log that follows the end unless the reader scrolled up.
@@ -848,7 +880,7 @@ function initChat() {
   const log = new Log($("#log"), 1000, $("#newMsg"));
   let myNick = "", buffer = BUFFER;
   // What the protocol of this server can do (told by the snapshot): the menu and the topic bar follow it.
-  let caps = { ranks: true, whois: true, moderation: true, channel_list: true, topic: true };
+  let caps = { ranks: true, whois: true, moderation: true, channel_list: true, topic: true, images: false };
   const users = new Map();
   const input = $("#msgInput");
   // Answering a message: the bar above the input line shows what is answered (Esc cancels).
@@ -870,6 +902,42 @@ function initChat() {
   makeInput($("#inputForm"), input, log, () => buffer, { get: () => replying, clear: () => setReply(null) });
   // The input is a tall text box (it wraps): Enter sends, and a line break has no meaning on IRC.
   input.addEventListener("keydown", e => { if (e.key === "Enter" && !e.isComposing) { e.preventDefault(); $("#inputForm").requestSubmit(); } });
+
+  // the viewer of images
+  $("#viewer").addEventListener("click", () => { $("#viewer").hidden = true; });
+  document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("#viewer").hidden) { $("#viewer").hidden = true; e.stopPropagation(); } }, true);
+
+  // sending an image: the button, or an image pasted in the input
+  async function sendImageFile(file) {
+    if (!file || !["image/jpeg", "image/png", "image/webp"].includes(file.type)) { toast("Seuls les JPEG, PNG et WebP peuvent être envoyés"); return; }
+    if (file.size > 10 * 1024 * 1024) { toast("Image trop grosse (10 Mo au plus)"); return; }
+    const b64 = async blob => {
+      const buf = new Uint8Array(await blob.arrayBuffer());
+      let s = ""; for (let i = 0; i < buf.length; i += 0x8000) s += String.fromCharCode(...buf.subarray(i, i + 0x8000));
+      return btoa(s);
+    };
+    // the small preview that travels with the image (the recipient sees it before the whole image arrives)
+    let thumb = "";
+    try {
+      const bmp = await createImageBitmap(file);
+      const k = Math.min(1, 100 / Math.max(bmp.width, bmp.height));
+      const c = document.createElement("canvas");
+      c.width = Math.max(1, Math.round(bmp.width * k)); c.height = Math.max(1, Math.round(bmp.height * k));
+      c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
+      thumb = await b64(await new Promise(r => c.toBlob(r, "image/jpeg", 0.6)));
+    } catch { /* no preview: the image is still sent */ }
+    const caption = input.value.trim();
+    $("#btnImage").disabled = true;
+    const ok = await call("send_image", { server: SERVER, buffer, data: await b64(file), thumb, caption });
+    $("#btnImage").disabled = false;
+    if (ok !== null && caption) input.value = "";
+  }
+  $("#btnImage").addEventListener("click", () => $("#fileImage").click());
+  $("#fileImage").addEventListener("change", () => { const f = $("#fileImage").files[0]; $("#fileImage").value = ""; sendImageFile(f); });
+  input.addEventListener("paste", e => {
+    const f = [...(e.clipboardData ? e.clipboardData.files : [])].find(x => x.type.startsWith("image/"));
+    if (f && caps.images) { e.preventDefault(); sendImageFile(f); }
+  });
 
   $("#membersBox").hidden = !isChannel;
   $("#topicBar").hidden = !isChannel;
@@ -1042,6 +1110,7 @@ function initChat() {
     applySettings(snap.settings);
     caps = snap.caps || caps;
     if (!caps.topic) $("#topicBar").hidden = true;
+    $("#btnImage").hidden = !caps.images;
     log.limit = snap.settings.scrollback;
     buffer = snap.buffer.name || BUFFER;
     setNick(snap.server.nick);

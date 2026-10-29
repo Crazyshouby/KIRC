@@ -345,6 +345,39 @@ pub fn get_whois(state: State<'_, App>, server: String, nick: String) -> R<Whois
     states.get(&server).and_then(|s| s.whois(&nick)).ok_or_else(|| "Aucune information".to_string())
 }
 
+/// The whole image of a message (the line only carried a preview), as a data URL for an <img>.
+#[tauri::command]
+pub async fn get_media(app: AppHandle, server: String, msgid: String) -> R<String> {
+    use base64::Engine as _;
+    let (tx, rx) = tokio::sync::oneshot::channel();
+    app::send_command(&app, &server, Command::FetchMedia { msgid, reply: tx })?;
+    let bytes = tokio::time::timeout(std::time::Duration::from_secs(90), rx)
+        .await
+        .map_err(|_| "Délai dépassé : l'image n'est pas arrivée".to_string())?
+        .map_err(|_| "Connexion fermée".to_string())??;
+    let mime = crate::chat::sniff_image(&bytes).ok_or("Format d'image non pris en charge")?;
+    Ok(format!("data:{mime};base64,{}", base64::engine::general_purpose::STANDARD.encode(&bytes)))
+}
+
+/// Sends an image (and its preview, a small JPEG made by the page) to a buffer; `caption` may be empty.
+#[tauri::command]
+pub async fn send_image(app: AppHandle, state: State<'_, App>, server: String, buffer: String, data: String, thumb: String, caption: String) -> R<()> {
+    use base64::Engine as _;
+    let b64 = base64::engine::general_purpose::STANDARD;
+    if data.len() > crate::chat::MAX_IMAGE_BYTES / 3 * 4 + 16 || thumb.len() > 200_000 || caption.len() > 1000 {
+        return Err("Image trop grosse (10 Mo au plus)".into());
+    }
+    let data = b64.decode(data).map_err(|_| "Image illisible".to_string())?;
+    let thumb = if thumb.is_empty() { Vec::new() } else { b64.decode(thumb).map_err(|_| "Aperçu illisible".to_string())? };
+    state.note_input();
+    let (tx, rx) = tokio::sync::oneshot::channel();
+    app::send_command(&app, &server, Command::SendImage { buffer, data, thumb, caption, reply: tx })?;
+    tokio::time::timeout(std::time::Duration::from_secs(180), rx)
+        .await
+        .map_err(|_| "Délai dépassé : l'image n'est pas partie".to_string())?
+        .map_err(|_| "Connexion fermée".to_string())?
+}
+
 /// The end of the log of a conversation, older than `before` (ms), to show above the live lines.
 #[tauri::command]
 pub async fn read_backlog(state: State<'_, App>, server: String, buffer: String, before: i64) -> R<Vec<crate::chat::event::Line>> {

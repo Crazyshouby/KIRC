@@ -153,7 +153,7 @@ pub fn parse_line(buffer: &str, s: &str) -> Option<Line> {
     let (stamp, rest) = (s.get(..19)?, s.get(20..)?);
     let naive = NaiveDateTime::parse_from_str(stamp, TIME_FORMAT).ok()?;
     let time = Local.from_local_datetime(&naive).earliest()?.timestamp_millis();
-    let mk = |kind, nick: &str, text: &str| Line { buffer: buffer.into(), kind, nick: nick.into(), text: text.into(), time, highlight: false, own: false, msgid: String::new(), reply_to: String::new() };
+    let mk = |kind, nick: &str, text: &str| Line { buffer: buffer.into(), kind, nick: nick.into(), text: text.into(), time, highlight: false, own: false, msgid: String::new(), reply_to: String::new(), media: None };
     if let Some(r) = rest.strip_prefix('<') {
         let (nick, text) = r.split_once("> ")?;
         return Some(mk(LineKind::Msg, nick, text));
@@ -219,7 +219,7 @@ mod tests {
     use super::*;
 
     fn line(kind: LineKind, nick: &str, text: &str, time: i64) -> Line {
-        Line { buffer: "#a".into(), kind, nick: nick.into(), text: text.into(), time, highlight: false, own: false, msgid: String::new(), reply_to: String::new() }
+        Line { buffer: "#a".into(), kind, nick: nick.into(), text: text.into(), time, highlight: false, own: false, msgid: String::new(), reply_to: String::new(), media: None }
     }
 
     fn tmp(name: &str) -> PathBuf {

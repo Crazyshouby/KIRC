@@ -50,6 +50,8 @@ pub fn run() {
             commands::disconnect_server,
             commands::send_input,
             commands::buffer_snapshot,
+            commands::get_media,
+            commands::send_image,
             commands::clear_buffer,
             commands::save_settings,
             commands::open_window,

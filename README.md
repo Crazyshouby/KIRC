@@ -21,7 +21,7 @@ Un client IRC pour Windows, dans le style de **KDX** (Haxial) : chaque fonction 
 - **Reconnexion automatique** avec délai croissant ; les salons sont rejoints de nouveau.
 - **Mémoire des fenêtres** : position et taille de chacune, retrouvées au démarrage.
 - Zone de notification : le bouton « − » du menu principal range tout, un clic sur l'icône ramène tout.
-- **WhatsApp (facultatif, version compilée avec la fonction `whatsapp`)** : KIRC se lie à votre compte comme un appareil de plus (code à scanner dans la fenêtre des messages) ; les groupes sont dans le menu principal, les conversations s'ouvrent à l'arrivée d'un message ou par `/query numéro`. **Client non officiel** : WhatsApp n'autorise pas les clients tiers, le compte peut être suspendu. Texte seulement (les images, vidéos et fichiers apparaissent comme `[image]`, etc.), pas d'appels.
+- **WhatsApp (facultatif, version compilée avec la fonction `whatsapp`)** : KIRC se lie à votre compte comme un appareil de plus (code à scanner dans la fenêtre des messages) ; les groupes sont dans le menu principal, les conversations s'ouvrent à l'arrivée d'un message ou par `/query numéro`. **Client non officiel** : WhatsApp n'autorise pas les clients tiers, le compte peut être suspendu. Texte et images (aperçu, puis image entière au clic ; envoi par le bouton « Image… » ou le collage) ; les vidéos, messages vocaux et fichiers apparaissent comme `[vidéo]`, etc. ; pas d'appels.
 
 Fermer la fenêtre d'un **salon** le quitte (comme dans la plupart des clients) ; fermer celle d'une conversation privée ne fait que la fermer.
 

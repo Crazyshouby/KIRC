@@ -154,6 +154,13 @@ impl Registry {
         self.name_of(jid).map_or_else(|| user_buffer("", self.phones.get(user).map_or(user, String::as_str)), str::to_string)
     }
 
+    /// The buffers of the private chats we know, to list them again at each connection.
+    pub fn private_buffers(&self) -> Vec<String> {
+        let mut v: Vec<String> = self.by_buffer.values().filter(|c| !c.group).map(|c| c.buffer.clone()).collect();
+        v.sort_by_key(|b| fold(b));
+        v
+    }
+
     /// Private chats still called by a number, though a name may be known by now.
     pub fn unnamed_private(&self) -> Vec<String> {
         let numberish = |b: &str| !b.is_empty() && b.chars().all(|c| c.is_ascii_digit() || c == ' ' || c == '(' || c == ')');
@@ -303,6 +310,15 @@ mod tests {
         assert_eq!(r.rename("215@lid", "ALICE"), None, "same name: nothing to do");
         assert!(r.unnamed_private().is_empty());
         assert_eq!(r.rename("215@lid", "Bob").map(|(_, n)| n).as_deref(), Some("Bob (2)"), "never the buffer of another chat");
+    }
+
+    #[test]
+    fn the_private_chats_are_listed_again_after_a_restart() {
+        let mut r = Registry::default();
+        r.buffer_for("1@g.us", true, "#Famille");
+        r.buffer_for("2@s.whatsapp.net", false, "Bob");
+        r.buffer_for("3@lid", false, "alice");
+        assert_eq!(r.private_buffers(), vec!["alice".to_string(), "Bob".to_string()]);
     }
 
     #[test]

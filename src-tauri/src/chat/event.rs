@@ -32,6 +32,18 @@ pub enum LineKind {
     Raw,
 }
 
+/// What a line carries besides text: for now an image. Only the small preview that came with the message is here;
+/// the whole image is fetched when someone asks for it.
+#[derive(Serialize, Clone, Debug, PartialEq, Eq)]
+pub struct Media {
+    /// "image".
+    pub kind: String,
+    /// Base64 of a small JPEG.
+    pub thumb: String,
+    pub width: u32,
+    pub height: u32,
+}
+
 /// One line of a buffer. `buffer` is "" for the server console, otherwise a
 /// channel name or the nick of a private conversation.
 #[derive(Serialize, Clone, Debug)]
@@ -50,6 +62,8 @@ pub struct Line {
     pub msgid: String,
     /// The `msgid` of the message this one answers (`+draft/reply`), empty for none.
     pub reply_to: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub media: Option<Media>,
 }
 
 /// A member of a channel. `modes` holds the status symbols, highest first

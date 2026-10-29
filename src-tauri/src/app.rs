@@ -162,7 +162,7 @@ impl Sink for AppSink {
 /// A line made by the application itself (the answer to a command it handles), shown in a buffer.
 pub fn local_line(app: &AppHandle, server: &str, buffer: &str, kind: LineKind, text: &str) {
     let time = chat::now_ms();
-    let line = Line { buffer: buffer.to_string(), kind, nick: String::new(), text: text.to_string(), time, highlight: false, own: false, msgid: String::new(), reply_to: String::new() };
+    let line = Line { buffer: buffer.to_string(), kind, nick: String::new(), text: text.to_string(), time, highlight: false, own: false, msgid: String::new(), reply_to: String::new(), media: None };
     handle_event(app, server, Event::Line { line });
 }
 

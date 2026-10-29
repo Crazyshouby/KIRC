@@ -423,6 +423,25 @@ async function main() {
   check(await book.eval("document.querySelector('#fProto').hidden"), "the address book offers no protocol choice when the build has only one");
   check(await book.eval("document.querySelector('#fHost').closest('fieldset').hidden === false && document.querySelector('#fWaName').closest('fieldset').hidden === true"), "the form shows the IRC fields and hides the WhatsApp ones");
 
+  console.log("images in a line (the preview, never markup from outside)");
+  const tinyJpeg = "/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=";
+  const imageLine = (msgid, thumb) => ({ kind: "line", line: { buffer: "#test", kind: "msg", nick: "bob", text: "[image] vue", time: Date.now(), highlight: false, own: false, msgid, media: { kind: "image", thumb, width: 1, height: 1 } } });
+  const toChat = event => chat.eval(`window.__TAURI__.event.emit("chat", { server: ${JSON.stringify(known.id)}, seq: 999999, event: ${JSON.stringify(event)} })`);
+  await toChat(imageLine("img-ok", tinyJpeg));
+  await toChat(imageLine("img-bad", '"><img src=x onerror=alert(1)>'));
+  await until(() => chat.eval("document.querySelectorAll('.ln .thumb').length === 2"), "two lines carry an image");
+  await chat.shot("24-image-line");
+  check(await chat.eval("document.querySelector('.ln .thumb img').src.startsWith('data:image/jpeg;base64,')"), "the preview is shown from its data");
+  check(await chat.eval("[...document.querySelectorAll('.ln .thumb')][1].querySelector('img') === null"), "a preview that is not base64 is not shown");
+  check(await chat.eval("document.querySelectorAll('#log [onerror]').length === 0 && [...document.querySelectorAll('#log img')].every(i => i.closest('.thumb'))"), "nothing from outside became markup");
+  check(await chat.eval("document.querySelector('#btnImage').hidden"), "an IRC window offers no image button");
+  await chat.eval("document.querySelector('.ln .thumb').click()");
+  await sleep(500);
+  check(await chat.eval("document.querySelector('#viewer').hidden"), "an image that cannot be fetched leaves the viewer closed");
+  await chat.eval("document.querySelector('#viewer').hidden = false");
+  await chat.eval("document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))");
+  check(await chat.eval("document.querySelector('#viewer').hidden"), "Esc closes the viewer");
+
   console.log("tabs: merging two windows");
   const labelOf = p => p.eval("window.__TAURI_INTERNALS__.metadata.currentWindow.label");
   const [chatLabel, conLabel] = [await labelOf(chat), await labelOf(con)];

@@ -330,7 +330,7 @@ impl Session {
     #[allow(clippy::too_many_arguments)]
     fn line(&self, buffer: &str, kind: LineKind, nick: &str, text: String, time: i64, highlight: bool, own: bool) -> Out {
         Out::Ui(Event::Line {
-            line: Line { buffer: buffer.to_string(), kind, nick: nick.to_string(), text, time, highlight, own, msgid: String::new(), reply_to: String::new() },
+            line: Line { buffer: buffer.to_string(), kind, nick: nick.to_string(), text, time, highlight, own, msgid: String::new(), reply_to: String::new(), media: None },
         })
     }
 

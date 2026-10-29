@@ -1,9 +1,10 @@
 //! The WhatsApp connection of one account: pairing, events in, messages out.
 
 use super::chats::{group_buffer, user_buffer, user_of, Registry};
-use crate::chat::event::{ConnState, Event as Ev, Line, LineKind, PairingCode, UserEntry};
-use crate::chat::{now_ms, Command, Sink, Start, Task};
-use std::collections::HashSet;
+use crate::chat::event::{ConnState, Event as Ev, Line, LineKind, Media, PairingCode, UserEntry};
+use crate::chat::{now_ms, sniff_image, Command, Sink, Start, Task, MAX_IMAGE_BYTES};
+use base64::Engine as _;
+use std::collections::{HashSet, VecDeque};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicI64, Ordering};
 use std::sync::{Arc, Mutex};
@@ -25,6 +26,8 @@ struct Ctx {
     sent: Mutex<Vec<String>>,
     /// The device was unlinked (from the phone, or by `/logout`): the account is over.
     unlinked: AtomicBool,
+    /// The last messages that carry an image (by identifier), to fetch the whole image when asked.
+    images: Mutex<VecDeque<(String, Arc<wa::Message>)>>,
     /// Chats of the account's history, kept until the names have arrived (see `touch`).
     pending: Mutex<Vec<Pending>>,
     /// When the last name or history arrived (ms), and whether a task waits for it to calm down.
@@ -43,6 +46,10 @@ struct Pending {
     messages: Vec<wa::WebMessageInfo>,
 }
 
+/// Images whose whole content can still be fetched.
+const MAX_IMAGES_KEPT: usize = 300;
+/// The preview sent with an image, at most (bytes).
+const MAX_THUMB: usize = 60_000;
 /// Lines of history shown per chat.
 const HISTORY_LINES: usize = 25;
 /// Chats taken from the history of the account.
@@ -67,6 +74,7 @@ pub fn launch(start: Start) -> Result<Task, String> {
         announced: Mutex::new(HashSet::new()),
         sent: Mutex::new(Vec::new()),
         unlinked: AtomicBool::new(false),
+        images: Mutex::new(VecDeque::new()),
         pending: Mutex::new(Vec::new()),
         last_activity: AtomicI64::new(0),
         flush_planned: AtomicBool::new(false),
@@ -112,6 +120,23 @@ async fn run(ctx: Arc<Ctx>, db: PathBuf, mut commands: tokio::sync::mpsc::Unboun
                     return;
                 }
                 Some(Command::Input { buffer, text, reply }) => ctx.on_input(&client, &buffer, &text, reply).await,
+                // an image can take a while to travel: the other commands do not wait for it
+                Some(Command::FetchMedia { msgid, reply }) => {
+                    let (ctx, client) = (ctx.clone(), client.clone());
+                    tokio::spawn(async move {
+                        let _ = reply.send(ctx.fetch_image(&client, &msgid).await);
+                    });
+                }
+                Some(Command::SendImage { buffer, data, thumb, caption, reply }) => {
+                    let (ctx, client) = (ctx.clone(), client.clone());
+                    tokio::spawn(async move {
+                        let r = ctx.send_image(&client, &buffer, data, thumb, caption).await;
+                        if let Err(e) = &r {
+                            ctx.line(&buffer, LineKind::Error, &format!("Image non envoyée : {e}"));
+                        }
+                        let _ = reply.send(r);
+                    });
+                }
                 Some(Command::ConnectNow | Command::SetFilters { .. }) => {}
             },
         }
@@ -128,7 +153,7 @@ impl Ctx {
 
     fn line(&self, buffer: &str, kind: LineKind, text: &str) {
         self.sink.emit(Ev::Line {
-            line: Line { buffer: buffer.to_string(), kind, nick: String::new(), text: text.to_string(), time: now_ms(), highlight: false, own: false, msgid: String::new(), reply_to: String::new() },
+            line: Line { buffer: buffer.to_string(), kind, nick: String::new(), text: text.to_string(), time: now_ms(), highlight: false, own: false, msgid: String::new(), reply_to: String::new(), media: None },
         });
     }
 
@@ -155,6 +180,7 @@ impl Ctx {
                 self.status(ConnState::Connected, "Connecté à WhatsApp");
                 self.list_groups(client).await;
                 self.heal_names(client).await;
+                self.list_private_chats();
             }
             Event::Disconnected(_) => self.status(ConnState::Reconnecting, "Connexion perdue : nouvelle tentative"),
             Event::LoggedOut(_) => {
@@ -194,6 +220,14 @@ impl Ctx {
                 self.registry.lock().unwrap().save();
             }
             _ => {}
+        }
+    }
+
+    /// The private chats known from earlier sessions appear in the main menu again (the state starts empty at each run).
+    fn list_private_chats(&self) {
+        let chats = self.registry.lock().unwrap().private_buffers();
+        for buffer in chats {
+            self.sink.emit(Ev::Listed { buffer });
         }
     }
 
@@ -299,6 +333,11 @@ impl Ctx {
                     user_buffer(&r.display(&p.id), user_of(&p.id))
                 };
                 let buffer = r.buffer_for(&p.id, p.group, &wanted);
+                for w in &p.messages {
+                    if let (Some(m), Some(id)) = (w.message.as_option(), w.key.as_option().and_then(|k| k.id.as_deref())) {
+                        self.remember(id, m);
+                    }
+                }
                 let mut lines: Vec<Line> = p.messages.iter().filter_map(|w| history_line(&mut r, &me, &buffer, &p.id, p.group, w)).collect();
                 lines.sort_by_key(|l| l.time);
                 let skip = lines.len().saturating_sub(HISTORY_LINES);
@@ -394,6 +433,7 @@ impl Ctx {
         if !own && !info.push_name.is_empty() {
             self.registry.lock().unwrap().set_name(&sender, &info.push_name);
         }
+        self.remember(&id, msg);
         let buffer = self.buffer_of_chat(client, &chat, group, &info.source.chat).await;
         if !group && self.announced.lock().unwrap().insert(buffer.clone()) {
             self.sink.emit(Ev::Query { buffer: buffer.clone() });
@@ -403,7 +443,7 @@ impl Ctx {
         let first = me.split_whitespace().next().unwrap_or("");
         let highlight = !own && (!group || (!first.is_empty() && crate::irc::session::mentions(&text, first)));
         self.sink.emit(Ev::Line {
-            line: Line { buffer, kind, nick, text, time: info.timestamp.timestamp_millis(), highlight, own, msgid: id, reply_to: replied_to(msg).unwrap_or_default() },
+            line: Line { buffer, kind, nick, text, time: info.timestamp.timestamp_millis(), highlight, own, msgid: id, reply_to: replied_to(msg).unwrap_or_default(), media: image_media(msg) },
         });
     }
 
@@ -459,11 +499,72 @@ impl Ctx {
                 }
                 let me = self.me.lock().unwrap().clone();
                 self.sink.emit(Ev::Line {
-                    line: Line { buffer: buffer.to_string(), kind: LineKind::Msg, nick: me, text: plain, time: now_ms(), highlight: false, own: true, msgid: sent.message_id, reply_to: String::new() },
+                    line: Line { buffer: buffer.to_string(), kind: LineKind::Msg, nick: me, text: plain, time: now_ms(), highlight: false, own: true, msgid: sent.message_id, reply_to: String::new(), media: None },
                 });
             }
             Err(e) => self.line(buffer, LineKind::Error, &format!("Message non envoyé : {e}")),
         }
+    }
+
+    /// Keeps a message that carries an image, so that the whole image can be fetched later.
+    fn remember(&self, id: &str, msg: &wa::Message) {
+        if id.is_empty() || msg.image_message.as_option().is_none() {
+            return;
+        }
+        let mut images = self.images.lock().unwrap();
+        images.retain(|(i, _)| i != id);
+        if images.len() >= MAX_IMAGES_KEPT {
+            images.pop_front();
+        }
+        images.push_back((id.to_string(), Arc::new(msg.clone())));
+    }
+
+    /// The whole image of a message received (or sent) in this session.
+    async fn fetch_image(&self, client: &Arc<Client>, msgid: &str) -> Result<Vec<u8>, String> {
+        let msg = self.images.lock().unwrap().iter().find(|(i, _)| i == msgid).map(|(_, m)| m.clone());
+        let msg = msg.ok_or("Image introuvable : elle date d'avant cette session de KIRC")?;
+        let img = msg.image_message.as_option().ok_or("Ce message n'est pas une image")?;
+        if usize::try_from(img.file_length.unwrap_or(0)).unwrap_or(usize::MAX) > MAX_IMAGE_BYTES {
+            return Err("Image trop grosse (10 Mo au plus)".into());
+        }
+        let bytes = client.download(img).await.map_err(|e| format!("Téléchargement : {e}"))?;
+        if bytes.len() > MAX_IMAGE_BYTES {
+            return Err("Image trop grosse (10 Mo au plus)".into());
+        }
+        sniff_image(&bytes).ok_or("Format d'image non pris en charge")?;
+        Ok(bytes)
+    }
+
+    /// Sends an image to a chat; its line appears like a message of ours.
+    async fn send_image(&self, client: &Arc<Client>, buffer: &str, data: Vec<u8>, thumb: Vec<u8>, caption: String) -> Result<(), String> {
+        let mime = sniff_image(&data).ok_or("Format non pris en charge (JPEG, PNG ou WebP seulement)")?;
+        if data.len() > MAX_IMAGE_BYTES {
+            return Err("Image trop grosse (10 Mo au plus)".into());
+        }
+        let target = self.registry.lock().unwrap().chat_of(buffer).map(|(j, _)| j.to_string());
+        let jid = target.and_then(|j| j.parse::<Jid>().ok()).ok_or("Conversation inconnue de WhatsApp")?;
+        let thumb = (!thumb.is_empty() && thumb.len() <= MAX_THUMB && sniff_image(&thumb) == Some("image/jpeg")).then_some(thumb);
+        let upload = client.upload(data, whatsapp_rust::download::MediaType::Image, whatsapp_rust::upload::UploadOptions::new()).await.map_err(|e| format!("Envoi : {e}"))?;
+        let caption = caption.trim().to_string();
+        let msg = whatsapp_rust::media::image_message(
+            upload,
+            whatsapp_rust::media::ImageOptions { caption: (!caption.is_empty()).then(|| caption.clone()), mimetype: Some(mime.to_string()), jpeg_thumbnail: thumb, context_info: None },
+        );
+        let sent = client.send_message(&jid, msg.clone()).await.map_err(|e| format!("Envoi : {e}"))?;
+        {
+            let mut ids = self.sent.lock().unwrap();
+            if ids.len() >= MAX_SENT_IDS {
+                ids.remove(0);
+            }
+            ids.push(sent.message_id.clone());
+        }
+        self.remember(&sent.message_id, &msg);
+        let me = self.me.lock().unwrap().clone();
+        let text = if caption.is_empty() { "[image]".to_string() } else { format!("[image] {caption}") };
+        self.sink.emit(Ev::Line {
+            line: Line { buffer: buffer.to_string(), kind: LineKind::Msg, nick: me, text, time: now_ms(), highlight: false, own: true, msgid: sent.message_id, reply_to: String::new(), media: image_media(&msg) },
+        });
+        Ok(())
     }
 
     /// `/query x`: x is a name already known, or a number with its country code.
@@ -513,6 +614,7 @@ fn history_line(r: &mut Registry, me: &str, buffer: &str, chat: &str, group: boo
         own,
         msgid: key.and_then(|k| k.id.clone()).unwrap_or_default(),
         reply_to: replied_to(msg).unwrap_or_default(),
+        media: image_media(msg),
     })
 }
 
@@ -559,6 +661,18 @@ fn describe(m: &wa::Message) -> Option<(LineKind, String)> {
         return (!emoji.is_empty()).then(|| (LineKind::Action, format!("réagit {emoji}")));
     }
     None
+}
+
+/// What an image message shows at once: its small preview (possibly none: the whole image is still fetchable).
+fn image_media(m: &wa::Message) -> Option<Media> {
+    let img = m.image_message.as_option()?;
+    let thumb = img.jpeg_thumbnail.as_deref().filter(|t| !t.is_empty() && t.len() <= MAX_THUMB && sniff_image(t) == Some("image/jpeg"));
+    Some(Media {
+        kind: "image".into(),
+        thumb: thumb.map(|t| base64::engine::general_purpose::STANDARD.encode(t)).unwrap_or_default(),
+        width: img.width.unwrap_or(0).min(20_000),
+        height: img.height.unwrap_or(0).min(20_000),
+    })
 }
 
 /// The identifier of the message that this one answers.

@@ -34,6 +34,38 @@ pub enum Command {
     ConnectNow,
     /// The ignore and alert lists changed.
     SetFilters { ignores: Vec<String>, alert_words: Vec<String> },
+    /// The page wants the whole image of a message (the preview was not enough).
+    FetchMedia { msgid: String, reply: tokio::sync::oneshot::Sender<Result<Vec<u8>, String>> },
+    /// Send an image to a buffer, with its preview (a small JPEG, may be empty) and a caption.
+    SendImage { buffer: String, data: Vec<u8>, thumb: Vec<u8>, caption: String, reply: tokio::sync::oneshot::Sender<Result<(), String>> },
+}
+
+impl Command {
+    /// For a protocol that has no images: the request is answered with a refusal.
+    pub fn refuse_media(self) {
+        let no = || "Les images ne sont pas prises en charge par ce protocole".to_string();
+        match self {
+            Command::FetchMedia { reply, .. } => drop(reply.send(Err(no()))),
+            Command::SendImage { reply, .. } => drop(reply.send(Err(no()))),
+            _ => {}
+        }
+    }
+}
+
+/// The largest image taken or sent, in bytes.
+pub const MAX_IMAGE_BYTES: usize = 10 * 1024 * 1024;
+
+/// The type of an image, told by its first bytes (never by a name or a type that someone else wrote).
+pub fn sniff_image(bytes: &[u8]) -> Option<&'static str> {
+    if bytes.starts_with(&[0xFF, 0xD8, 0xFF]) {
+        Some("image/jpeg")
+    } else if bytes.starts_with(&[0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A]) {
+        Some("image/png")
+    } else if bytes.len() > 12 && &bytes[..4] == b"RIFF" && &bytes[8..12] == b"WEBP" {
+        Some("image/webp")
+    } else {
+        None
+    }
 }
 
 /// The protocols KIRC speaks. The id is what the address book stores.
@@ -64,6 +96,8 @@ pub struct Caps {
     pub channel_list: bool,
     /// A channel has a topic that members can change.
     pub topic: bool,
+    /// Images can be shown (a preview, then the whole image) and sent.
+    pub images: bool,
 }
 
 impl Protocol {
@@ -112,8 +146,8 @@ impl Protocol {
 
     pub fn caps(self) -> Caps {
         match self {
-            Protocol::Irc => Caps { ranks: true, whois: true, moderation: true, channel_list: true, topic: true },
-            Protocol::WhatsApp => Caps { ranks: false, whois: false, moderation: false, channel_list: false, topic: false },
+            Protocol::Irc => Caps { ranks: true, whois: true, moderation: true, channel_list: true, topic: true, images: false },
+            Protocol::WhatsApp => Caps { ranks: false, whois: false, moderation: false, channel_list: false, topic: false, images: true },
         }
     }
 }
@@ -162,7 +196,25 @@ pub fn now_ms() -> i64 {
 
 #[cfg(test)]
 mod tests {
-    use super::{fold, Protocol};
+    use super::{fold, sniff_image, Protocol};
+
+    #[test]
+    fn an_image_is_known_by_its_first_bytes() {
+        assert_eq!(sniff_image(&[0xFF, 0xD8, 0xFF, 0xE0, 0, 0]), Some("image/jpeg"));
+        assert_eq!(sniff_image(b"\x89PNG\r\n\x1a\n....."), Some("image/png"));
+        assert_eq!(sniff_image(b"RIFF\x10\0\0\0WEBPVP8 "), Some("image/webp"));
+        assert_eq!(sniff_image(b"<svg xmlns='http://www.w3.org/2000/svg'/>"), None);
+        assert_eq!(sniff_image(b"GIF89a"), None);
+        assert_eq!(sniff_image(b"<html>"), None);
+        assert_eq!(sniff_image(b""), None);
+        assert_eq!(sniff_image(b"RIFF\0\0\0\0WAVEfmt "), None);
+    }
+
+    #[test]
+    fn only_whatsapp_has_images() {
+        assert!(Protocol::WhatsApp.caps().images);
+        assert!(!Protocol::Irc.caps().images);
+    }
 
     #[test]
     fn only_irc_has_an_address() {
@@ -209,7 +261,7 @@ mod tests {
     #[test]
     fn irc_can_do_everything_the_pages_offer() {
         let c = Protocol::Irc.caps();
-        assert!(c.ranks && c.whois && c.moderation && c.channel_list && c.topic);
+        assert!(c.ranks && c.whois && c.moderation && c.channel_list && c.topic && !c.images);
     }
 
     #[test]
