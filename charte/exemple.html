@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="fr" data-theme="rouge">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KDX-UI — guide de style</title>
+<link rel="stylesheet" href="fonts.css">
+<link rel="stylesheet" href="kdx-ui.css">
+<link rel="stylesheet" href="themes.css">
+<style>
+  /* Seulement la mise en page de cette page de démonstration ; tout le reste vient de kdx-ui.css. */
+  body { overflow: auto; height: auto; background: #1a1a1a; }
+  main { max-width: 1180px; margin: 0 auto; padding: 18px; display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 18px; align-items: start; }
+  main .win { position: relative; }
+  .wide { grid-column: 1 / -1; }
+  .head { grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .head h1 { font-weight: 700; letter-spacing: 3px; }
+  .swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 6px; }
+  .sw { display: flex; align-items: center; gap: 8px; }
+  .sw i { width: 28px; height: 20px; flex: none; border: 1px solid #000; box-shadow: inset 1px 1px 0 rgba(255,255,255,.25); }
+  .sw b { display: block; font-weight: 700; }
+  .sw small { color: var(--faint); }
+  .ramp { display: flex; gap: 0; }
+  .ramp i { flex: 1; height: 26px; border: 1px solid #000; margin-left: -1px; }
+  .stage { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .icons { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 6px; }
+  .icons span.c { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px 0; color: var(--faint); }
+  .ruler { height: 14px; background: #fff; }
+  p.note { color: var(--faint); line-height: 1.5; }
+  .sample16 { font: 14px/16px var(--font); } .sample13 { font: 14px/13px var(--font-log); }
+</style>
+</head>
+<body>
+<main>
+  <div class="head">
+    <h1>KDX-UI</h1>
+    <span class="faint">guide de style vivant — la charte, composant par composant</span>
+    <span style="flex:1"></span>
+    <label for="theme">Couleur d'accent :</label>
+    <select id="theme" class="btn" style="flex:none;width:170px">
+      <option value="rouge">Rouge KDX</option><option value="bleu">Bleu électrique</option><option value="vert">Vert électrique</option>
+      <option value="violet">Violet électrique</option><option value="ambre">Ambre CRT</option><option value="sarcelle">Sarcelle</option><option value="charbon">Charbon</option>
+    </select>
+  </div>
+
+  <!-- Couleurs -->
+  <section class="win wide"><div class="tb"><span class="tb-title">Couleurs</span></div><div class="cb">
+    <div class="swatches" id="neutres"></div>
+    <div class="faint" style="margin-top:6px">Rampe d'accent (change avec le thème) : bord · milieu · sombre · survol · titre (début → fin) · barre (haut, milieu, bas)</div>
+    <div class="ramp" id="ramp"></div>
+    <div class="swatches" id="etats"></div>
+  </div></section>
+
+  <!-- Polices -->
+  <section class="win"><div class="tb"><span class="tb-title">Typographie</span></div><div class="cb">
+    <div class="faint">KIRC Pixel — interface, 14 px / 16 px</div>
+    <div class="sample16">ABCDEFGHIJKLMNOPQRSTUVWXYZ<br>abcdefghijklmnopqrstuvwxyz<br>0123456789 .,;:!?()[]{}+-*/=&lt;&gt; éèàùçêôîï « »</div>
+    <div class="faint" style="margin-top:6px">KIRC Pixel Log — console, 14 px / 13 px</div>
+    <div class="sample13">ABCDEFGHIJKLMNOPQRSTUVWXYZ<br>abcdefghijklmnopqrstuvwxyz<br>0123456789 .,;:!?()[]{}+-*/=&lt;&gt; éèàùçêôîï « »</div>
+    <div class="sample13" style="font-family:var(--font-log-italic)">Italique (Log Italic) : action, arrivées et départs</div>
+    <p class="note">Une seule taille (14 px), une seule graisse. Pas de gras, pas de lissage : un pixel de la police est un pixel de l'écran.</p>
+  </div></section>
+
+  <!-- Fenêtres -->
+  <section class="win active"><div class="tb">
+      <button class="tb-btn tb-l" id="demoClose" aria-label="Fermer"></button>
+      <button class="tb-btn tb-m" aria-label="Menu de la fenêtre"></button>
+      <span class="tb-title"><span class="pix" data-ic="kirc" data-size="14" style="vertical-align:-2px;margin-right:6px"></span>Fenêtre active</span>
+      <button class="tb-btn tb-r2" id="demoZoom" aria-label="Agrandir"></button>
+      <button class="tb-btn tb-r" id="demoMin" aria-label="Enrouler"></button>
+    </div>
+    <div class="tabs"><button class="tab on">#salon</button><button class="tab">Messages</button><button class="tab">Réglages (3)</button></div>
+    <div class="cb"><span>Cadre en relief, barre de titre de 21 px, boutons de 14 px.</span><span class="faint">Clair en haut et à gauche, sombre en bas et à droite.</span></div>
+    <div class="grip-rz"></div>
+  </section>
+  <section class="win"><div class="tb">
+      <button class="tb-btn tb-l" aria-label="Fermer"></button>
+      <span class="tb-title">Fenêtre inactive</span>
+    </div>
+    <div class="cb"><span>La fenêtre qui n'a pas le focus est grise.</span><span class="faint">Seule la fenêtre active porte l'accent.</span></div>
+  </section>
+
+  <!-- Boutons -->
+  <section class="win"><div class="tb"><span class="tb-title">Boutons</span></div><div class="cb">
+    <div class="stage">
+      <button class="btn">Bouton</button>
+      <button class="btn on">Enfoncé</button>
+      <button class="btn" disabled>Désactivé</button>
+      <button class="primary">Par défaut</button>
+      <button class="primary quiet">Par défaut, sans anneau</button>
+    </div>
+    <div class="stack" style="width:200px">
+      <button class="sbtn"><span class="pix" data-ic="console"></span>Messages</button>
+      <button class="sbtn"><span class="pix" data-ic="salon"></span>Rejoindre…</button>
+      <button class="sbtn"><span class="pix" data-ic="carnet"></span>Carnet d'adresses</button>
+      <button class="sbtn" disabled><span class="pix" data-ic="reglages"></span>Réglages</button>
+    </div>
+    <p class="note">Pas d'arrondi. Les boutons de dialogue perdent 3 pixels par coin ; les boutons de barre sont carrés et se partagent un filet noir.</p>
+  </div></section>
+
+  <!-- Champs -->
+  <section class="win"><div class="tb"><span class="tb-title">Champs et cases</span></div><div class="cb">
+    <div class="form">
+      <label for="f1">Pseudo</label><input id="f1" class="text-input" value="kirc">
+      <label for="f2">Serveur</label><select id="f2" class="btn"><option>irc.exemple.org</option><option>127.0.0.1</option></select>
+      <label for="f3">Message</label><textarea id="f3" class="text-input" rows="2">Texte saisi, vert sur noir.</textarea>
+      <label for="f4">Désactivé</label><input id="f4" class="text-input" value="inactif" disabled>
+      <label>Volume</label><div class="inline"><input type="range" value="60"><span class="val">60</span></div>
+      <span></span><label class="chk-row"><span class="switch"><input type="checkbox" checked><span class="track"></span></span>Case cochée</label>
+      <span></span><label class="chk-row"><span class="switch"><input type="checkbox"><span class="track"></span></span>Case vide</label>
+      <fieldset class="grp"><legend>Groupe</legend>
+        <label for="g1">Port</label><input id="g1" class="text-input" value="6697" style="width:90px;flex:none">
+        <span class="hint col2">Un groupe est un cadre gravé, son titre posé sur l'arête.</span>
+      </fieldset>
+    </div>
+  </div></section>
+
+  <!-- Listes -->
+  <section class="win"><div class="tb"><span class="tb-title">Listes</span></div><div class="cb">
+    <div class="lhead" style="grid-template-columns:150px 70px 1fr"><button class="lh on">Salon</button><button class="lh">Gens</button><button class="lh">Sujet</button></div>
+    <div class="list" style="max-height:170px">
+      <div class="row-item"><span class="pix" data-ic="salon"></span><span class="grow">#general</span><span class="count">3</span></div>
+      <div class="row-item sel"><span class="pix" data-ic="salon"></span><span class="grow">#kdx (sélectionné)</span></div>
+      <div class="row-item unread"><span class="pix" data-ic="salon"></span><span class="grow">#nouveau (non lu)</span><span class="count hot">2</span></div>
+      <div class="row-item"><span class="pix" data-ic="message"></span><span class="grow">Bob<span class="sub">conversation privée</span></span></div>
+      <div class="row-item"><span class="pix" data-ic="salon"></span><span class="grow">#survol me donne le gris clair</span></div>
+      <div class="row-item"><span class="pix" data-ic="salon"></span><span class="grow">#encore une ligne</span></div>
+      <div class="row-item"><span class="pix" data-ic="salon"></span><span class="grow">#et une dernière</span></div>
+    </div>
+    <p class="note">La sélection est cernée d'un filet, jamais colorée.</p>
+  </div></section>
+
+  <!-- Console -->
+  <section class="win"><div class="tb"><span class="tb-title">Console</span></div><div class="cb">
+    <div class="log" style="min-height:230px">
+      <div class="ln"><span class="ts">12:01</span><span class="nk" style="--nc:#5cf0ff">alice</span><span class="tx">bonjour tout le monde</span></div>
+      <div class="ln own"><span class="ts">12:01</span><span class="nk">kirc</span><span class="tx">salut alice</span></div>
+      <div class="ln"><span class="ts">12:02</span><span class="nk" style="--nc:#ffcc66">bob</span><span class="tx">regardez https://exemple.org</span></div>
+      <div class="ln action">* bob s'étire</div>
+      <div class="ln join">+++ carol arrive dans #salon</div>
+      <div class="ln part">+++ carol quitte #salon</div>
+      <div class="ln topic">*** Sujet : Salon de test</div>
+      <div class="ln mode">*** alice donne le statut d'opérateur à bob</div>
+      <div class="ln notice">-Service- Votre pseudo est protégé</div>
+      <div class="ln info">*** Connexion à 127.0.0.1…</div>
+      <div class="ln hl"><span class="nk" style="--nc:#fff">bob</span><span class="tx">kirc : mention (ligne mise en évidence)</span></div>
+      <div class="ln kick">*** bob a été expulsé</div>
+      <div class="ln error">*** Connexion perdue</div>
+    </div>
+  </div></section>
+
+  <!-- États -->
+  <section class="win"><div class="tb"><span class="tb-title">États et menus</span></div><div class="cb">
+    <div class="status"><span class="orb green"></span><span>2 serveurs connectés</span></div>
+    <div class="status"><span class="orb amber pulse"></span><span>Connexion en cours…</span></div>
+    <div class="status"><span class="orb"></span><span>Aucune connexion</span></div>
+    <div class="banner"><span>Connexion perdue : nouvelle tentative dans 8 s</span></div>
+    <div class="stage" style="align-items:flex-start">
+      <div class="menu" style="position:static;min-width:170px">
+        <div class="menu-title">Bob</div>
+        <div class="menu-item">Message privé</div><div class="menu-item">Informations</div><div class="menu-sep"></div><div class="menu-item">Ignorer</div>
+      </div>
+      <div class="toast show" style="opacity:1;transform:none;pointer-events:none">Erreur : connexion refusée</div>
+      <div class="toast ok show" style="opacity:1;transform:none;pointer-events:none">Réglages enregistrés</div>
+    </div>
+  </div></section>
+
+  <!-- Icônes -->
+  <section class="win wide"><div class="tb"><span class="tb-title">Icônes (16 × 16, pixel, contour noir)</span></div><div class="cb">
+    <div class="icons" id="icons"></div>
+  </div></section>
+</main>
+<div id="toasts"></div>
+<script src="icons.js"></script>
+<script>
+  const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  const glyph = {
+    x: '<svg viewBox="0 0 9 9"><path d="M1 1L8 8M8 1L1 8" stroke="#fff" stroke-width="2" fill="none"/></svg>',
+    minus: '<svg viewBox="0 0 9 9"><path d="M1 4.5H8" stroke="#fff" stroke-width="2" fill="none"/></svg>',
+    plus: '<svg viewBox="0 0 9 9"><path d="M1 4.5H8M4.5 1V8" stroke="#fff" stroke-width="2" fill="none"/></svg>',
+  };
+  document.querySelectorAll(".win:not(.active) .tb-l").forEach(b => { b.innerHTML = glyph.x; });
+  document.getElementById("demoClose").innerHTML = glyph.x;
+  document.getElementById("demoMin").innerHTML = glyph.minus;
+  document.getElementById("demoZoom").innerHTML = glyph.plus;
+  const swatch = (name, v, role) => `<div class="sw"><i style="background:${v}"></i><span><b>${name}</b><small>${v} — ${role}</small></span></div>`;
+  function paint() {
+    document.getElementById("neutres").innerHTML = [
+      ["--frame", "#222222", "fond, cadre"], ["--panel", "#333333", "panneaux, boutons"], ["--card-2", "#2a2a2a", "menus, onglet actif"],
+      ["--ink", "#000000", "champs, consoles"], ["--line", "#555555", "filets"], ["--faint", "#888888", "secondaire, désactivé"],
+      ["--text", "#ffffff", "texte"], ["--field-ink", css("--field-ink"), "texte des champs"], ["--sel-bg", css("--sel-bg"), "sélection marquée"],
+    ].map(([n, v, r]) => swatch(n, v, r)).join("");
+    document.getElementById("ramp").innerHTML = ["--a-edge", "--a-mid", "--a-dark", "--a-hover", "--a-title-from", "--a-title-to", "--bar-top", "--bar-mid", "--bar-bot"]
+      .map(n => `<i title="${n} ${css(n)}" style="background:${css(n)}"></i>`).join("");
+    document.getElementById("etats").innerHTML = [
+      ["--green", "#00ff00", "ok, connecté"], ["--warn", "#faa320", "attention, occupé"], ["--red", "#ff5a4a", "problème"],
+    ].map(([n, v, r]) => swatch(n, v, r)).join("");
+  }
+  const sel = document.getElementById("theme");
+  sel.addEventListener("change", () => { document.documentElement.dataset.theme = sel.value; paint(); });
+  document.getElementById("icons").innerHTML = Object.keys(PIX).map(n => `<span class="c">${pix(n, 32)}<span>${n}</span></span>`).join("");
+  fillPix();
+  paint();
+</script>
+</body>
+</html>
