@@ -70,8 +70,11 @@ impl ServerEntry {
         if self.name.trim().is_empty() {
             return Err("Donnez un nom à ce serveur".into());
         }
-        if crate::chat::Protocol::parse(&self.protocol).is_none() {
+        let Some(protocol) = crate::chat::Protocol::parse(&self.protocol) else {
             return Err("Protocole inconnu".into());
+        };
+        if !protocol.needs_host() {
+            return Ok(());
         }
         let host = self.host.trim();
         if host.is_empty() {

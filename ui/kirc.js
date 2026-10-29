@@ -502,7 +502,7 @@ function initLauncher() {
   $("#btnSettings").addEventListener("click", () => call("open_window", { kind: "settings" }));
   $("#btnAbout").addEventListener("click", () => call("open_window", { kind: "about" }));
   $("#btnQuit").addEventListener("click", () => invoke("quit_app"));
-  listen("chat", e => { if (["status", "joined", "parted", "me", "query"].includes(e.payload.event.kind)) refresh(); });
+  listen("chat", e => { if (["status", "joined", "parted", "me", "query", "listed"].includes(e.payload.event.kind)) refresh(); });
   // Unread counters: only the connection states are asked for, at most twice a second.
   let statesTimer = 0;
   const refreshStates = () => {
@@ -545,8 +545,25 @@ function initServers() {
   const f = id => $("#" + id);
   const stateOf = id => (ov && ov.states[id]) || { status: "disconnected" };
 
+  // The form shows what the protocol of the account needs (IRC: an address, a nick; WhatsApp: a name).
+  function syncProto() {
+    const p = f("fProto").value || "irc";
+    for (const el of document.querySelectorAll("#serverForm [data-proto]")) el.hidden = el.dataset.proto !== p;
+  }
+  function protocolsOffered() {
+    const list = (ov && ov.protocols) || [{ id: "irc", name: "IRC" }];
+    const sel = f("fProto");
+    if ([...sel.options].map(o => o.value).join() !== list.map(p => p.id).join()) {
+      sel.textContent = "";
+      for (const p of list) { const o = document.createElement("option"); o.value = p.id; o.textContent = p.name; sel.appendChild(o); }
+    }
+    f("fProto").hidden = f("lProto").hidden = list.length < 2;
+  }
   function fill(entry) {
-    f("fName").value = entry.name || ""; f("fHost").value = entry.host || ""; f("fPort").value = entry.port || 6697;
+    protocolsOffered();
+    f("fProto").value = entry.protocol || "irc";
+    f("fWaName").value = entry.protocol === "whatsapp" ? entry.name || "" : "";
+    f("fName").value = entry.protocol === "whatsapp" ? "" : entry.name || ""; f("fHost").value = entry.host || ""; f("fPort").value = entry.port || 6697;
     f("fTls").checked = !!entry.tls; f("fInvalid").checked = !!entry.accept_invalid_certs;
     f("fNick").value = entry.nick || ""; f("fAlt").value = entry.alt_nick || ""; f("fUser").value = entry.username || ""; f("fReal").value = entry.realname || "";
     f("fAuth").value = entry.auth || "none"; f("fAccount").value = entry.account || "";
@@ -557,7 +574,7 @@ function initServers() {
     f("rowForgetPass").hidden = !entry.has_pass; f("rowForgetAuth").hidden = !entry.has_auth;
     f("fAuto").checked = !!entry.autoconnect; f("fJoin").value = entry.autojoin || "";
     f("fPreset").value = "";
-    syncAuth(); syncTls();
+    syncAuth(); syncTls(); syncProto();
   }
   function syncAuth() {
     const a = f("fAuth").value;
@@ -571,8 +588,11 @@ function initServers() {
   }
   function entryFromForm() {
     const base = (ov.servers.find(s => s.id === selected) || {});
+    if (f("fProto").value === "whatsapp") {
+      return { id: fresh ? "" : (base.id || ""), protocol: "whatsapp", name: f("fWaName").value.trim(), host: "", port: 6697, tls: true, auth: "none", autoconnect: f("fAuto").checked, autojoin: "" };
+    }
     return {
-      id: fresh ? "" : (base.id || ""), name: f("fName").value.trim(), host: f("fHost").value.trim(), port: +f("fPort").value || 0,
+      id: fresh ? "" : (base.id || ""), protocol: "irc", name: f("fName").value.trim(), host: f("fHost").value.trim(), port: +f("fPort").value || 0,
       tls: f("fTls").checked, accept_invalid_certs: f("fTls").checked && f("fInvalid").checked,
       nick: f("fNick").value.trim(), alt_nick: f("fAlt").value.trim(), username: f("fUser").value.trim(), realname: f("fReal").value.trim(),
       auth: f("fAuth").value, account: f("fAccount").value.trim(), autoconnect: f("fAuto").checked, autojoin: f("fJoin").value,
@@ -592,7 +612,7 @@ function initServers() {
       const orb = document.createElement("span"); orb.className = "orb " + statusOrb(stateOf(s.id).status);
       const name = document.createElement("span"); name.className = "grow";
       name.textContent = s.name;
-      const sub = document.createElement("span"); sub.className = "sub"; sub.textContent = `${s.host}:${s.port}`;
+      const sub = document.createElement("span"); sub.className = "sub"; sub.textContent = s.protocol === "whatsapp" ? "WhatsApp" : `${s.host}:${s.port}`;
       name.appendChild(sub);
       row.append(orb, name);
       const pick = () => { select(s.id); };
@@ -613,7 +633,7 @@ function initServers() {
   }
   function startNew() {
     fresh = true; selected = "";
-    fill({ port: 6697, tls: true, auth: "none" });
+    fill({ port: 6697, tls: true, auth: "none", protocol: "irc" });
     renderList();
     f("fName").focus();
   }
@@ -636,7 +656,7 @@ function initServers() {
     ov = o;
     if (keep) { selected = keep; fresh = false; }
     if (!fresh && !ov.servers.some(s => s.id === selected)) selected = ov.servers.length ? ov.servers[0].id : "";
-    if (keep || !f("fName").value && !f("fHost").value) {
+    if (keep || !f("fName").value && !f("fHost").value && !f("fWaName").value) {
       if (selected) fill(ov.servers.find(s => s.id === selected)); else startNew();
     }
     renderList();
@@ -649,6 +669,7 @@ function initServers() {
     f("fName").value = name; f("fHost").value = host; f("fPort").value = port; f("fTls").checked = true; syncTls();
   });
   f("fAuth").addEventListener("change", syncAuth);
+  f("fProto").addEventListener("change", () => { syncProto(); (f("fProto").value === "whatsapp" ? f("fWaName") : f("fName")).focus(); });
   f("fTls").addEventListener("change", () => { if (f("fTls").checked && +f("fPort").value === 6667) f("fPort").value = 6697; if (!f("fTls").checked && +f("fPort").value === 6697) f("fPort").value = 6667; syncTls(); });
   f("newServer").addEventListener("click", startNew);
   f("saveServer").addEventListener("click", save);
@@ -779,8 +800,26 @@ function initConsole() {
     $("#consoleStatusText").textContent = (STATUS_TEXT[st] || st) + (network ? " — " + network : "") + (nick ? " — " + nick : "") + (st !== "connected" && text ? " (" + text + ")" : "");
   }
   let lastStatus = ["disconnected", ""];
+  // The code to link the account with the phone: drawn square by square, nothing but '0' and '1' comes from outside.
+  function showPairing(code) {
+    const box = $("#pairing");
+    if (!code || !/^[01]+$/.test(code.modules) || code.modules.length !== code.size * code.size) { box.hidden = true; return; }
+    const scale = 5, quiet = 4, side = (code.size + 2 * quiet) * scale;
+    const c = $("#pairCanvas");
+    c.width = c.height = side;
+    const g = c.getContext("2d");
+    g.fillStyle = "#fff"; g.fillRect(0, 0, side, side);
+    g.fillStyle = "#000";
+    for (let i = 0; i < code.modules.length; i++) {
+      if (code.modules[i] === "1") g.fillRect((quiet + i % code.size) * scale, (quiet + Math.floor(i / code.size)) * scale, scale, scale);
+    }
+    box.hidden = false;
+  }
   const sub = subscribe(p => {
     const ev = p.event;
+    if (ev.kind === "pairing") showPairing(ev.code);
+    else if (ev.kind === "paired") showPairing(null);
+    else if (ev.kind === "status" && ev.state === "disconnected") showPairing(null);
     if (ev.kind === "line" && ev.line.buffer === "") log.add(ev.line);
     else if (ev.kind === "status") { lastStatus = [ev.state, ev.text]; status(...lastStatus); }
     else if (ev.kind === "me") { nick = ev.nick; network = ev.network; status(...lastStatus); }
@@ -792,6 +831,7 @@ function initConsole() {
     log.limit = snap.settings.scrollback;
     nick = snap.server.nick; network = snap.server.network; lastStatus = [snap.server.status, snap.server.status_text];
     status(...lastStatus);
+    showPairing(snap.server.pairing);
     log.addAll(snap.buffer.lines);
     log.toEnd();
     sub.ready(snap.seq);

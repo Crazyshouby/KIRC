@@ -21,6 +21,7 @@ Un client IRC pour Windows, dans le style de **KDX** (Haxial) : chaque fonction 
 - **Reconnexion automatique** avec délai croissant ; les salons sont rejoints de nouveau.
 - **Mémoire des fenêtres** : position et taille de chacune, retrouvées au démarrage.
 - Zone de notification : le bouton « − » du menu principal range tout, un clic sur l'icône ramène tout.
+- **WhatsApp (facultatif, version compilée avec la fonction `whatsapp`)** : KIRC se lie à votre compte comme un appareil de plus (code à scanner dans la fenêtre des messages) ; les groupes sont dans le menu principal, les conversations s'ouvrent à l'arrivée d'un message ou par `/query numéro`. **Client non officiel** : WhatsApp n'autorise pas les clients tiers, le compte peut être suspendu. Texte seulement (les images, vidéos et fichiers apparaissent comme `[image]`, etc.), pas d'appels.
 
 Fermer la fenêtre d'un **salon** le quitte (comme dans la plupart des clients) ; fermer celle d'une conversation privée ne fait que la fermer.
 
@@ -49,7 +50,8 @@ Prérequis : Rust (MSVC), Node.js 20 ou plus, Python 3 (outils seulement). WebVi
 npm install
 npm run dev                 # lance l'application en mode développement
 npm run build               # installateur NSIS dans src-tauri/target/release/bundle/nsis/
-cd src-tauri && cargo test  # 87 tests unitaires + 4 tests réseau
+cd src-tauri && cargo test  # tests unitaires + 4 tests réseau
+cd src-tauri && cargo build --features whatsapp   # avec WhatsApp (Rust 1.94 ou plus)
 node tests/e2e.mjs          # test de bout en bout de la vraie application (voir ci-dessous)
 python tools/gen_assets.py  # régénère polices et pictogrammes (fichiers versionnés)
 python tools/gen_themes.py  # régénère ui/themes.css
@@ -63,6 +65,8 @@ python tools/gen_themes.py  # régénère ui/themes.css
 src-tauri/src/irc/message.rs   format des lignes IRC (analyse, écriture, découpage)
 src-tauri/src/irc/session.rs   le protocole comme machine à états pure (testée sans réseau)
 src-tauri/src/irc/net.rs       connexion TCP/TLS, limiteur de débit, délais, reconnexion
+src-tauri/src/chat/            ce que tout protocole a en commun : événements, commandes, capacités
+src-tauri/src/whatsapp/        WhatsApp (fonction facultative) : registre des conversations, moteur
 src-tauri/src/app.rs           état, serveurs, fenêtres sans bordure et leur mémoire
 src-tauri/src/commands.rs      ce que les pages peuvent appeler
 src-tauri/src/config.rs        carnet d'adresses et réglages (JSON), secrets.rs : coffre Windows

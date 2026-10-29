@@ -48,15 +48,22 @@
       <div class="main">
         <div class="scroll">
           <form class="form" id="serverForm" autocomplete="off" spellcheck="false">
-            <label for="fPreset">Modèle</label>
-            <select class="text-input" id="fPreset">
+            <label for="fProto" id="lProto" hidden>Protocole</label>
+            <select class="text-input" id="fProto" hidden></select>
+            <label for="fPreset" data-proto="irc">Modèle</label>
+            <select class="text-input" id="fPreset" data-proto="irc">
               <option value="">— Choisir un réseau —</option>
               <option value="Libera.Chat|irc.libera.chat|6697">Libera.Chat</option>
               <option value="OFTC|irc.oftc.net|6697">OFTC</option>
               <option value="Rizon|irc.rizon.net|6697">Rizon</option>
               <option value="IRCnet|open.ircnet.net|6697">IRCnet</option>
             </select>
-            <fieldset class="grp"><legend>Serveur</legend>
+            <fieldset class="grp" data-proto="whatsapp" hidden><legend>WhatsApp</legend>
+            <label for="fWaName">Nom</label><input class="text-input" id="fWaName" maxlength="60" placeholder="WhatsApp">
+            <div class="hint">Client non officiel : WhatsApp n'autorise pas les clients tiers, et un compte qui en utilise un peut être suspendu. KIRC se lie à votre compte comme un appareil de plus (WhatsApp, Réglages, Appareils connectés). Après « Connecter », un code s'affiche dans la fenêtre des messages : scannez-le avec le téléphone.</div>
+            <div class="hint">Pour délier l'appareil : tapez /logout dans la fenêtre des messages, ou retirez-le depuis le téléphone. Supprimer ce compte efface la session de KIRC mais ne délie pas l'appareil.</div>
+            </fieldset>
+            <fieldset class="grp" data-proto="irc"><legend>Serveur</legend>
             <label for="fName">Nom</label><input class="text-input" id="fName" maxlength="60">
             <label for="fHost">Adresse</label><input class="text-input" id="fHost" maxlength="253" placeholder="irc.exemple.org">
             <label for="fPort">Port</label>
@@ -69,13 +76,13 @@
             <label for="fServerPass">Mot de passe</label><input class="text-input" id="fServerPass" type="password" maxlength="200" placeholder="(serveur protégé seulement)">
             <label class="chk-row col2" id="rowForgetPass" hidden><span class="switch"><input type="checkbox" id="fForgetPass"><span class="track"></span></span>Oublier le mot de passe enregistré</label>
             </fieldset>
-          <fieldset class="grp"><legend>Identité</legend>
+          <fieldset class="grp" data-proto="irc"><legend>Identité</legend>
             <label for="fNick">Pseudo</label><input class="text-input" id="fNick" maxlength="30" placeholder="(réglages par défaut)">
             <label for="fAlt">Pseudo de secours</label><input class="text-input" id="fAlt" maxlength="30">
             <label for="fUser">Identifiant</label><input class="text-input" id="fUser" maxlength="30">
             <label for="fReal">Nom réel</label><input class="text-input" id="fReal" maxlength="100">
             </fieldset>
-          <fieldset class="grp"><legend>Authentification</legend>
+          <fieldset class="grp" data-proto="irc"><legend>Authentification</legend>
             <label for="fAuth">Méthode</label>
             <select class="text-input" id="fAuth">
               <option value="none">Aucune</option>
@@ -90,7 +97,7 @@
           <fieldset class="grp"><legend>Connexion</legend>
             <span class="lbl"></span>
             <label class="chk-row"><span class="switch"><input type="checkbox" id="fAuto"><span class="track"></span></span>Se connecter au démarrage de KIRC</label>
-            <label for="fJoin">Salons</label><textarea class="text-input" id="fJoin" rows="3" placeholder="#salon, #autre clé"></textarea>
+            <label for="fJoin" data-proto="irc">Salons</label><textarea class="text-input" id="fJoin" rows="3" placeholder="#salon, #autre clé" data-proto="irc"></textarea>
           </fieldset>
           </form>
         </div>
@@ -241,6 +248,7 @@
     <div class="tb"><button class="tb-btn tb-l" data-act="close" data-glyph="x" title="Fermer" aria-label="Fermer"></button><button class="tb-btn tb-m" data-act="menu" title="Menu de la fenêtre" aria-label="Menu de la fenêtre"></button><span class="tb-title" data-title>Messages</span><button class="tb-btn tb-r2" data-act="zoom" data-glyph="plus" title="Agrandir" aria-label="Agrandir"></button><button class="tb-btn tb-r" data-act="shade" data-glyph="minus" title="Enrouler" aria-label="Enrouler"></button></div>
     <div class="cb chat">
       <div class="status" id="consoleStatus"><span class="dot"></span><span id="consoleStatusText"></span></div>
+      <div class="pairing" id="pairing" hidden><canvas id="pairCanvas" width="1" height="1"></canvas><div class="pairing-text">Scannez ce code avec WhatsApp sur votre téléphone : Réglages, Appareils connectés, Connecter un appareil. Il se renouvelle tout seul.</div></div>
       <div class="chat-main"><div class="log" id="consoleLog" tabindex="0"></div></div>
       <form class="inputbar" id="consoleForm" autocomplete="off">
         <input class="text-input" id="consoleInput" maxlength="2000" spellcheck="false" placeholder="/join #salon · /msg pseudo texte · /aide">

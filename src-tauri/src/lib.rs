@@ -10,6 +10,7 @@ pub mod switcher;
 pub mod tabs;
 pub mod text;
 pub mod update;
+pub mod whatsapp;
 
 use app::{App, Kind};
 use std::time::Duration;

@@ -408,6 +408,21 @@ async function main() {
   check(((await inv("save_server", { entry: { ...known, id: "", name: "Inconnu", protocol: "telegram" } })).err || "").includes("Protocole inconnu"), "a server of an unknown protocol is refused");
   check(await chat.eval("[...document.querySelectorAll('#memberList .mem')].length > 0"), "the member list still fills through the renamed event");
 
+  console.log("pairing code (the window of the messages draws what an account to link would send)");
+  const fakeCode = { size: 21, modules: "10".repeat(221).slice(0, 441), seconds: 60 };
+  const fromServer = event => con.eval(`window.__TAURI__.event.emit("chat", { server: ${JSON.stringify(known.id)}, seq: 999999, event: ${JSON.stringify(event)} })`);
+  await fromServer({ kind: "pairing", code: fakeCode });
+  await until(() => con.eval("!document.querySelector('#pairing').hidden && document.querySelector('#pairCanvas').width === (21 + 8) * 5"), "the code to scan is drawn");
+  await con.shot("23-pairing");
+  await fromServer({ kind: "pairing", code: { size: 21, modules: "12", seconds: 60 } });
+  await sleep(300);
+  check(await con.eval("document.querySelector('#pairing').hidden"), "a malformed code is not drawn");
+  await fromServer({ kind: "pairing", code: fakeCode });
+  await fromServer({ kind: "paired" });
+  await until(() => con.eval("document.querySelector('#pairing').hidden"), "the code goes away once the account is linked");
+  check(await book.eval("document.querySelector('#fProto').hidden"), "the address book offers no protocol choice when the build has only one");
+  check(await book.eval("document.querySelector('#fHost').closest('fieldset').hidden === false && document.querySelector('#fWaName').closest('fieldset').hidden === true"), "the form shows the IRC fields and hides the WhatsApp ones");
+
   console.log("tabs: merging two windows");
   const labelOf = p => p.eval("window.__TAURI_INTERNALS__.metadata.currentWindow.label");
   const [chatLabel, conLabel] = [await labelOf(chat), await labelOf(con)];

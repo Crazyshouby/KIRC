@@ -2,7 +2,7 @@
 //! and, per buffer, the topic, the member list and the recent lines. It is fed
 //! by the same events as the pages, so both always agree.
 
-use crate::chat::event::{ChannelEntry, ConnState, Event, Line, UserEntry, WhoisInfo};
+use crate::chat::event::{ChannelEntry, ConnState, Event, Line, PairingCode, UserEntry, WhoisInfo};
 use crate::chat::fold;
 use serde::Serialize;
 use std::collections::{HashMap, VecDeque};
@@ -37,6 +37,8 @@ pub struct ServerState {
     pub nick: String,
     pub network: String,
     pub away: bool,
+    /// The code to scan to link the account, while there is one.
+    pub pairing: Option<PairingCode>,
     /// Counts the events applied: a page that fetched a snapshot ignores older events.
     pub seq: u64,
     channel_list: Vec<ChannelEntry>,
@@ -71,6 +73,7 @@ pub struct ServerSummary {
     pub nick: String,
     pub network: String,
     pub away: bool,
+    pub pairing: Option<PairingCode>,
     pub channels: Vec<String>,
     /// Buffers with lines nobody looked at yet.
     pub activity: Vec<Activity>,
@@ -86,6 +89,7 @@ impl ServerState {
             nick: String::new(),
             network: String::new(),
             away: false,
+            pairing: None,
             seq: 0,
             channel_list: Vec::new(),
             list_loading: false,
@@ -129,6 +133,7 @@ impl ServerState {
             nick: self.nick.clone(),
             network: self.network.clone(),
             away: self.away,
+            pairing: self.pairing.clone(),
             channels,
         }
     }
@@ -211,6 +216,9 @@ impl ServerState {
             Event::Status { state, text } => {
                 self.status = *state;
                 self.status_text = text.clone();
+                if *state == ConnState::Disconnected {
+                    self.pairing = None;
+                }
             }
             Event::Line { line } => {
                 let cap = self.scrollback;
@@ -245,6 +253,15 @@ impl ServerState {
             Event::Query { buffer } => {
                 self.buf(buffer);
             }
+            // a group (named like a channel) is "joined"; a private chat is just known
+            Event::Listed { buffer } => {
+                let channel = buffer.starts_with(['#', '&', '+', '!']);
+                let b = self.buf(buffer);
+                b.joined |= channel;
+            }
+            Event::Backlog { .. } => {}
+            Event::Pairing { code } => self.pairing = Some(code.clone()),
+            Event::Paired => self.pairing = None,
             Event::Me { nick, network } => {
                 self.nick = nick.clone();
                 if !network.is_empty() {
@@ -300,6 +317,37 @@ mod tests {
         assert_eq!(s.snapshot("#b").lines.len(), 1);
         s.set_scrollback(1);
         assert_eq!(s.snapshot("#a").lines.len(), 1);
+    }
+
+    #[test]
+    fn a_listed_chat_is_in_the_menu_without_losing_its_members() {
+        let mut s = ServerState::new(100);
+        s.apply(&Event::UserSet { buffer: "#Famille".into(), user: UserEntry { nick: "Alice".into(), modes: "".into(), away: false } });
+        s.apply(&Event::Listed { buffer: "#Famille".into() });
+        assert_eq!(s.summary().channels, vec!["#Famille"]);
+        assert_eq!(s.snapshot("#famille").users.len(), 1, "Listed does not clear the members, unlike Joined");
+    }
+
+    #[test]
+    fn a_listed_private_chat_is_a_conversation_not_a_channel() {
+        let mut s = ServerState::new(100);
+        s.apply(&Event::Listed { buffer: "Alice".into() });
+        let sum = s.summary();
+        assert_eq!(sum.queries, vec!["Alice"]);
+        assert!(sum.channels.is_empty());
+    }
+
+    #[test]
+    fn the_pairing_code_lives_until_linking_ends_or_the_link_drops() {
+        let mut s = ServerState::new(100);
+        let code = PairingCode { size: 2, modules: "1001".into(), seconds: 60 };
+        s.apply(&Event::Pairing { code: code.clone() });
+        assert_eq!(s.summary().pairing, Some(code.clone()));
+        s.apply(&Event::Paired);
+        assert_eq!(s.summary().pairing, None);
+        s.apply(&Event::Pairing { code });
+        s.apply(&Event::Status { state: ConnState::Disconnected, text: String::new() });
+        assert_eq!(s.summary().pairing, None);
     }
 
     #[test]

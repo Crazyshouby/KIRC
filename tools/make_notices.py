@@ -32,7 +32,7 @@ KIRC est distribué sous licence MIT (fichier LICENSE).
 def crates():
     out = subprocess.run(
         ["cargo", "metadata", "--format-version", "1", "--filter-platform", "x86_64-pc-windows-msvc",
-         "--manifest-path", str(root / "src-tauri" / "Cargo.toml")],
+         "--all-features", "--manifest-path", str(root / "src-tauri" / "Cargo.toml")],
         capture_output=True, encoding="utf-8", check=True).stdout
     meta = json.loads(out)
     reachable = {n["id"] for n in meta["resolve"]["nodes"]}

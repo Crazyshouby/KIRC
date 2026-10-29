@@ -27,6 +27,8 @@ pub struct Overview {
     settings: Settings,
     servers: Vec<ServerView>,
     states: HashMap<String, ServerSummary>,
+    /// The protocols of this build, for the address book.
+    protocols: Vec<crate::chat::ProtocolInfo>,
 }
 
 #[derive(Serialize)]
@@ -71,7 +73,7 @@ pub async fn get_overview(state: State<'_, App>) -> R<Overview> {
         })
         .collect();
     let states = state.states.lock().unwrap().iter().map(|(k, v)| (k.clone(), v.summary())).collect();
-    Ok(Overview { settings, servers, states })
+    Ok(Overview { settings, servers, states, protocols: Protocol::available() })
 }
 
 #[derive(Serialize)]
@@ -103,6 +105,7 @@ pub async fn save_server(state: State<'_, App>, entry: ServerEntry, pass: Option
 pub async fn delete_server(app: AppHandle, state: State<'_, App>, id: String) -> R<bool> {
     app::stop_server(&app, &id);
     state.config.lock().unwrap().remove_server(&id);
+    crate::whatsapp::forget_files(&state.dir, &id);
     state.states.lock().unwrap().remove(&id);
     state.mark_dirty();
     state.flush();

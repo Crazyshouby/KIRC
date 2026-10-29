@@ -12,7 +12,7 @@ use session::{Session, SessionConfig};
 
 /// Prepares one IRC server of the address book: its session (nick, authentication, channels) and its connection.
 pub fn launch(start: Start) -> Task {
-    let Start { id, entry, settings, sink, commands } = start;
+    let Start { id, entry, settings, sink, commands, .. } = start;
     let pick = |own: &str, default: &str| if own.trim().is_empty() { default.to_string() } else { own.trim().to_string() };
     let nick = pick(&entry.nick, &settings.nick);
     let alt = pick(&entry.alt_nick, &settings.alt_nick);

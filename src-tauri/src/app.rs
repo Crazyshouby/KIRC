@@ -175,6 +175,17 @@ fn handle_event(app: &AppHandle, server: &str, ev: Event) {
     // Is somebody looking at the window of the buffer a line belongs to?
     // Asked before taking any lock: `is_focused` waits for the main thread, which may itself be
     // waiting for the state lock (a window gaining focus marks its buffer as read).
+    // Older lines from the account's history: into the log only, so no notification and no unread counter.
+    if let Event::Backlog { lines, .. } = &ev {
+        if log_enabled {
+            if let Some(name) = &server_name {
+                for line in lines {
+                    st.logger.log(name, line);
+                }
+            }
+        }
+        return;
+    }
     let watched = match &ev {
         Event::Line { line } if !line.buffer.is_empty() => app
             .get_webview_window(&Kind::Chat(server.to_string(), line.buffer.clone()).label())
@@ -239,6 +250,10 @@ fn handle_event(app: &AppHandle, server: &str, ev: Event) {
         Event::ListStart => {
             let _ = open(app, Kind::List(server.to_string()), st.recent_input());
         }
+        // The code to link an account is shown in the window of the server's messages.
+        Event::Pairing { .. } => {
+            let _ = open(app, Kind::Console(server.to_string()), true);
+        }
         _ => {}
     }
 
@@ -286,7 +301,7 @@ pub fn start_server(app: &AppHandle, id: &str) -> Result<(), String> {
     let open_console = settings.open_console;
     let sink = std::sync::Arc::new(AppSink { app: app.clone(), server: id.to_string() });
     // The protocol reads its credentials (the credential manager can take a moment) and returns what runs the account.
-    let task = match chat::launch(chat::Start { id: id.to_string(), entry, settings, sink, commands: rx }) {
+    let task = match chat::launch(chat::Start { dir: st.dir.clone(), id: id.to_string(), entry, settings, sink, commands: rx }) {
         Ok(task) => task,
         Err(e) => {
             st.servers.lock().unwrap().remove(id);

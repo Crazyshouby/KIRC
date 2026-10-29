@@ -121,6 +121,14 @@ pub fn file_path(root: &Path, server: &str, buffer: &str) -> PathBuf {
     root.join(sanitize(server)).join(format!("{}.log", sanitize(&fold(buffer))))
 }
 
+/// A conversation was renamed: its log follows (nothing happens if the new name already has a log).
+pub fn rename_buffer(root: &Path, server: &str, old: &str, new: &str) {
+    let (from, to) = (file_path(root, server, old), file_path(root, server, new));
+    if from != to && from.exists() && !to.exists() {
+        let _ = fs::rename(from, to);
+    }
+}
+
 fn clock(ms: i64) -> String {
     Local.timestamp_millis_opt(ms).single().map_or_else(|| "1970-01-01 00:00:00".into(), |t| t.format(TIME_FORMAT).to_string())
 }

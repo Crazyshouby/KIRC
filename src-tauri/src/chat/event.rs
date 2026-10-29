@@ -89,6 +89,16 @@ pub struct ChannelEntry {
     pub topic: String,
 }
 
+/// A code to scan with the phone to link an account: `modules` is the square of the code, row by row, '1' for a dark
+/// module and '0' for a light one (the page draws it; no markup travels).
+#[derive(Serialize, Clone, Debug, PartialEq, Eq)]
+pub struct PairingCode {
+    pub size: u16,
+    pub modules: String,
+    /// How long this code stays valid.
+    pub seconds: u32,
+}
+
 #[derive(Serialize, Clone, Debug)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum Event {
@@ -105,6 +115,15 @@ pub enum Event {
     Parted { buffer: String },
     /// A private conversation exists: its window opens.
     Query { buffer: String },
+    /// A chat the account belongs to exists, but nobody asked for its window: it is listed in the main menu.
+    Listed { buffer: String },
+    /// Older lines of a chat, from the account's history: written to the conversation log (and shown when its window
+    /// opens), without notifications or unread counters.
+    Backlog { buffer: String, lines: Vec<Line> },
+    /// The account is to be linked: scan this code with the phone.
+    Pairing { code: PairingCode },
+    /// Linking is over (done, or given up).
+    Paired,
     /// Our own nick and the network name as the server announces it.
     Me { nick: String, network: String },
     /// We are marked away (or not any more).
