@@ -81,4 +81,4 @@ tools/                         générateur de pictogrammes, serveur IRC factice
 
 ## Licence
 
-MIT — voir [LICENSE](LICENSE). Polices Archivo et Overpass Mono sous licence SIL OFL 1.1 (`third_party/fonts`). KDX est une marque de Haxial ; KIRC n'en reprend que l'apparence et n'est lié à Haxial d'aucune façon.
+MIT — voir [LICENSE](LICENSE). Les deux polices de l'interface sont reconstituées (`tools/gen_font.py`) d'après celles de KDX : voir `THIRD-PARTY-NOTICES.txt`. KDX est une marque de Haxial ; KIRC n'en reprend que l'apparence et n'est lié à Haxial d'aucune façon.

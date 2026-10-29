@@ -12,6 +12,8 @@ use std::path::{Path, PathBuf};
 pub struct ServerEntry {
     pub id: String,
     pub name: String,
+    /// The protocol of the account (see `chat::Protocol`); empty in entries saved before there were several.
+    pub protocol: String,
     pub host: String,
     pub port: u16,
     pub tls: bool,
@@ -36,6 +38,7 @@ impl Default for ServerEntry {
         ServerEntry {
             id: String::new(),
             name: String::new(),
+            protocol: "irc".into(),
             host: String::new(),
             port: 6697,
             tls: true,
@@ -66,6 +69,9 @@ impl ServerEntry {
     pub fn validate(&self) -> Result<(), String> {
         if self.name.trim().is_empty() {
             return Err("Donnez un nom à ce serveur".into());
+        }
+        if crate::chat::Protocol::parse(&self.protocol).is_none() {
+            return Err("Protocole inconnu".into());
         }
         let host = self.host.trim();
         if host.is_empty() {
@@ -111,6 +117,10 @@ pub struct Settings {
     /// Join, part, quit, nick lines in the channels.
     pub show_joins: bool,
     pub show_timestamps: bool,
+    /// Small (16 px) tiles and rows in the member lists, like KDX's "Use Small Icons In User Lists".
+    pub small_member_icons: bool,
+    /// Colours, bold and italic tell the kinds of lines of a transcript apart (off: all green, as in KDX).
+    pub colored_chat: bool,
     /// Messages kept per window (50 to 5000).
     pub scrollback: u32,
     /// Open the server's console window when connecting.
@@ -143,7 +153,9 @@ impl Default for Settings {
             notifications: true,
             open_queries: true,
             show_joins: true,
-            show_timestamps: true,
+            show_timestamps: false,
+            small_member_icons: true,
+            colored_chat: true,
             scrollback: 1000,
             open_console: true,
             theme: "kdx".into(),
@@ -322,6 +334,22 @@ mod tests {
         let d = std::env::temp_dir().join(format!("kirc-test-{name}-{}", std::process::id()));
         let _ = fs::remove_dir_all(&d);
         d
+    }
+
+    #[test]
+    fn a_server_saved_before_protocols_existed_is_irc() {
+        let old: ServerEntry = serde_json::from_str(r#"{"id":"s1","name":"Ancien","host":"irc.example.org","port":6697}"#).unwrap();
+        assert_eq!(old.protocol, "irc");
+        assert!(old.validate().is_ok());
+        let blank = ServerEntry { protocol: String::new(), ..old };
+        assert!(blank.validate().is_ok(), "an empty protocol means IRC");
+    }
+
+    #[test]
+    fn an_unknown_protocol_is_refused() {
+        let mut e = entry("a", "h");
+        e.protocol = "telegram".into();
+        assert_eq!(e.validate(), Err("Protocole inconnu".to_string()));
     }
 
     #[test]

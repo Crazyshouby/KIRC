@@ -2,8 +2,8 @@
 //! and, per buffer, the topic, the member list and the recent lines. It is fed
 //! by the same events as the pages, so both always agree.
 
-use crate::irc::event::{ChannelEntry, ConnState, Event, Line, UserEntry, WhoisInfo};
-use crate::irc::session::fold;
+use crate::chat::event::{ChannelEntry, ConnState, Event, Line, UserEntry, WhoisInfo};
+use crate::chat::fold;
 use serde::Serialize;
 use std::collections::{HashMap, VecDeque};
 
@@ -280,7 +280,7 @@ impl ServerState {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::irc::event::LineKind;
+    use crate::chat::event::LineKind;
 
     fn line(buffer: &str, text: &str) -> Event {
         Event::Line {
@@ -366,7 +366,7 @@ mod query_tests {
         s.apply(&Event::Joined { buffer: "#a".into() });
         s.apply(&Event::Parted { buffer: "#a".into() });
         s.apply(&Event::Joined { buffer: "#b".into() });
-        let line = Line { buffer: String::new(), kind: crate::irc::event::LineKind::Info, nick: String::new(), text: "x".into(), time: 0, highlight: false, own: false, msgid: String::new(), reply_to: String::new() };
+        let line = Line { buffer: String::new(), kind: crate::chat::event::LineKind::Info, nick: String::new(), text: "x".into(), time: 0, highlight: false, own: false, msgid: String::new(), reply_to: String::new() };
         s.apply(&Event::Line { line });
         let sum = s.summary();
         assert_eq!(sum.queries, vec!["Bob"]);

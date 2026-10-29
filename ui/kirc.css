@@ -2,19 +2,21 @@
    (index.html) opened with ?w=<kind>; html[data-panel] picks the one that shows.
    Colours and controls come from theme.css (the KDX look). */
 
-/* Scroll bars: dark track, bevelled thumb, small arrow buttons. */
-::-webkit-scrollbar { width: 11px; height: 11px; }
-::-webkit-scrollbar-track { background: #333; box-shadow: inset 1px 0 0 #000; }
-::-webkit-scrollbar-thumb { background: var(--btn); border: 1px solid #000; border-radius: 2px; box-shadow: var(--bevel); }
+/* Scroll bars as in KDX: 15 px wide, a pair of arrow buttons at each end, a bevelled thumb with grip lines. */
+::-webkit-scrollbar { width: 15px; height: 15px; }
+::-webkit-scrollbar-track { background: #333; box-shadow: inset 1px 1px 0 #111; }
+::-webkit-scrollbar-thumb { background-color: var(--btn); border: 1px solid #000; border-radius: 2px; box-shadow: var(--bevel); background-repeat: no-repeat; background-position: center; }
+::-webkit-scrollbar-thumb:vertical { background-image: repeating-linear-gradient(#999 0 1px, transparent 1px 2px); background-size: 7px 5px; }
+::-webkit-scrollbar-thumb:horizontal { background-image: repeating-linear-gradient(90deg, #999 0 1px, transparent 1px 2px); background-size: 5px 7px; }
 ::-webkit-scrollbar-corner { background: #333; }
-::-webkit-scrollbar-button:single-button {
-  display: block; width: 11px; height: 11px; background-color: #3a3a3a; background-repeat: no-repeat; background-position: center;
+::-webkit-scrollbar-button {
+  display: block; width: 15px; height: 15px; background-color: var(--btn); background-repeat: no-repeat; background-position: center;
   border: 1px solid #000; box-shadow: var(--bevel);
 }
-::-webkit-scrollbar-button:vertical:start:decrement { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='7' height='5'%3E%3Cpath d='M0 5h7L3.5 0z' fill='%23fff'/%3E%3C/svg%3E"); }
-::-webkit-scrollbar-button:vertical:end:increment { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='7' height='5'%3E%3Cpath d='M0 0h7L3.5 5z' fill='%23fff'/%3E%3C/svg%3E"); }
-::-webkit-scrollbar-button:horizontal:start:decrement { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='5' height='7'%3E%3Cpath d='M5 0v7L0 3.5z' fill='%23fff'/%3E%3C/svg%3E"); }
-::-webkit-scrollbar-button:horizontal:end:increment { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='5' height='7'%3E%3Cpath d='M0 0v7l5-3.5z' fill='%23fff'/%3E%3C/svg%3E"); }
+::-webkit-scrollbar-button:vertical:decrement { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='4'%3E%3Cpath d='M0 4h8L4 0z' fill='%23888'/%3E%3C/svg%3E"); }
+::-webkit-scrollbar-button:vertical:increment { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='4'%3E%3Cpath d='M0 0h8L4 4z' fill='%23888'/%3E%3C/svg%3E"); }
+::-webkit-scrollbar-button:horizontal:decrement { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='8'%3E%3Cpath d='M4 0v8L0 4z' fill='%23888'/%3E%3C/svg%3E"); }
+::-webkit-scrollbar-button:horizontal:increment { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='8'%3E%3Cpath d='M0 0v8l4-4z' fill='%23888'/%3E%3C/svg%3E"); }
 
 /* Orbs: round status lamps (green = connected, amber = busy, grey = off). */
 .orb { width: 11px; height: 11px; border-radius: 50%; flex: none; background: radial-gradient(circle at 35% 30%, #8a8a8a, #3a3a3a 60%, #1c1c1c); }
@@ -27,7 +29,7 @@
 .status {
   display: flex; align-items: center; gap: 8px; min-width: 0; background: var(--ink);
   border: 2px solid var(--red-frame); padding: 5px 9px; color: var(--field-ink);
-  font: 600 12px "Overpass Mono", Consolas, monospace; font-stretch: 100%;
+  font: 14px/16px var(--font);
 }
 .status > span:last-child { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .status .dot { width: 11px; height: 11px; border-radius: 50%; flex: none; background: radial-gradient(circle at 35% 30%, #8a8a8a, #3a3a3a 60%, #1c1c1c); }
@@ -39,25 +41,25 @@
 .primary {
   position: relative; font: inherit; font-weight: 700; color: #fff; cursor: pointer; height: 28px; padding: 0 16px;
   background: var(--btn); border: 1px solid #000; border-radius: 3px; margin: 0 4px;
-  box-shadow: var(--bevel), 0 0 0 1px #000, 0 0 0 2px var(--a-edge), 0 0 0 3px var(--a-mid), 0 0 0 4px #000;
+  box-shadow: var(--bevel), 0 0 0 1px #000, 0 0 0 2px var(--a-mid), 0 0 0 3px var(--a-edge), 0 0 0 4px #000;
 }
 .primary:hover:not(:disabled) { background: #3b3b3b; }
 .primary:active:not(:disabled) { background: #2a2a2a; }
-.primary:disabled { cursor: default; color: #7a7a7a; }
+.primary:disabled { cursor: default; color: #888888; }
 .primary:focus-visible { outline: 2px solid var(--warn); outline-offset: 2px; }
 .primary.quiet { box-shadow: var(--bevel); }
 
 /* ---------- Text inputs: black field, green text, red ring when focused ---------- */
 .text-input {
   flex: 1; min-width: 0; background: var(--ink); border: 2px solid #111;
-  color: var(--field-ink); padding: 4px 7px; font: 600 12px "Overpass Mono", Consolas, monospace; font-stretch: 100%;
+  color: var(--field-ink); padding: 4px 7px; font: 14px/16px var(--font);
   outline: none; caret-color: var(--bar-top); user-select: text;
 }
 .text-input:focus { border-color: var(--red-frame); }
 .text-input:focus-visible { outline: none; } /* the red ring is the focus mark */
 .text-input:disabled { opacity: 0.45; }
 .text-input::placeholder { color: var(--faint); }
-select.text-input { background: var(--btn); border: 1px solid #000; box-shadow: var(--bevel); color: var(--text); font: inherit; font-weight: 700; border-radius: 3px; user-select: none; }
+select.text-input { background-color: var(--btn); border: 1px solid #000; box-shadow: var(--bevel); color: var(--text); font: inherit; font-weight: 700; border-radius: 3px; user-select: none; }
 select.text-input option { background: #2a2a2a; color: #fff; }
 textarea.text-input { resize: none; line-height: 1.4; }
 
@@ -80,12 +82,12 @@ html[data-panel="all"] .win { width: 640px; height: 420px; }
 html[data-panel="all"] #launcherWin { width: 206px; height: 438px; }
 .grip-rz { display: none; }
 html[data-panel="servers"] .grip-rz, html[data-panel="settings"] .grip-rz, html[data-panel="console"] .grip-rz,
-html[data-panel="chat"] .grip-rz, html[data-panel="list"] .grip-rz, html[data-panel="all"] .grip-rz { display: block; }
+html[data-panel="launcher"] .grip-rz, html[data-panel="chat"] .grip-rz, html[data-panel="list"] .grip-rz, html[data-panel="all"] .grip-rz { display: block; }
 #app { height: 100%; }
 
 /* ---------- Launcher: the narrow button column of the main window ---------- */
 .launcher { background: #2a2a2a; gap: 6px; padding: 6px; }
-.launcher .status { padding: 5px 7px; font-size: 11px; }
+.launcher .status { padding: 5px 7px; }
 .lbtns { display: flex; flex-direction: column; gap: 1px; }
 .lbtn {
   position: relative; display: flex; align-items: center; gap: 8px; height: 24px; padding: 0 8px; text-align: left;
@@ -95,16 +97,27 @@ html[data-panel="chat"] .grip-rz, html[data-panel="list"] .grip-rz, html[data-pa
 .lbtn:hover:not(:disabled) { background: #3b3b3b; }
 .lbtn:focus-visible { outline: 2px solid var(--warn); outline-offset: 1px; }
 .lbtn:active:not(:disabled) { background: #2a2a2a; box-shadow: var(--bevel-down); }
-.lbtn:disabled { color: #7a7a7a; cursor: default; }
+.lbtn:disabled { color: #888888; cursor: default; }
 .lbtn .orb { position: absolute; right: 8px; top: 6px; }
 .lsel {
   width: 100%; height: 24px; padding: 0 6px; font: inherit; font-weight: 700; color: var(--text); cursor: pointer;
-  background: var(--btn); border: 1px solid #000; border-radius: 3px; box-shadow: var(--bevel);
+  background-color: var(--btn); border: 1px solid #000; border-radius: 3px; box-shadow: var(--bevel);
 }
 .lsel option { background: #2a2a2a; color: #fff; }
-.lsel:disabled { color: #7a7a7a; }
+.lsel:disabled { color: #888888; }
 .launcher .primary { width: calc(100% - 8px); margin: 6px 4px; }
-.counters { display: flex; justify-content: space-between; padding: 0 6px; margin-top: auto; color: var(--muted); font-size: 11px; }
+.counters { display: flex; justify-content: space-around; padding: 2px 6px 0; margin-top: auto; color: var(--text); }
+.counters .cnt { display: inline-flex; align-items: center; gap: 6px; }
+/* The banner on top of the button bar (KDX shows its dial there): a dark plate with a glow and the name. */
+.logo-art {
+  flex: none; height: 50px; display: grid; place-items: center; border: 1px solid #000; box-shadow: var(--bevel-down); overflow: hidden;
+  background: radial-gradient(ellipse 70% 90% at 50% 130%, #f58a1a 0, #8a3a00 38%, transparent 72%), linear-gradient(#050505, #2c2c2c);
+}
+.logo-art span {
+  font: 42px/1 var(--font); letter-spacing: 6px; padding-left: 6px;
+  color: transparent; background: linear-gradient(#fff 0, #b9b9b9 45%, #444 55%, #9a9a9a); -webkit-background-clip: text; background-clip: text;
+  filter: drop-shadow(0 1px 0 #000) drop-shadow(0 0 3px rgba(0, 0, 0, 0.8));
+}
 
 /* Lists: ruled rows, hover = peach, selected = navy, status = left bar. */
 .list { flex: 1; min-height: 0; overflow-y: auto; background: var(--panel); border: 1px solid #000; box-shadow: 0 1px 0 #555; }
@@ -116,23 +129,29 @@ html[data-panel="chat"] .grip-rz, html[data-panel="list"] .grip-rz, html[data-pa
 .row-item:focus-visible { outline: 2px solid var(--warn); outline-offset: -2px; }
 .row-item.sel { background: var(--sel-bg); color: var(--sel-fg); }
 .row-item .grow { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.row-item .sub { display: block; font: 600 10.5px "Overpass Mono", Consolas, monospace; font-stretch: 100%; color: var(--faint); }
+.row-item .sub { display: block; font: 14px/16px var(--font); color: var(--faint); }
 .row-item:hover .sub { color: var(--hover-fg); }
 .row-item.sel .sub { color: #b8b0ff; }
-.empty { color: var(--faint); text-align: center; padding: 22px 12px; font-size: 12px; font-weight: 600; }
+.empty { color: var(--faint); text-align: center; padding: 22px 12px; font-weight: 600; }
 .launcher .list { min-height: 60px; }
 
 /* ---------- Forms ---------- */
 .form { display: grid; grid-template-columns: 112px 1fr; gap: 7px 10px; align-items: center; }
-.form > label, .form .lbl { color: var(--muted); font-size: 12px; }
+.form label, .form .lbl { color: var(--text); }
+.form label[for]::after, .whois .lbl:not(:empty)::after { content: ":"; }
 .form .span2 { grid-column: 1 / -1; }
 .form .inline { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .form .col2 { grid-column: 2; }
 [hidden] { display: none !important; }
 .form .port { flex: none; width: 90px; }
-.form .hint { grid-column: 2; color: var(--faint); font-size: 11px; font-weight: 600; line-height: 1.4; margin-top: -3px; }
-.form h3 { grid-column: 1 / -1; font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--accent-2); padding-bottom: 3px; border-bottom: 1px solid var(--line); margin-top: 6px; }
-.form h3:first-child { margin-top: 0; }
+.form .hint { grid-column: 2; color: var(--faint); font-weight: 600; line-height: 1.4; margin-top: -3px; }
+/* A group: a box etched into the panel, its title set in the top edge (KDX's "File System" box). */
+.form .grp {
+  grid-column: 1 / -1; display: grid; grid-template-columns: 112px 1fr; gap: 7px 10px; align-items: center; min-width: 0;
+  border: 1px solid #111; box-shadow: 1px 1px 0 #555, inset 1px 1px 0 #555; padding: 12px 10px 10px; margin-top: 6px;
+}
+.form .grp > legend { padding: 0 6px; color: var(--text); }
+.form .panelbar { grid-column: 1 / -1; padding-bottom: 8px; border-bottom: 1px solid #111; box-shadow: 0 1px 0 #555; margin-bottom: 4px; }
 .form .chk-row { display: flex; align-items: center; gap: 8px; cursor: pointer; }
 .btns { display: flex; gap: 8px; justify-content: flex-end; flex: none; margin-top: 8px; align-items: center; }
 .btns .push { margin-right: auto; }
@@ -147,66 +166,71 @@ html[data-panel="chat"] .grip-rz, html[data-panel="list"] .grip-rz, html[data-pa
 /* Dialogs (join, about) */
 .dialog { gap: 10px; }
 .about { align-items: center; text-align: center; gap: 6px; justify-content: center; }
-.about .big { font-size: 22px; letter-spacing: 0.06em; color: #fff; text-shadow: 0 2px 0 #000; }
+.about .big { font-size: 28px; line-height: 32px; letter-spacing: 0.06em; color: #fff; text-shadow: 0 2px 0 #000; }
 .about .ver { color: var(--field-ink); }
-.about p { color: var(--muted); font-size: 11.5px; line-height: 1.5; max-width: 280px; }
-.about .path { color: var(--faint); font: 600 10.5px "Overpass Mono", Consolas, monospace; font-stretch: 100%; word-break: break-all; user-select: text; }
+.about p { color: var(--muted); line-height: 1.5; max-width: 280px; }
+.about .path { color: var(--faint); font: 14px/16px var(--font); word-break: break-all; user-select: text; }
 
 /* ---------- Chat and console windows ---------- */
 .chat { gap: 6px; padding: 6px; position: relative; }
-.topicbar {
-  display: flex; align-items: center; gap: 8px; flex: none; min-height: 24px; background: var(--ink); border: 2px solid var(--red-frame);
-  padding: 2px 8px; color: var(--field-ink); font: 600 12px "Overpass Mono", Consolas, monospace; font-stretch: 100%; cursor: default;
-}
-.topicbar .t { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.topicbar .text-input { border: 0; padding: 0; }
-.topicbar[hidden] { display: none; }
 .chat-main { flex: 1; min-height: 0; display: flex; gap: 6px; }
+.pane-l { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 6px; position: relative; }
 .log {
-  flex: 1; min-width: 0; overflow-y: auto; overflow-x: hidden; background: var(--ink); border: 2px solid #111; padding: 4px 0;
-  font: 600 12px/1.45 "Overpass Mono", Consolas, monospace; font-stretch: 100%; color: var(--field-ink); user-select: text; cursor: text;
+  flex: 1; min-width: 0; min-height: 0; overflow-y: auto; overflow-x: hidden; background: var(--ink); border: 2px solid #111; padding: 4px 0;
+  font: 14px/16px var(--font); color: var(--field-ink); user-select: text; cursor: text;
 }
 .log:focus { outline: none; border-color: var(--red-frame); }
+/* Everything in the transcript is bright green on black, as in KDX; only errors and kicks are red. */
 .ln { padding: 0 8px 0 6px; white-space: pre-wrap; overflow-wrap: anywhere; border-left: 3px solid transparent; }
-.ln .ts { color: #7f8c8f; margin-right: 6px; user-select: none; }
+.ln .ts { color: #888888; margin-right: 6px; user-select: none; }
 .ln .nk { margin-right: 6px; font-weight: 700; }
-.ln.own .nk { color: #fff !important; }
-.ln.action { color: #ff5cf0; }
-.ln.action .nk { margin-right: 0; }
-.ln.notice { color: var(--warn); }
-.ln.join, .ln.part, .ln.quit, .ln.nick, .ln.info, .ln.raw { color: #a7afb2; }
-.ln.join { color: #8cc88c; }
 .ln.kick { color: var(--red); }
-.ln.mode, .ln.topic { color: #86a6ff; }
 .ln.error { color: var(--red); border-left-color: var(--red); }
-.ln.motd { color: #00c000; }
 .ln.hl { background: var(--sel-bg); border-left-color: var(--sel-fg); }
 .ln.hl .tx { color: #fff; }
 .ln.sep { border-top: 1px solid var(--a-hover); margin-top: 3px; padding-top: 3px; }
 body.nojoins .ln.join, body.nojoins .ln.part, body.nojoins .ln.quit, body.nojoins .ln.nick { display: none; }
 body.nots .ln .ts { display: none; }
-.ln .fmt-b { font-weight: 800; }
+.ln .fmt-b { text-shadow: 1px 0 0 currentColor; } /* bold: a pixel font has one weight, so thicken by one pixel */
 .ln a.link { color: #5cf0ff; text-decoration: underline; cursor: pointer; }
 .ln a.link:hover { color: #fff; }
-.newmsg { position: absolute; right: 190px; bottom: 54px; z-index: 6; }
+.newmsg { position: absolute; right: 18px; bottom: 84px; z-index: 6; }
 .newmsg[hidden] { display: none; }
 
-.members { width: 168px; flex: none; display: flex; flex-direction: column; gap: 4px; min-height: 0; }
+.members { width: 34%; min-width: 150px; max-width: 320px; flex: none; display: flex; flex-direction: column; min-height: 0; }
 .members[hidden] { display: none; }
-.mem-h { flex: none; display: flex; justify-content: space-between; color: var(--muted); font-size: 11px; padding: 0 2px; }
-.mem { display: flex; align-items: center; gap: 4px; padding: 2px 6px 2px 5px; border-left: 6px solid transparent; border-bottom: 1px solid var(--line); cursor: default; white-space: nowrap; overflow: hidden; }
-.mem .sym { width: 11px; flex: none; text-align: center; font: 700 12px "Overpass Mono", Consolas, monospace; font-stretch: 100%; }
-.mem .nm { overflow: hidden; text-overflow: ellipsis; }
-.mem:hover { background: var(--accent-2); color: var(--hover-fg); }
-.mem.away { background: var(--away-bg); color: var(--faint); }
-.mem.away:hover { background: var(--accent-2); color: var(--hover-fg); }
-.mem.r0 { border-left-color: #ff5cf0; } .mem.r1 { border-left-color: #ff8a3c; } .mem.r2 { border-left-color: #ff5a4a; }
-.mem.r3 { border-left-color: #faa320; } .mem.r4 { border-left-color: #18a828; }
+.mem-h { display: none; }
+.members .list { border: 2px solid #111; box-shadow: none; background: var(--ink); }
+/* A member: 8 px class bar (the rank), a 32 px tile for the icon, the name in its own colour; white rule between rows. */
+.mem {
+  display: flex; align-items: center; gap: 5px; height: 33px; padding: 0 8px 0 0; border-left: 8px solid #000; border-bottom: 1px solid #fff;
+  cursor: default; white-space: nowrap; overflow: hidden; background: var(--ink);
+}
+.mem::before {
+  content: attr(data-ini); flex: none; width: 32px; height: 32px; display: grid; place-items: center; margin-right: 1px; text-transform: uppercase;
+  font: 28px/1 var(--font); color: #fff; text-shadow: 0 1px 0 #000;
+  background: color-mix(in srgb, var(--nc, #888) 42%, #000); box-shadow: inset 1px 1px 0 rgba(255, 255, 255, 0.35), inset -1px -1px 0 rgba(0, 0, 0, 0.6);
+}
+.mem .sym { width: 11px; flex: none; text-align: center; font: 14px/16px var(--font); color: var(--nc, var(--text)); }
+.mem .nm { overflow: hidden; text-overflow: ellipsis; color: var(--nc, var(--text)); }
+.mem.away { background: var(--away-bg); }
+.mem.away .nm { color: var(--faint); }
+.mem.away .nm::after { content: "   \25B6  absent"; color: var(--faint); font-weight: 600; }
+.mem:hover { background: var(--accent-2); }
+.mem:hover .nm, .mem:hover .sym { color: var(--hover-fg); }
+.mem.r0 { border-left-color: #ff5cf0; } .mem.r1 { border-left-color: #ff8a3c; } .mem.r2 { border-left-color: #ff3030; }
+.mem.r3 { border-left-color: #faa320; } .mem.r4 { border-left-color: #2a5ae0; }
 
 .inputbar { display: flex; gap: 6px; align-items: stretch; flex: none; }
-.mynick { flex: none; display: flex; align-items: center; gap: 6px; padding: 0 8px; background: var(--ink); border: 2px solid #111; color: var(--accent-2); max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font: 600 12px "Overpass Mono", Consolas, monospace; font-stretch: 100%; }
-.inputbar .text-input { padding: 5px 8px; }
-.banner { display: flex; align-items: center; gap: 10px; flex: none; background: var(--ink); border: 2px solid var(--red-frame); color: var(--warn); padding: 4px 9px; font: 600 11.5px/1.4 "Overpass Mono", Consolas, monospace; font-stretch: 100%; }
+.inputbar .text-input { padding: 4px 7px; height: 56px; resize: none; line-height: 1.4; }
+/* Under it: the "Topic:" button, the topic, and our own nick at the end. */
+.topicrow { display: flex; align-items: center; gap: 8px; flex: none; min-height: 22px; cursor: default; }
+.topicrow[hidden] { display: none; }
+.topicrow .tbtn { min-height: 20px; padding: 0 10px; flex: none; }
+.topicrow .t { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text); font-weight: 700; }
+.topicrow .text-input { padding: 2px 6px; }
+.mynick { flex: none; max-width: 40%; color: var(--accent-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font: 14px/16px var(--font); }
+.banner { display: flex; align-items: center; gap: 10px; flex: none; background: var(--ink); border: 2px solid var(--red-frame); color: var(--warn); padding: 4px 9px; font: 14px/16px var(--font); }
 .banner[hidden] { display: none; }
 .banner .t { flex: 1; min-width: 0; }
 
@@ -216,29 +240,38 @@ body.nots .ln .ts { display: none; }
   background: var(--panel); border: 1px solid #000; box-shadow: var(--ring), 4px 5px 0 rgba(0, 0, 0, 0.5); padding: 6px;
 }
 #ctxMenu.show { display: block; }
-.ctx-title { padding: 4px 8px 6px; background: var(--title); margin: -6px -6px 4px; color: #fff; text-shadow: 0 1px 0 #000; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center; font-size: 11px; }
-.ctx-item { display: flex; align-items: center; gap: 8px; padding: 5px 8px; font-size: 12px; color: var(--text); cursor: pointer; }
+.ctx-title { padding: 4px 8px 6px; background: var(--title); margin: -6px -6px 4px; color: #fff; text-shadow: 0 1px 0 #000; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center; }
+.ctx-item { display: flex; align-items: center; gap: 8px; padding: 5px 8px; color: var(--text); cursor: pointer; }
 .ctx-item:hover { background: var(--sel-bg); color: var(--sel-fg); }
 .ctx-sep { height: 1px; background: var(--line); margin: 4px 6px; }
 
 /* ---------- 0.2 ---------- */
 .ln.past { opacity: 0.6; }
-.ln.sep { color: #7f8c8f; text-align: center; border-top: 1px solid var(--a-hover); margin: 3px 0; padding-top: 3px; font-style: italic; }
-.row-item .count { flex: none; min-width: 18px; text-align: center; padding: 0 5px; font: 700 10.5px "Overpass Mono", Consolas, monospace; font-stretch: 100%; background: #b05a00; color: #fff; border: 1px solid #000; }
+.ln.sep { color: #888888; text-align: center; border-top: 1px solid var(--a-hover); margin: 3px 0; padding-top: 3px; }
+.row-item .count { flex: none; min-width: 18px; text-align: center; padding: 0 5px; font: 14px/16px var(--font); background: #b05a00; color: #fff; border: 1px solid #000; }
 .row-item .count.hot { background: var(--a-edge); }
 .row-item.unread .grow { font-weight: 800; color: var(--warn); }
 .row-item.unread.sel .grow, .row-item.unread:hover .grow { color: inherit; }
 .whois { grid-template-columns: 96px 1fr; gap: 6px 10px; }
-.whois .v { color: var(--field-ink); font: 600 12px "Overpass Mono", Consolas, monospace; font-stretch: 100%; user-select: text; overflow-wrap: anywhere; }
+.whois .v { color: var(--field-ink); font: 14px/16px var(--font); user-select: text; overflow-wrap: anywhere; }
 .whois .v.warn { color: var(--warn); }
 .listbar { display: flex; gap: 6px; flex: none; margin-bottom: 6px; }
 .listbar .text-input { padding: 3px 7px; }
-.chan-row { display: grid; grid-template-columns: 170px 56px 1fr; gap: 10px; align-items: baseline; padding: 4px 8px 4px 6px; border-left: 6px solid transparent; border-bottom: 1px solid var(--line); cursor: pointer; }
+.lhead { display: grid; grid-template-columns: 187px 85px 1fr; flex: none; padding-right: 15px; margin-bottom: 3px; }
+.lh {
+  white-space: nowrap; overflow: hidden; font: inherit; font-weight: 700; color: var(--text); text-align: left; padding: 0 8px; height: 22px; cursor: pointer;
+  background: var(--btn); border: 1px solid #000; box-shadow: var(--bevel);
+}
+.lh:hover { background: #3b3b3b; }
+.lh.on::after { content: ""; display: inline-block; margin-left: 7px; vertical-align: middle; border: 4px solid transparent; border-top: 5px solid #fff; border-bottom: 0; }
+.lh.static { cursor: default; display: flex; align-items: center; }
+.lh.static:hover { background: var(--btn); }
+.chan-row { display: grid; grid-template-columns: 170px 70px 1fr; gap: 10px; align-items: baseline; padding: 4px 8px 4px 6px; border-left: 6px solid transparent; border-bottom: 1px solid var(--line); cursor: pointer; }
 .chan-row:hover { background: var(--accent-2); color: var(--hover-fg); }
 .chan-row.sel { background: var(--sel-bg); color: var(--sel-fg); }
 .chan-row .n { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 800; }
-.chan-row .u { text-align: right; font: 600 11px "Overpass Mono", Consolas, monospace; font-stretch: 100%; }
-.chan-row .t { color: var(--faint); font-size: 11.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chan-row .u { text-align: right; font: 14px/16px var(--font); }
+.chan-row .t { color: var(--faint); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .chan-row:hover .t { color: var(--hover-fg); }
 .chan-row.sel .t { color: #b8b0ff; }
 #lStatus { margin-top: 6px; flex: none; }
@@ -247,18 +280,114 @@ body.nots .ln .ts { display: none; }
 /* ---------- 0.4: answers and the quick switcher ---------- */
 .ln { position: relative; }
 .ln .rq {
-  display: block; margin: 1px 0 2px 6px; padding-left: 6px; border-left: 2px solid var(--a-edge); color: #7f8c8f;
-  font-size: 11px; font-style: italic; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; user-select: none;
+  display: block; margin: 1px 0 2px 6px; padding-left: 6px; border-left: 2px solid var(--a-edge); color: #888888;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; user-select: none;
 }
 .ln .rp {
-  position: absolute; right: 6px; top: 0; display: none; padding: 0 7px; min-height: 0; line-height: 17px; font: 700 11px "Archivo", sans-serif;
+  position: absolute; right: 6px; top: 0; display: none; padding: 0 7px; min-height: 0; line-height: 17px; font: 14px/16px var(--font);
   color: var(--text); cursor: pointer; background: var(--btn); border: 1px solid #000; box-shadow: var(--bevel); user-select: none;
 }
 .ln:hover .rp { display: block; }
 .ln .rp:hover { background: #3b3b3b; }
 .switcher { gap: 6px; padding: 6px; }
-.switcher .text-input { flex: none; padding: 7px 9px; font-size: 13px; }
+.switcher .text-input { flex: none; padding: 7px 9px; }
 #swList { min-height: 0; }
 #swList .row-item .ic { flex: none; }
 #swList .row-item .sub { display: inline; margin-left: 8px; }
 #swList .row-item.empty-hint { cursor: default; color: var(--faint); }
+
+/* ---------- Pixel metrics, measured on a real KDX 1.6 window ----------
+   Fields are sunken (dark top and left, light #666 bottom and right); buttons stack with one shared black line;
+   scroll bars are flat #333 with #888 arrows; margins are 4-5 px; a selected row is outlined, not coloured. */
+::-webkit-scrollbar-track { background: #333; box-shadow: inset 1px 0 0 #222; }
+::-webkit-scrollbar-thumb { background-color: #333; border: 0; border-radius: 0; box-shadow: inset 1px 1px 0 #444, inset -1px -1px 0 #222, inset -2px -2px 0 #2a2a2a; }
+::-webkit-scrollbar-thumb:vertical { background-image: repeating-linear-gradient(#555 0 1px, transparent 1px 2px); }
+::-webkit-scrollbar-thumb:horizontal { background-image: repeating-linear-gradient(90deg, #555 0 1px, transparent 1px 2px); }
+::-webkit-scrollbar-button { border: 0; background-color: #333; box-shadow: inset 0 1px 0 #444, inset 0 -1px 0 #222, inset 0 -2px 0 #2a2a2a; }
+::-webkit-scrollbar-corner { background: #333; }
+
+.text-input, .log, .list, .status { border: 1px solid; border-color: #111 #666 #666 #111; box-shadow: inset 1px 1px 0 #000; }
+.text-input { padding: 3px 6px; }
+.text-input:focus, .log:focus { border-color: var(--red-frame); box-shadow: inset 0 0 0 1px var(--red-frame); }
+select.text-input { border: 1px solid #000; box-shadow: var(--bevel); }
+select.text-input:focus { border-color: #000; box-shadow: var(--bevel); }
+.members .list { border: 1px solid; border-color: #111 #666 #666 #111; box-shadow: inset 1px 1px 0 #000; }
+.status { padding: 4px 7px; }
+.topicrow .text-input { padding: 2px 6px; }
+
+.launcher { background: var(--panel); gap: 4px; padding: 4px; }
+.lbtns { gap: 0; }
+.lbtn { height: 22px; margin-top: -1px; padding: 0 6px; }
+.lbtns .lbtn:first-child { margin-top: 0; }
+.lsel { height: 22px; }
+.primary { height: 20px; padding: 0 14px; line-height: 14px; }
+.launcher .primary { height: 22px; }
+.counters { padding: 0 6px; }
+.chat { gap: 5px; padding: 5px; }
+.dialog, .about { padding: 12px; }
+#settingsWin .cb, #serversWin .cb { padding: 8px; }
+.btns { margin-top: 6px; }
+.form { gap: 6px 10px; }
+.chan-row { padding-top: 3px; padding-bottom: 3px; }
+
+.row-item:hover, .chan-row:hover { background: #3a3a3a; color: var(--text); }
+.row-item.sel, .chan-row.sel { background: #3f3f3f; color: var(--text); box-shadow: inset 0 0 0 1px #777; }
+.row-item:hover .sub, .row-item.sel .sub, .chan-row:hover .t, .chan-row.sel .t { color: var(--faint); }
+.mem:hover { background: #1e1e1e; }
+.mem:hover .nm, .mem:hover .sym { color: var(--nc, var(--text)); }
+.ctx-item:hover { background: #444; color: var(--text); box-shadow: inset 0 0 0 1px #777; }
+.mynick { margin-right: 14px; }
+#consoleForm { align-items: center; }
+#consoleForm .text-input { height: 24px; }
+
+/* ---------- Corners: KDX has no round corners. Bar buttons are square; dialog buttons lose their three corner
+   pixels (a 2 px chamfer); pop-up menus lose one. The default button's red ring is black, #880000, #cc0000, black
+   from the button outwards. */
+:root {
+  --chamfer2: polygon(2px 0, calc(100% - 2px) 0, calc(100% - 2px) 1px, calc(100% - 1px) 1px, calc(100% - 1px) 2px, 100% 2px, 100% calc(100% - 2px), calc(100% - 1px) calc(100% - 2px), calc(100% - 1px) calc(100% - 1px), calc(100% - 2px) calc(100% - 1px), calc(100% - 2px) 100%, 2px 100%, 2px calc(100% - 1px), 1px calc(100% - 1px), 1px calc(100% - 2px), 0 calc(100% - 2px), 0 2px, 1px 2px, 1px 1px, 2px 1px);
+  --chamfer1: polygon(1px 0, calc(100% - 1px) 0, calc(100% - 1px) 1px, 100% 1px, 100% calc(100% - 1px), calc(100% - 1px) calc(100% - 1px), calc(100% - 1px) 100%, 1px 100%, 1px calc(100% - 1px), 0 calc(100% - 1px), 0 1px, 1px 1px);
+}
+.ghost-btn, .bevel, .track { border-radius: 0; clip-path: var(--chamfer2); }
+.primary, .lbtn, .lh, .row-item .count, .ln .rp { border-radius: 0; }
+.lsel, select.text-input, select.ghost-btn { border-radius: 0; clip-path: var(--chamfer1); }
+.mynick { color: var(--text); }
+
+/* Chat transcripts and what is typed under them use KDX's smaller font, 13 px from line to line. */
+.log, .ln, #msgInput, #consoleInput { font-family: var(--font-log); }
+.log { line-height: 13px; }
+#msgInput, #consoleInput { line-height: 13px; }
+
+/* Compact member list (the default, KDX's "small icons in user lists"): 16 px tiles, 17 px rows, a narrower pane. */
+.smallmem .members { width: 28%; min-width: 130px; max-width: 240px; }
+.smallmem .mem { height: 17px; gap: 4px; border-left-width: 4px; }
+.smallmem .mem::before { width: 16px; height: 16px; margin-right: 0; font: 14px/1 var(--font); text-shadow: none; box-shadow: inset 1px 1px 0 rgba(255, 255, 255, 0.35), inset -1px -1px 0 rgba(0, 0, 0, 0.6); }
+.smallmem .mem .sym { width: 9px; }
+
+/* ---------- Kinds of lines, told apart (Réglages > Affichage switches it off for KDX's all-green look) ----------
+   who speaks: the nick in its own colour (white for us, with our text); what the room does: actions in
+   pink italics, arrivals and departures in dark green italics, topic and modes in blue; what is announced: notices
+   in amber, the server's own words in grey. A pixel font has one weight and doubling the letters (a text-shadow) makes
+   2 px stems run together, so nothing here is bold; italic is a separate slanted font. */
+body:not(.plainchat) .ln .nk { color: var(--nc, #fff); }
+body:not(.plainchat) .ln .nk.who { margin-right: 0; }
+body:not(.plainchat) .ln.own .nk, body:not(.plainchat) .ln.own .tx { color: #fff; }
+body:not(.plainchat) .ln.action { color: #ff5cf0; font-family: var(--font-log-italic); }
+body:not(.plainchat) .ln.notice { color: var(--warn); }
+body:not(.plainchat) .ln.join, body:not(.plainchat) .ln.part, body:not(.plainchat) .ln.quit, body:not(.plainchat) .ln.nick { color: #00a000; font-family: var(--font-log-italic); }
+body:not(.plainchat) .ln.mode, body:not(.plainchat) .ln.topic { color: #6a8aff; }
+body:not(.plainchat) .ln.info, body:not(.plainchat) .ln.raw { color: #888888; }
+body:not(.plainchat) .ln.motd { color: #c8c8c8; }
+
+/* ---------- Tabs: windows merged into one (see tabs.rs) ---------- */
+.tabs { flex: none; display: flex; padding: 4px 5px 0; background: var(--panel); }
+.tabs[hidden] { display: none; }
+.tab {
+  flex: 0 1 auto; min-width: 0; max-width: 180px; height: 20px; padding: 0 10px; margin-right: -1px; cursor: pointer;
+  font: inherit; line-height: 14px; color: #888888; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  background: var(--btn); border: 1px solid #000; box-shadow: var(--bevel);
+}
+.tab:hover { background: #3b3b3b; }
+.tab.on { color: #ffffff; background: #2a2a2a; box-shadow: var(--bevel-down); }
+body.shaded .tabs { display: none; }
+/* the window a dragged one would join */
+body.droptarget .win::after { content: ""; position: absolute; inset: 0; z-index: 9; pointer-events: none; box-shadow: inset 0 0 0 3px #ffffff; }

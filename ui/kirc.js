@@ -7,7 +7,9 @@
 const $ = s => document.querySelector(s);
 const T = window.__TAURI__;
 const invoke = (cmd, args) => T.core.invoke(cmd, args);
-const listen = (ev, cb) => T.event.listen(ev, cb);
+// Scoped to this window: a listener of the whole application would also get what is sent to the other windows.
+const thisWindow = T.webviewWindow.getCurrentWebviewWindow();
+const listen = (ev, cb) => thisWindow.listen(ev, cb);
 
 const params = new URLSearchParams(location.search);
 const PANEL = params.get("w") || "all";
@@ -59,7 +61,17 @@ async function call(cmd, args) {
 const TB_GLYPHS = {
   x: '<svg viewBox="0 0 9 9"><path d="M1 1L8 8M8 1L1 8" stroke="#fff" stroke-width="2" fill="none"/></svg>',
   minus: '<svg viewBox="0 0 9 9"><path d="M1 4.5H8" stroke="#fff" stroke-width="2" fill="none"/></svg>',
+  plus: '<svg viewBox="0 0 9 9"><path d="M1 4.5H8M4.5 1V8" stroke="#fff" stroke-width="2" fill="none"/></svg>',
 };
+
+// The hatched button of the title bar: the commands of the window.
+function windowMenu(btn) {
+  const r = btn.getBoundingClientRect();
+  const items = [["Enrouler la fenêtre", () => invoke("win_shade")]];
+  if (document.querySelector(".log")) items.push(["Effacer le texte", () => document.querySelectorAll(".log").forEach(l => { l.textContent = ""; })]);
+  items.push(null, ["Fermer", () => invoke("win_close")]);
+  openMenu(r.left, r.bottom + 2, btn.closest(".tb").querySelector(".tb-title").textContent, items);
+}
 function initChrome() {
   for (const tb of document.querySelectorAll(".tb")) {
     // Moving: the page reports press / movement / release, the application reads the cursor and
@@ -83,8 +95,11 @@ function initChrome() {
     tb.addEventListener("pointerup", end);
     tb.addEventListener("pointercancel", end);
     for (const b of tb.querySelectorAll(".tb-btn")) {
-      b.innerHTML = TB_GLYPHS[b.dataset.glyph] || TB_GLYPHS.minus;
-      b.addEventListener("click", () => invoke(b.dataset.act === "close" ? "win_close" : "win_shade"));
+      if (b.dataset.glyph) b.innerHTML = TB_GLYPHS[b.dataset.glyph] || TB_GLYPHS.minus;
+      b.addEventListener("click", () => {
+        if (b.dataset.act === "menu") windowMenu(b);
+        else invoke({ close: "win_close", zoom: "win_zoom" }[b.dataset.act] || "win_shade");
+      });
     }
   }
   for (const g of document.querySelectorAll(".grip-rz")) {
@@ -106,10 +121,50 @@ function initChrome() {
   }
   listen("active", e => document.body.classList.toggle("active", !!e.payload));
   listen("theme", e => applyTheme(e.payload));
+  listen("settings", e => applySettings(e.payload));
   listen("shade", e => document.body.classList.toggle("shaded", !!e.payload));
   invoke("win_ready");
 }
 initChrome();
+
+// ---------------------------------------------------------------- tabs
+// Windows merged by dragging one title bar onto another form a group: each window of the group draws the same strip
+// of tabs under its title bar, as told by the application ("tabs"), and clicking a tab brings that window forward.
+const TAB_WINDOWS = { servers: "serversWin", settings: "settingsWin", console: "consoleWin", list: "listWin", chat: "chatWin" };
+function initTabs() {
+  const win = document.getElementById(TAB_WINDOWS[PANEL] || "");
+  if (!win) return;
+  const bar = document.createElement("div");
+  bar.className = "tabs";
+  bar.hidden = true;
+  win.querySelector(".tb").after(bar);
+  listen("tabs", e => {
+    if (e.payload.me !== thisWindow.label) return;
+    bar.textContent = "";
+    bar.hidden = e.payload.tabs.length < 2;
+    for (const t of e.payload.tabs) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "tab" + (t.active ? " on" : "");
+      b.textContent = t.title + (t.unread ? ` (${t.unread})` : "");
+      b.title = t.title;
+      b.addEventListener("click", () => { if (!t.active) invoke("tab_activate", { label: t.label }); });
+      b.addEventListener("auxclick", ev => { if (ev.button === 1) invoke("tab_close", { label: t.label }); });
+      b.addEventListener("contextmenu", ev => {
+        ev.preventDefault();
+        openMenu(ev.clientX, ev.clientY, t.title, [
+          ["Détacher l'onglet", () => invoke("tab_detach", { label: t.label })],
+          ["Fermer l'onglet", () => invoke("tab_close", { label: t.label })],
+        ]);
+      });
+      bar.appendChild(b);
+    }
+  });
+  // the window that a dragged one would join lights up
+  listen("droptarget", e => document.body.classList.toggle("droptarget", !!e.payload));
+  invoke("win_ready"); // asks again, now that the strip listens
+}
+initTabs();
 // Ctrl+K: the quick switcher, from any window (pressed again inside it, it closes).
 document.addEventListener("keydown", e => {
   if (!((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === "k")) return;
@@ -159,7 +214,7 @@ function renderIrc(parent, text) {
     if (plain) appendLinked(parent, buf);
     else {
       const sp = document.createElement("span");
-      if (st.b) sp.style.fontWeight = "800";
+      if (st.b) sp.style.textShadow = "1px 0 0 currentColor";
       if (st.i) sp.style.fontStyle = "italic";
       const deco = [st.u && "underline", st.s && "line-through"].filter(Boolean).join(" ");
       if (deco) sp.style.textDecoration = deco;
@@ -198,7 +253,7 @@ function renderIrc(parent, text) {
   flush();
 }
 
-const NICK_COLORS = ["#ff5a4a", "#faa320", "#ffe090", "#8af08a", "#86a6ff", "#ff5cf0", "#5cf0ff", "#ffa6a6", "#c8a6ff", "#ffd24a", "#7af0c0", "#ff8a3c"];
+const NICK_COLORS = ["#ff5a4a", "#faa320", "#ffe090", "#86a6ff", "#ff5cf0", "#ffa6a6", "#c8a6ff", "#ffd24a", "#ff8a3c", "#e0c0ff"];
 function nickColor(n) {
   let h = 0;
   for (const c of fold(n)) h = (h * 31 + c.codePointAt(0)) >>> 0;
@@ -245,18 +300,27 @@ function renderLine(line, replyable) {
     case "msg": {
       const nk = document.createElement("span");
       nk.className = "nk";
-      nk.style.color = nickColor(line.nick);
+      nk.style.setProperty("--nc", nickColor(line.nick));
       nk.textContent = "<" + line.nick + ">";
       div.appendChild(nk);
       renderIrc(tx, line.text);
       break;
     }
-    case "action": tx.appendChild(document.createTextNode("* " + line.nick + " ")); renderIrc(tx, line.text); break;
+    case "action": {
+      tx.appendChild(document.createTextNode("*** "));
+      const who = document.createElement("span");
+      who.className = "nk who";
+      who.style.setProperty("--nc", nickColor(line.nick));
+      who.textContent = line.nick;
+      tx.append(who, " ");
+      renderIrc(tx, line.text);
+      break;
+    }
     case "notice": tx.appendChild(document.createTextNode(line.nick ? "-" + line.nick + "- " : "")); renderIrc(tx, line.text); break;
     case "error": tx.appendChild(document.createTextNode("!! ")); renderIrc(tx, line.text); break;
     case "motd": renderIrc(tx, line.text); break;
     case "raw": renderIrc(tx, line.text); break;
-    default: tx.appendChild(document.createTextNode("*** ")); renderIrc(tx, line.text);
+    default: tx.appendChild(document.createTextNode(["join", "part", "quit", "nick"].includes(line.kind) ? "+++ " : "*** ")); renderIrc(tx, line.text);
   }
   div.appendChild(tx);
   return div;
@@ -290,13 +354,15 @@ class Log {
 function applySettings(s) {
   document.body.classList.toggle("nojoins", !s.show_joins);
   document.body.classList.toggle("nots", !s.show_timestamps);
+  document.body.classList.toggle("smallmem", !!s.small_member_icons);
+  document.body.classList.toggle("plainchat", !s.colored_chat);
 }
 
 // Events of the application. Events that arrive while a snapshot is being fetched wait for it,
 // and those the snapshot already contains (seq <= snapshot.seq) are dropped.
 function subscribe(handler) {
   const state = { ready: false, queue: [], seq: 0 };
-  listen("irc", e => {
+  listen("chat", e => {
     const p = e.payload;
     if (p.server !== SERVER) return; // every window hears every server: seq counters are per server
     if (state.ready) { if (p.seq > state.seq) handler(p); }
@@ -369,6 +435,9 @@ function initLauncher() {
     btn.textContent = st === "connected" ? "Déconnecter" : st === "disconnected" ? "Connecter" : "Annuler";
     btn.classList.toggle("quiet", st !== "disconnected");
     for (const id of ["#btnConsole", "#btnJoin"]) $(id).disabled = st !== "connected" && id === "#btnJoin" || ov.servers.length === 0;
+    // the server's protocol decides which buttons make sense
+    const here = ov.servers.find(s => s.id === current());
+    $("#btnList").hidden = !!here && here.caps && !here.caps.channel_list;
 
     const connected = ov.servers.filter(s => stateOf(s.id).status === "connected").length;
     const busy = ov.servers.some(s => ["connecting", "registering", "reconnecting"].includes(stateOf(s.id).status));
@@ -377,8 +446,8 @@ function initLauncher() {
     pill.classList.toggle("busy", busy);
     $("#statusText").textContent = ov.servers.length === 0 ? "Carnet vide"
       : busy ? "Connexion en cours…" : connected ? `${connected} serveur${connected > 1 ? "s" : ""} connecté${connected > 1 ? "s" : ""}` : "Aucune connexion";
-    $("#cntServers").textContent = `[${connected}]`;
-    $("#cntChannels").textContent = `[${ov.servers.reduce((n, s) => n + stateOf(s.id).channels.length, 0)}]`;
+    $("#cntServers").textContent = String(connected);
+    $("#cntChannels").textContent = String(ov.servers.reduce((n, s) => n + stateOf(s.id).channels.length, 0));
 
     const list = $("#openList");
     list.textContent = "";
@@ -433,7 +502,7 @@ function initLauncher() {
   $("#btnSettings").addEventListener("click", () => call("open_window", { kind: "settings" }));
   $("#btnAbout").addEventListener("click", () => call("open_window", { kind: "about" }));
   $("#btnQuit").addEventListener("click", () => invoke("quit_app"));
-  listen("irc", e => { if (["status", "joined", "parted", "me", "query"].includes(e.payload.event.kind)) refresh(); });
+  listen("chat", e => { if (["status", "joined", "parted", "me", "query"].includes(e.payload.event.kind)) refresh(); });
   // Unread counters: only the connection states are asked for, at most twice a second.
   let statesTimer = 0;
   const refreshStates = () => {
@@ -444,7 +513,7 @@ function initLauncher() {
       if (s && ov) { ov.states = s; render(); }
     }, 500);
   };
-  listen("irc", e => { const k = e.payload.event.kind; if (k === "line" || k === "read") refreshStates(); });
+  listen("chat", e => { const k = e.payload.event.kind; if (k === "line" || k === "read") refreshStates(); });
   $("#btnList").addEventListener("click", () => call("open_window", { kind: "list", server: current() }));
 
   // A newer release on GitHub: announced here, installed on request.
@@ -604,20 +673,23 @@ function initServers() {
       if (selected) select(selected); else startNew(); // the form must not keep showing the deleted server
     }
   });
-  listen("irc", e => { if (e.payload.event.kind === "status") call("get_overview").then(o => { if (o) { ov = o; renderList(); } }); });
+  listen("chat", e => { if (e.payload.event.kind === "status") call("get_overview").then(o => { if (o) { ov = o; renderList(); } }); });
   refresh().then(() => { if (!ov.servers.length) startNew(); });
 }
 
 // ================================================================ settings
 function initSettings() {
   const f = id => $("#" + id);
+  const showPanel = () => { for (const g of document.querySelectorAll("#settingsForm .grp")) g.hidden = g.dataset.panel !== f("sPanel").value; };
+  f("sPanel").addEventListener("change", showPanel);
+  showPanel();
   async function load() {
     const ov = await call("get_overview");
     if (!ov) return;
     const s = ov.settings;
     f("sNick").value = s.nick; f("sAlt").value = s.alt_nick; f("sUser").value = s.username; f("sReal").value = s.realname;
     f("sQuit").value = s.quit_message; f("sPart").value = s.part_message;
-    f("sStamps").checked = s.show_timestamps; f("sJoins").checked = s.show_joins; f("sScroll").value = s.scrollback;
+    f("sStamps").checked = s.show_timestamps; f("sSmall").checked = s.small_member_icons; f("sColors").checked = s.colored_chat; f("sJoins").checked = s.show_joins; f("sScroll").value = s.scrollback;
     f("sNotif").checked = s.notifications; f("sQueries").checked = s.open_queries; f("sConsole").checked = s.open_console;
     f("sTheme").value = s.theme;
     f("sUpdates").checked = s.check_updates;
@@ -628,7 +700,7 @@ function initSettings() {
     const s = {
       nick: f("sNick").value.trim(), alt_nick: f("sAlt").value.trim(), username: f("sUser").value.trim(), realname: f("sReal").value,
       quit_message: f("sQuit").value, part_message: f("sPart").value,
-      show_timestamps: f("sStamps").checked, show_joins: f("sJoins").checked, scrollback: +f("sScroll").value || 0,
+      show_timestamps: f("sStamps").checked, small_member_icons: f("sSmall").checked, colored_chat: f("sColors").checked, show_joins: f("sJoins").checked, scrollback: +f("sScroll").value || 0,
       notifications: f("sNotif").checked, open_queries: f("sQueries").checked, open_console: f("sConsole").checked,
       theme: f("sTheme").value,
       check_updates: f("sUpdates").checked,
@@ -735,6 +807,8 @@ function initChat() {
   const isChannel = /^[#&+!]/.test(BUFFER);
   const log = new Log($("#log"), 1000, $("#newMsg"));
   let myNick = "", buffer = BUFFER;
+  // What the protocol of this server can do (told by the snapshot): the menu and the topic bar follow it.
+  let caps = { ranks: true, whois: true, moderation: true, channel_list: true, topic: true };
   const users = new Map();
   const input = $("#msgInput");
   // Answering a message: the bar above the input line shows what is answered (Esc cancels).
@@ -754,10 +828,11 @@ function initChat() {
   $("#replyCancel").addEventListener("click", () => setReply(null));
   input.addEventListener("keydown", e => { if (e.key === "Escape" && replying) { e.preventDefault(); setReply(null); } });
   makeInput($("#inputForm"), input, log, () => buffer, { get: () => replying, clear: () => setReply(null) });
+  // The input is a tall text box (it wraps): Enter sends, and a line break has no meaning on IRC.
+  input.addEventListener("keydown", e => { if (e.key === "Enter" && !e.isComposing) { e.preventDefault(); $("#inputForm").requestSubmit(); } });
 
   $("#membersBox").hidden = !isChannel;
   $("#topicBar").hidden = !isChannel;
-  if (!isChannel) $("#topicBar").hidden = true;
 
   // ---- members
   const rank = u => { const i = u.modes ? RANKS.indexOf(u.modes[0]) : -1; return i < 0 ? 9 : i; };
@@ -778,6 +853,8 @@ function initChat() {
         const nm = document.createElement("span"); nm.className = "nm"; nm.textContent = u.nick;
         row.append(sym, nm);
         row.dataset.nick = u.nick;
+        row.dataset.ini = Array.from(u.nick.replace(/^[^\p{L}\p{N}]+/u, "") || u.nick)[0] || "?";
+        row.style.setProperty("--nc", nickColor(u.nick));
         frag.appendChild(row);
       }
       box.textContent = "";
@@ -795,18 +872,17 @@ function initChat() {
     e.preventDefault();
     const nick = row.dataset.nick;
     const say = text => invoke("send_input", { server: SERVER, buffer, text }).catch(err => toast(String(err)));
-    openMenu(e.clientX, e.clientY, nick, [
-      ["Message privé", () => say("/query " + nick)],
-      ["Informations (whois)", () => say("/whois " + nick)],
-      null,
+    const items = [["Message privé", () => say("/query " + nick)]];
+    if (caps.whois) items.push(["Informations (whois)", () => say("/whois " + nick)]);
+    if (caps.ranks) items.push(null,
       ["Donner la parole (+v)", () => say("/voice " + nick)],
       ["Retirer la parole (−v)", () => say("/devoice " + nick)],
       ["Nommer opérateur (+o)", () => say("/op " + nick)],
-      ["Retirer opérateur (−o)", () => say("/deop " + nick)],
-      null,
+      ["Retirer opérateur (−o)", () => say("/deop " + nick)]);
+    if (caps.moderation) items.push(null,
       ["Expulser", () => say("/kick " + nick)],
-      ["Bannir", () => say("/ban " + nick)],
-    ]);
+      ["Bannir", () => say("/ban " + nick)]);
+    openMenu(e.clientX, e.clientY, nick, items);
   });
 
   // ---- topic
@@ -815,20 +891,22 @@ function initChat() {
     $("#topicText").style.opacity = t ? 1 : 0.55;
     $("#topicText").title = t;
   }
-  $("#topicBar").addEventListener("dblclick", () => {
+  const editTopic = () => {
     const bar = $("#topicBar"), span = $("#topicText");
     if (bar.querySelector("input")) return;
     const inp = document.createElement("input");
     inp.className = "text-input"; inp.maxLength = 400;
     inp.value = span.title || "";
-    span.hidden = true; bar.appendChild(inp); inp.focus();
+    span.hidden = true; span.after(inp); inp.focus();
     const done = send => {
       if (send) invoke("send_input", { server: SERVER, buffer, text: inp.value.trim() ? "/topic " + inp.value.trim() : "/quote TOPIC " + buffer + " :" }).catch(err => toast(String(err)));
       inp.remove(); span.hidden = false;
     };
     inp.addEventListener("keydown", e => { if (e.key === "Enter") done(true); else if (e.key === "Escape") done(false); });
     inp.addEventListener("blur", () => { if (inp.isConnected) done(false); });
-  });
+  };
+  $("#topicBtn").addEventListener("click", editTopic);
+  $("#topicText").addEventListener("dblclick", editTopic);
 
   // ---- unread lines, shown in the title bar while the window is not the active one
   let unread = 0;
@@ -836,6 +914,7 @@ function initChat() {
   function showUnread() {
     const t = unread ? `${baseTitle} (${unread})` : baseTitle;
     for (const el of document.querySelectorAll("[data-title]")) el.textContent = t;
+    invoke("tab_unread", { n: unread }).catch(() => {});
   }
   const readAll = () => { unread = 0; showUnread(); };
   window.addEventListener("focus", readAll);
@@ -921,6 +1000,8 @@ function initChat() {
     const snap = await call("buffer_snapshot", { server: SERVER, buffer: BUFFER });
     if (!snap) return;
     applySettings(snap.settings);
+    caps = snap.caps || caps;
+    if (!caps.topic) $("#topicBar").hidden = true;
     log.limit = snap.settings.scrollback;
     buffer = snap.buffer.name || BUFFER;
     setNick(snap.server.nick);
@@ -978,7 +1059,7 @@ function initWhois() {
       form.append(l, d);
     }
   }
-  listen("irc", e => { const p = e.payload; if (p.server === SERVER && p.event.kind === "whois" && fold(p.event.info.nick) === fold(nickOf)) show(p.event.info); });
+  listen("chat", e => { const p = e.payload; if (p.server === SERVER && p.event.kind === "whois" && fold(p.event.info.nick) === fold(nickOf)) show(p.event.info); });
   call("get_whois", { server: SERVER, nick: nickOf }).then(i => { if (i) show(i); });
   $("#whoisClose").addEventListener("click", () => invoke("win_close"));
   $("#whoisQuery").addEventListener("click", async () => { await call("send_input", { server: SERVER, buffer: "", text: "/query " + nickOf }); invoke("win_close"); });
@@ -989,11 +1070,11 @@ function initWhois() {
 function initList() {
   const f = id => $("#" + id);
   const PAGE = 200;
-  let shown = 0, sel = "", timer = 0, token = 0;
+  let shown = 0, sel = "", timer = 0, token = 0, sortBy = "users";
   async function load(append) {
     const me = ++token;
     const off = append ? shown : 0;
-    const page = await call("get_channel_list", { server: SERVER, filter: f("lFilter").value, minUsers: +f("lMin").value || 0, byName: f("lSort").value === "name", offset: off, limit: PAGE });
+    const page = await call("get_channel_list", { server: SERVER, filter: f("lFilter").value, minUsers: +f("lMin").value || 0, byName: sortBy === "name", offset: off, limit: PAGE });
     if (!page || me !== token) return;
     const box = f("chanList");
     if (!append) { box.textContent = ""; shown = 0; }
@@ -1030,7 +1111,13 @@ function initList() {
   const later = () => { clearTimeout(timer); timer = setTimeout(() => load(false), 200); };
   f("lFilter").addEventListener("input", later);
   f("lMin").addEventListener("input", later);
-  f("lSort").addEventListener("change", () => load(false));
+  f("lHead").addEventListener("click", e => {
+    const h = e.target.closest(".lh[data-sort]");
+    if (!h) return;
+    sortBy = h.dataset.sort;
+    for (const o of f("lHead").querySelectorAll(".lh[data-sort]")) o.classList.toggle("on", o === h);
+    load(false);
+  });
   f("listBar").addEventListener("submit", e => { e.preventDefault(); load(false); });
   f("lRefresh").addEventListener("click", () => call("send_input", { server: SERVER, buffer: "", text: "/list" }));
   f("chanList").addEventListener("click", e => {
@@ -1043,7 +1130,7 @@ function initList() {
     const row = e.target.closest(".chan-row");
     if (row) { if (await call("send_input", { server: SERVER, buffer: "", text: "/join " + row.dataset.name }) !== null) toast("Demande envoyée : " + row.dataset.name, "ok"); }
   });
-  listen("irc", e => {
+  listen("chat", e => {
     const p = e.payload;
     if (p.server !== SERVER) return;
     if (p.event.kind === "list_start") { f("lStatus").classList.add("busy"); f("lStatusText").textContent = "Réception de la liste…"; f("chanList").textContent = ""; }

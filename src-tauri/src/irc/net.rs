@@ -8,16 +8,13 @@ use super::session::Session;
 use std::collections::VecDeque;
 use std::io;
 use std::sync::Arc;
-use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant};
 use tokio::io::{AsyncBufRead, AsyncBufReadExt, AsyncRead, AsyncWrite, AsyncWriteExt, BufReader};
 use tokio::net::TcpStream;
 use tokio::sync::mpsc::{self, UnboundedReceiver};
 use tokio::time::{interval, sleep, timeout, MissedTickBehavior};
 
-/// Where the events of one server go (the application emits them to the pages).
-pub trait Sink: Send + Sync + 'static {
-    fn emit(&self, event: Event);
-}
+pub use crate::chat::{now_ms, Command, Sink};
 
 #[derive(Clone, Debug)]
 pub struct ConnectionConfig {
@@ -29,18 +26,6 @@ pub struct ConnectionConfig {
     pub autoreconnect: bool,
 }
 
-#[derive(Debug)]
-pub enum Command {
-    /// A line typed in a buffer ("" = console).
-    Input { buffer: String, text: String, reply: Option<(String, String)> },
-    /// Leave: QUIT with this message, no reconnection.
-    Disconnect(String),
-    /// Skip the wait before the next reconnection attempt.
-    ConnectNow,
-    /// The ignore and alert lists changed.
-    SetFilters { ignores: Vec<String>, alert_words: Vec<String> },
-}
-
 trait Io: AsyncRead + AsyncWrite + Unpin + Send {}
 impl<T: AsyncRead + AsyncWrite + Unpin + Send> Io for T {}
 
@@ -48,10 +33,6 @@ enum End {
     /// The user left (QUIT or Disconnect).
     Quit,
     Lost(String),
-}
-
-pub fn now_ms() -> i64 {
-    SystemTime::now().duration_since(UNIX_EPOCH).map_or(0, |d| d.as_millis() as i64)
 }
 
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(20);

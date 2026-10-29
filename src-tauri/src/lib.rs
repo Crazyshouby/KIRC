@@ -1,4 +1,5 @@
 pub mod app;
+pub mod chat;
 pub mod commands;
 pub mod config;
 pub mod irc;
@@ -6,6 +7,7 @@ pub mod logs;
 pub mod secrets;
 pub mod store;
 pub mod switcher;
+pub mod tabs;
 pub mod text;
 pub mod update;
 
@@ -54,6 +56,13 @@ pub fn run() {
             commands::win_ready,
             commands::win_close,
             commands::win_shade,
+            commands::win_zoom,
+            commands::tab_activate,
+            commands::tab_detach,
+            commands::tab_close,
+            commands::tab_merge,
+            commands::tab_unread,
+            commands::window_visible,
             commands::win_drag,
             commands::hide_all,
             commands::quit_app,

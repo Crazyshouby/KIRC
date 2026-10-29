@@ -2,9 +2,8 @@
 
 use crate::app::{self, App, Kind, VERSION};
 use crate::config::{ServerEntry, Settings};
-use crate::irc::net::Command;
-use crate::irc::session::fold;
-use crate::irc::event::{LineKind, WhoisInfo};
+use crate::chat::event::{LineKind, WhoisInfo};
+use crate::chat::{fold, Caps, Command, Protocol};
 use crate::store::{BufferState, ListPage, ServerSummary};
 use crate::{secrets, text};
 use serde::Serialize;
@@ -19,6 +18,8 @@ pub struct ServerView {
     entry: ServerEntry,
     has_pass: bool,
     has_auth: bool,
+    /// What the protocol of this server can do (the pages hide the rest).
+    caps: Caps,
 }
 
 #[derive(Serialize)]
@@ -34,6 +35,12 @@ pub struct Snapshot {
     server: ServerSummary,
     buffer: BufferState,
     settings: Settings,
+    caps: Caps,
+}
+
+/// What the protocol of an address-book entry can do (an entry with an unknown protocol cannot connect anyway).
+fn caps_of(entry: &ServerEntry) -> Caps {
+    Protocol::parse(&entry.protocol).unwrap_or(Protocol::Irc).caps()
 }
 
 #[derive(Serialize)]
@@ -59,7 +66,8 @@ pub async fn get_overview(state: State<'_, App>) -> R<Overview> {
         .map(|entry| {
             let has_pass = secrets::get(&entry.id, "pass").is_some();
             let has_auth = secrets::get(&entry.id, "auth").is_some();
-            ServerView { entry, has_pass, has_auth }
+            let caps = caps_of(&entry);
+            ServerView { entry, has_pass, has_auth, caps }
         })
         .collect();
     let states = state.states.lock().unwrap().iter().map(|(k, v)| (k.clone(), v.summary())).collect();
@@ -144,14 +152,14 @@ fn ignore_command(app: &AppHandle, state: &App, server: &str, buffer: &str, text
         say(LineKind::Info, &if list.is_empty() { "Aucun pseudo ignoré".to_string() } else { format!("Ignorés : {}", list.join(", ")) });
         return Some(Ok(()));
     }
-    let key = crate::irc::session::fold(arg);
+    let key = fold(arg);
     let mut next = cfg.settings.clone();
     if cmd == "/ignore" {
-        if !next.ignores.iter().any(|i| crate::irc::session::fold(i) == key) {
+        if !next.ignores.iter().any(|i| fold(i) == key) {
             next.ignores.push(arg.to_string());
         }
     } else {
-        next.ignores.retain(|i| crate::irc::session::fold(i) != key);
+        next.ignores.retain(|i| fold(i) != key);
     }
     if let Err(e) = next.validate() {
         drop(cfg);
@@ -177,10 +185,13 @@ fn push_filters(app: &AppHandle, state: &App, ignores: &[String], words: &[Strin
 
 #[tauri::command]
 pub fn buffer_snapshot(state: State<'_, App>, server: String, buffer: String) -> R<Snapshot> {
-    let settings = state.config.lock().unwrap().settings.clone();
+    let (settings, caps) = {
+        let c = state.config.lock().unwrap();
+        (c.settings.clone(), c.server(&server).map_or_else(|| Protocol::Irc.caps(), caps_of))
+    };
     let states = state.states.lock().unwrap();
     let s = states.get(&server).ok_or("Serveur inconnu")?;
-    Ok(Snapshot { seq: s.seq, server: s.summary(), buffer: s.snapshot(&buffer), settings })
+    Ok(Snapshot { seq: s.seq, server: s.summary(), buffer: s.snapshot(&buffer), settings, caps })
 }
 
 #[tauri::command]
@@ -196,6 +207,7 @@ pub async fn save_settings(app: AppHandle, state: State<'_, App>, settings: Sett
     push_filters(&app, &state, &settings.ignores, &settings.alert_words);
     let theme_changed = state.config.lock().unwrap().settings.theme != settings.theme;
     let theme = settings.theme.clone();
+    let for_pages = settings.clone();
     let n = settings.scrollback as usize;
     state.config.lock().unwrap().settings = settings;
     for s in state.states.lock().unwrap().values_mut() {
@@ -206,6 +218,8 @@ pub async fn save_settings(app: AppHandle, state: State<'_, App>, settings: Sett
     if theme_changed {
         let _ = tauri::Emitter::emit(&app, "theme", theme);
     }
+    // the open windows follow the display settings at once
+    let _ = tauri::Emitter::emit(&app, "settings", for_pages);
     Ok(true)
 }
 
@@ -236,6 +250,7 @@ pub fn open_url(app: AppHandle, url: String) -> R<()> {
 pub fn win_ready(app: AppHandle, window: WebviewWindow) {
     let label = window.label().to_string();
     let _ = tauri::Emitter::emit_to(&app, label.as_str(), "active", window.is_focused().unwrap_or(false));
+    crate::tabs::publish_for(&app, &label);
 }
 
 #[tauri::command]
@@ -243,6 +258,7 @@ pub fn win_close(app: AppHandle, window: WebviewWindow) {
     if window.label() == "launcher" {
         app::hide_all(&app);
     } else {
+        crate::tabs::before_close(&app, window.label());
         let _ = window.close();
     }
 }
@@ -250,6 +266,46 @@ pub fn win_close(app: AppHandle, window: WebviewWindow) {
 #[tauri::command]
 pub fn win_shade(app: AppHandle, window: WebviewWindow) {
     app::toggle_shade(&app, window.label());
+}
+
+#[tauri::command]
+pub fn tab_activate(app: AppHandle, label: String) {
+    crate::tabs::activate(&app, &label);
+}
+
+#[tauri::command]
+pub fn tab_detach(app: AppHandle, label: String) {
+    crate::tabs::detach(&app, &label);
+}
+
+#[tauri::command]
+pub fn tab_close(app: AppHandle, label: String) {
+    crate::tabs::before_close(&app, &label);
+    if let Some(w) = tauri::Manager::get_webview_window(&app, &label) {
+        let _ = w.close();
+    }
+}
+
+/// Merges the window `dragged` into the tabs of `target` (what dropping a title bar on another one does).
+#[tauri::command]
+pub fn tab_merge(app: AppHandle, dragged: String, target: String) {
+    crate::tabs::merge(&app, &dragged, &target);
+}
+
+/// Whether the window of that label is shown on screen (a tab behind another one is not).
+#[tauri::command]
+pub fn window_visible(app: AppHandle, label: String) -> bool {
+    tauri::Manager::get_webview_window(&app, &label).is_some_and(|w| w.is_visible().unwrap_or(false))
+}
+
+#[tauri::command]
+pub fn tab_unread(app: AppHandle, window: WebviewWindow, n: u32) {
+    crate::tabs::set_unread(&app, window.label(), n);
+}
+
+#[tauri::command]
+pub fn win_zoom(app: AppHandle, window: WebviewWindow) {
+    app::toggle_zoom(&app, window.label());
 }
 
 #[tauri::command]
@@ -288,7 +344,7 @@ pub fn get_whois(state: State<'_, App>, server: String, nick: String) -> R<Whois
 
 /// The end of the log of a conversation, older than `before` (ms), to show above the live lines.
 #[tauri::command]
-pub async fn read_backlog(state: State<'_, App>, server: String, buffer: String, before: i64) -> R<Vec<crate::irc::event::Line>> {
+pub async fn read_backlog(state: State<'_, App>, server: String, buffer: String, before: i64) -> R<Vec<crate::chat::event::Line>> {
     let (enabled, name) = {
         let c = state.config.lock().unwrap();
         (c.settings.log_enabled, c.server(&server).map(|e| e.name.clone()))

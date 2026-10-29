@@ -9,8 +9,8 @@
 //! Writing happens on its own thread, so a slow disk never slows the network.
 //! The tail of a file is read back when a window opens (see `tail`).
 
-use crate::irc::event::{Line, LineKind};
-use crate::irc::session::fold;
+use crate::chat::event::{Line, LineKind};
+use crate::chat::fold;
 use crate::text;
 use chrono::{Local, NaiveDateTime, TimeZone};
 use std::collections::HashMap;

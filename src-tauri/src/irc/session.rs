@@ -90,19 +90,7 @@ pub struct Session {
     quitting: bool,
 }
 
-/// RFC 1459 case folding: `[]\~` are the capitals of `{}|^`.
-pub fn fold(s: &str) -> String {
-    s.chars()
-        .map(|c| match c {
-            'A'..='Z' => c.to_ascii_lowercase(),
-            '[' => '{',
-            ']' => '}',
-            '\\' => '|',
-            '~' => '^',
-            _ => c,
-        })
-        .collect()
-}
+pub use crate::chat::fold;
 
 fn is_nick_char(c: char) -> bool {
     c.is_alphanumeric() || "[]\\`_^{|}-".contains(c)

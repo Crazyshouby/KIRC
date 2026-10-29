@@ -2,7 +2,7 @@
 //! on and every private conversation, with their unread counters and how recently they were looked at.
 //! Ranking by what is typed is done by the page; this only lists.
 
-use crate::irc::session::fold;
+use crate::chat::fold;
 use crate::store::ServerSummary;
 use serde::Serialize;
 use std::collections::HashMap;
@@ -29,7 +29,7 @@ pub fn build(servers: &[(String, String)], states: &HashMap<String, ServerSummar
     let mut items = Vec::new();
     for (id, name) in servers {
         let Some(st) = states.get(id) else { continue };
-        let connected = st.status == crate::irc::event::ConnState::Connected;
+        let connected = st.status == crate::chat::event::ConnState::Connected;
         items.push(SwitchItem { kind: "console", server: id.clone(), server_name: name.clone(), buffer: String::new(), unread: 0, mentions: 0, recent: rank(id, ""), connected });
         for b in st.channels.iter().chain(st.queries.iter()) {
             let act = st.activity.iter().find(|a| fold(&a.name) == fold(b));
@@ -51,7 +51,7 @@ pub fn build(servers: &[(String, String)], states: &HashMap<String, ServerSummar
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::irc::event::ConnState;
+    use crate::chat::event::ConnState;
     use crate::store::Activity;
 
     fn state(status: ConnState, channels: &[&str], queries: &[&str], activity: Vec<Activity>) -> ServerSummary {

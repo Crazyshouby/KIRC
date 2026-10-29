@@ -35,11 +35,17 @@
   --red-frame: var(--a-mid);
   --red-hi: var(--a-edge);
   --bar: linear-gradient(var(--bar-top), var(--bar-mid) 45%, var(--bar-bot));
-  --bevel: inset 0 1px 0 #666, inset 0 2px 0 #444, inset 0 -1px 0 #222, inset 0 -2px 0 #111;
-  --bevel-down: inset 0 1px 0 #000, inset 0 2px 0 #111, inset 0 -1px 0 #444;
-  /* Window frame: #555 highlight, #222 x2, #111, #000 inside the outline. */
-  --ring: inset 0 0 0 1px #555, inset 0 0 0 3px #222, inset 0 0 0 4px #111, inset 0 0 0 5px #000;
-  --ring-focus: inset 0 0 0 1px var(--a-edge), inset 0 0 0 3px var(--a-mid), inset 0 0 0 4px var(--a-dark), inset 0 0 0 5px #000;
+  --bevel: inset 1px 1px 0 #666, inset 2px 2px 0 #444, inset -1px -1px 0 #222, inset -2px -2px 0 #111;
+  --bevel-down: inset 1px 1px 0 #000, inset 2px 2px 0 #111, inset -1px -1px 0 #444;
+  /* Window frame, a raised bevel lit from the top left: the light band (#555 / accent edge) is outermost
+     on the top and left sides and innermost on the bottom and right sides, as in KDX. */
+  --ring: inset 1px 1px 0 #555, inset 3px 3px 0 #222, inset 4px 4px 0 #111,
+          inset -1px -1px 0 #111, inset -3px -3px 0 #222, inset -4px -4px 0 #555, inset 0 0 0 5px #000;
+  --ring-focus: inset 1px 1px 0 var(--a-edge), inset 3px 3px 0 var(--a-mid), inset 4px 4px 0 var(--a-dark),
+          inset -1px -1px 0 var(--a-dark), inset -3px -3px 0 var(--a-mid), inset -4px -4px 0 var(--a-edge), inset 0 0 0 5px #000;
+  /* Title bar of the window that is not active (grey) -- the active one overrides these in body.active. */
+  --tb-edge: #555555; --tb-low: #222222; --tb-grad: linear-gradient(#0c0c0c, #222222 47%, #8f8f8f);
+  --tbb-fill: #444444; --tbb-hi: #8a8a8a; --tbb-lo: #222222;
 
   /* Names used throughout the pages. */
   --bg: var(--frame);
@@ -48,8 +54,8 @@
   --border: #000000;
   --border-soft: #444444;
   --text: #ffffff;
-  --muted: #dddddd;
-  --faint: #a7afb2;
+  --muted: #ffffff;
+  --faint: #888888;
   --track-off: #222222;
   --hover: rgba(255, 255, 255, 0.08);
   --accent: #d41818;
@@ -62,6 +68,9 @@
   --green: #00ff00;
   --warn: #faa320;
   --red: #ff5a4a;
+  --font: "KIRC Pixel", "Segoe UI Symbol", "Segoe UI", sans-serif;
+  --font-log-italic: "KIRC Pixel Log Italic", "Segoe UI Symbol", "Segoe UI", sans-serif;
+  --font-log: "KIRC Pixel Log", "Segoe UI Symbol", "Segoe UI", sans-serif; /* the smaller transcript font */
   color-scheme: dark;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -69,15 +78,14 @@ html, body { height: 100%; }
 body {
   background: var(--frame);
   color: var(--text);
-  font: 700 12px/1.35 "Archivo", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
-  font-stretch: 118%;
+  font: 14px/16px var(--font);
   -webkit-font-smoothing: antialiased;
   user-select: none;
   overflow: hidden;
 }
 .mono, kbd, pre {
-  font-family: "Overpass Mono", Consolas, monospace;
-  font-weight: 600; font-stretch: 100%;
+  font-family: var(--font);
+  font-weight: 600;
 }
 
 .row { display: flex; align-items: center; gap: 10px; }
@@ -86,14 +94,22 @@ body {
 .ghost-btn, .bevel {
   font: inherit; font-weight: 700; color: var(--text); cursor: pointer;
   background: var(--btn); border: 1px solid #000; border-radius: 3px; box-shadow: var(--bevel);
-  padding: 4px 12px; min-height: 24px;
+  padding: 0 14px; min-height: 20px; line-height: 14px;
 }
 .ghost-btn:hover:not(:disabled) { background: #3b3b3b; }
 .ghost-btn:active:not(:disabled), .ghost-btn.on { background: #2a2a2a; box-shadow: var(--bevel-down); }
-.ghost-btn:disabled { color: #7a7a7a; cursor: default; }
+.ghost-btn:disabled { color: #888888; cursor: default; }
 .ghost-btn:focus-visible, .text-input:focus-visible, select.ghost-btn:focus-visible { outline: 2px solid var(--warn); outline-offset: 1px; }
-select.ghost-btn { padding-right: 6px; }
 select.ghost-btn option { background: #2a2a2a; color: #fff; }
+select.ghost-btn, select.text-input, select.lsel {
+  -webkit-appearance: none; appearance: none; padding-right: 26px;
+  background-color: var(--btn);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='5'%3E%3Cpath d='M0 0h9L4.5 5z' fill='%23fff'/%3E%3C/svg%3E"),
+    linear-gradient(#1c1c1c, #1c1c1c), linear-gradient(#000, #000);
+  background-repeat: no-repeat;
+  background-position: right 6px center, right 2px center, right 22px center;
+  background-size: 9px 5px, 20px calc(100% - 4px), 1px calc(100% - 4px);
+}
 
 /* Slider: black trough with a red bar, grey bevelled handle. paintRange()
    sets the red fill up to the value. */
@@ -108,21 +124,21 @@ input[type="range"]::-webkit-slider-thumb {
 }
 input[type="range"]:hover::-webkit-slider-thumb { background: #3b3b3b; }
 input[type="range"]:focus-visible { outline: 2px solid var(--warn); outline-offset: 2px; }
-.val { width: 56px; flex: none; text-align: right; font: 600 12px "Overpass Mono", Consolas, monospace; font-stretch: 100%; color: var(--field-ink); font-variant-numeric: tabular-nums; }
+.val { width: 56px; flex: none; text-align: right; font: 14px/16px var(--font); color: var(--field-ink); font-variant-numeric: tabular-nums; }
 
 /* Check box (the old "toggle pill"): a small recessed square, red when on.
    Must out-specificity any ".row > label" rule of the page. */
-.switch, .row > label.switch { position: relative; width: 16px; height: 16px; flex: none; cursor: pointer; }
+.switch, .row > label.switch { position: relative; width: 14px; height: 14px; flex: none; cursor: pointer; }
 .switch input { position: absolute; opacity: 0; inset: 0; cursor: pointer; }
 .track {
-  position: absolute; inset: 0; background: var(--ink);
-  border: 1px solid #000; box-shadow: 0 1px 0 #555; pointer-events: none;
+  position: absolute; inset: 0; background: var(--btn); border: 1px solid #000; border-radius: 3px;
+  box-shadow: var(--bevel); pointer-events: none;
 }
 .track::after {
-  content: ""; position: absolute; left: 4.5px; top: 1px; width: 4px; height: 8px;
-  border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg) scale(0);
+  content: ""; position: absolute; left: 3px; top: -3px; width: 5px; height: 11px;
+  border: solid #fff; border-width: 0 3px 3px 0; transform: rotate(45deg) scale(0);
 }
-.switch input:checked + .track { background: var(--bar); box-shadow: 0 1px 0 #555, inset 0 1px 0 var(--a-spark); }
+.switch input:checked + .track { background: transparent; border-color: transparent; box-shadow: none; }
 .switch input:checked + .track::after { transform: rotate(45deg) scale(1); }
 .switch input:focus-visible + .track { outline: 2px solid var(--warn); outline-offset: 1px; }
 
@@ -140,7 +156,7 @@ input[type="range"]:focus-visible { outline: 2px solid var(--warn); outline-offs
   display: flex; align-items: center; gap: 14px; max-width: 100%;
   background: var(--ink); color: var(--red);
   border: 2px solid var(--red-frame); box-shadow: 0 0 0 1px #000, 4px 5px 0 rgba(0, 0, 0, 0.55);
-  padding: 8px 14px; font: 600 12px/1.4 "Overpass Mono", Consolas, monospace; font-stretch: 100%; cursor: pointer;
+  padding: 8px 14px; font: 14px/16px var(--font); cursor: pointer;
   opacity: 0; transform: translateY(12px); transition: opacity 0.25s, transform 0.25s;
   pointer-events: auto;
 }
@@ -159,30 +175,37 @@ input[type="range"]:focus-visible { outline: 2px solid var(--warn); outline-offs
 }
 html[data-panel]:not([data-panel="all"]) .win { position: fixed; inset: 0; }
 .tb {
-  flex: none; height: 21px; margin: 0 -5px 4px; display: flex; align-items: center; justify-content: center;
-  background: var(--title); border-bottom: 1px solid #000; color: var(--text); position: relative;
+  /* 21 px as in KDX: a 1 px light line, 18 px of gradient, a 1 px dark line, the black outline; the panel starts right under. */
+  flex: none; height: 21px; margin: 0 -5px; display: flex; align-items: center; justify-content: center;
+  background: var(--tb-grad) 0 1px / 100% calc(100% - 2px) no-repeat, var(--tb-edge);
+  box-shadow: inset 1px 1px 0 var(--tb-edge), inset -1px -1px 0 var(--tb-low);
+  border-bottom: 1px solid #000; color: var(--text); position: relative;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 28px; text-shadow: 0 1px 0 #000;
 }
+.tb:has(.tb-m, .tb-r2) { padding: 0 62px; }
 .tb-title { pointer-events: none; overflow: hidden; text-overflow: ellipsis; }
 .tb-btn {
-  position: absolute; top: 3px; width: 15px; height: 15px; padding: 0; display: grid; place-items: center; cursor: pointer;
-  background: #111; border: 1px solid #000; box-shadow: inset 0 0 0 1px #777;
+  /* 14 x 14: black outline, light top-left edge, accent fill, dark bottom-right edge (measured on KDX). */
+  position: absolute; top: 3px; width: 14px; height: 14px; padding: 0; display: grid; place-items: center; cursor: pointer;
+  background: var(--tbb-fill); border: 1px solid #000; box-shadow: inset 1px 1px 0 var(--tbb-hi), inset -1px -1px 0 var(--tbb-lo);
 }
-.tb-btn:hover { background: #2a2a2a; }
-.tb-btn svg { width: 9px; height: 9px; display: block; }
+.tb-btn:hover { filter: brightness(1.35); }
+.tb-btn:active { box-shadow: inset 1px 1px 0 var(--tbb-lo), inset -1px -1px 0 var(--tbb-hi); }
+.tb-btn svg { width: 8px; height: 8px; display: block; }
 .tb-l { left: 4px; }
 .tb-r { right: 4px; }
-.cb { flex: 1; min-height: 0; padding: 8px; background: var(--panel); display: flex; flex-direction: column; }
-/* Resize grip: diagonal stripes, bottom right (KDX has no other way to resize). */
+.tb-r2 { right: 22px; }
+/* The window menu: a hatched button, white diagonal stripes on the accent colour. */
+.tb-m { left: 26px; width: 32px; background: repeating-linear-gradient(135deg, #fff 0 2px, var(--tbb-fill) 2px 5px); }
+.cb { flex: 1; min-height: 0; padding: 5px; background: var(--panel); display: flex; flex-direction: column; }
+/* Resize grip: a small triangle in the bottom right corner, striped along its long side (KDX has no other way to resize). */
 .grip-rz {
-  position: absolute; right: 5px; bottom: 5px; width: 15px; height: 15px; cursor: nwse-resize; z-index: 5;
-  background: repeating-linear-gradient(135deg, transparent 0 3px, #888 3px 4px); border: 1px solid #000;
-  background-color: #222;
+  position: absolute; right: 5px; bottom: 5px; width: 12px; height: 12px; cursor: nwse-resize; z-index: 5;
+  clip-path: polygon(100% 0, 100% 100%, 0 100%);
+  background: repeating-linear-gradient(135deg, #222 0 2px, #888 2px 3px);
 }
+body.active { --tb-edge: var(--a-edge); --tb-low: var(--a-dark); --tb-grad: linear-gradient(var(--a-title-from), var(--a-title-to));
+  --tbb-fill: var(--a-mid); --tbb-hi: var(--a-edge); --tbb-lo: var(--a-dark); }
 body.active .win { background: var(--a-mid); box-shadow: var(--ring-focus); }
-body.active .tb { background: var(--title-focus); border-bottom-color: var(--a-dark); }
-body.active .tb-btn { background: var(--a-dark); box-shadow: inset 0 0 0 1px var(--a-edge); }
-body.active .tb-btn:hover { background: var(--a-hover); }
-body.active .grip-rz { background-color: var(--a-dark); background-image: repeating-linear-gradient(135deg, transparent 0 3px, var(--a-edge) 3px 4px); }
+body.active .grip-rz { background: repeating-linear-gradient(135deg, var(--a-dark) 0 2px, var(--a-edge) 2px 3px); }
 body.shaded .cb, body.shaded .grip-rz { display: none !important; } /* !important: the pages show the grip per window */
-body.shaded .tb { margin-bottom: 0; }

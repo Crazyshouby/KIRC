@@ -2,12 +2,11 @@
 //! windows (one per function, like KDX) with their remembered geometry.
 
 use crate::config::{self, Config, Geometry};
-use crate::irc::event::{ConnState, Event, Line, LineKind};
-use crate::irc::net::{self, Command, ConnectionConfig, Sink};
-use crate::irc::session::{fold, Session, SessionConfig};
+use crate::chat::event::{ConnState, Event, Line, LineKind};
+use crate::chat::{self, fold, Command, Sink};
 use crate::logs::Logger;
 use crate::store::ServerState;
-use crate::{secrets, text};
+use crate::text;
 use serde::Serialize;
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -44,7 +43,10 @@ pub struct App {
     drags: Anchors<(i32, i32)>,
     /// Per window, while its grip is held: cursor and window size at the start.
     resizes: Anchors<(u32, u32)>,
-    shaded: Mutex<HashMap<String, u32>>,
+    /// Rolled-up windows: the height to come back to, and whether the user could resize them.
+    shaded: Mutex<HashMap<String, (u32, bool)>>,
+    /// Windows merged into tabs (see tabs.rs).
+    pub tabs: Mutex<crate::tabs::Tabs>,
     mins: Mutex<HashMap<String, (f64, f64)>>,
     last_input: Mutex<Option<Instant>>,
     last_notification: Mutex<Option<Instant>>,
@@ -67,6 +69,7 @@ impl App {
             drags: Mutex::new(HashMap::new()),
             resizes: Mutex::new(HashMap::new()),
             shaded: Mutex::new(HashMap::new()),
+            tabs: Mutex::new(Default::default()),
             mins: Mutex::new(HashMap::new()),
             last_input: Mutex::new(None),
             last_notification: Mutex::new(None),
@@ -100,7 +103,7 @@ impl App {
 
     pub fn note_recent(&self, server: &str, buffer: &str) {
         let mut r = self.recent.lock().unwrap();
-        r.retain(|(s, b)| !(s == server && crate::irc::session::fold(b) == crate::irc::session::fold(buffer)));
+        r.retain(|(s, b)| !(s == server && fold(b) == fold(buffer)));
         r.insert(0, (server.to_string(), buffer.to_string()));
         r.truncate(60);
     }
@@ -145,12 +148,12 @@ struct Payload<'a> {
     event: &'a Event,
 }
 
-pub struct IrcSink {
+pub struct AppSink {
     pub app: AppHandle,
     pub server: String,
 }
 
-impl Sink for IrcSink {
+impl Sink for AppSink {
     fn emit(&self, event: Event) {
         handle_event(&self.app, &self.server, event);
     }
@@ -158,7 +161,7 @@ impl Sink for IrcSink {
 
 /// A line made by the application itself (the answer to a command it handles), shown in a buffer.
 pub fn local_line(app: &AppHandle, server: &str, buffer: &str, kind: LineKind, text: &str) {
-    let time = net::now_ms();
+    let time = chat::now_ms();
     let line = Line { buffer: buffer.to_string(), kind, nick: String::new(), text: text.to_string(), time, highlight: false, own: false, msgid: String::new(), reply_to: String::new() };
     handle_event(app, server, Event::Line { line });
 }
@@ -239,7 +242,7 @@ fn handle_event(app: &AppHandle, server: &str, ev: Event) {
         _ => {}
     }
 
-    let _ = app.emit("irc", Payload { server, seq, event: &shown });
+    let _ = app.emit("chat", Payload { server, seq, event: &shown });
 }
 
 fn notify(app: &AppHandle, buffer: &str, nick: &str, body: &str) {
@@ -280,47 +283,24 @@ pub fn start_server(app: &AppHandle, id: &str) -> Result<(), String> {
         let mut states = st.states.lock().unwrap();
         states.entry(id.to_string()).or_insert_with(|| ServerState::new(settings.scrollback as usize));
     }
-    let pick = |own: &str, default: &str| if own.trim().is_empty() { default.to_string() } else { own.trim().to_string() };
-    let nick = pick(&entry.nick, &settings.nick);
-    let alt = pick(&entry.alt_nick, &settings.alt_nick);
-    let auth_secret = secrets::get(id, "auth");
-    let (sasl, nickserv_password) = match (entry.auth.as_str(), auth_secret) {
-        ("sasl", Some(p)) => (Some((pick(&entry.account, &nick), p)), None),
-        ("nickserv", Some(p)) => (None, Some(p)),
-        _ => (None, None),
+    let open_console = settings.open_console;
+    let sink = std::sync::Arc::new(AppSink { app: app.clone(), server: id.to_string() });
+    // The protocol reads its credentials (the credential manager can take a moment) and returns what runs the account.
+    let task = match chat::launch(chat::Start { id: id.to_string(), entry, settings, sink, commands: rx }) {
+        Ok(task) => task,
+        Err(e) => {
+            st.servers.lock().unwrap().remove(id);
+            return Err(e);
+        }
     };
-    let cfg = SessionConfig {
-        nick: nick.clone(),
-        alt_nicks: if alt.is_empty() { Vec::new() } else { vec![alt] },
-        user: pick(&entry.username, &settings.username),
-        realname: pick(&entry.realname, &settings.realname),
-        password: secrets::get(id, "pass"),
-        sasl,
-        nickserv_password,
-        autojoin: entry.autojoin_list(),
-        quit_message: settings.quit_message.clone(),
-        part_message: settings.part_message.clone(),
-        version: format!("KIRC {VERSION}"),
-        ignores: settings.ignores.clone(),
-        alert_words: settings.alert_words.clone(),
-    };
-    let conn = ConnectionConfig {
-        host: entry.host.clone(),
-        port: entry.port,
-        tls: entry.tls,
-        accept_invalid_certs: entry.accept_invalid_certs,
-        autoreconnect: true,
-    };
-
-    let sink = std::sync::Arc::new(IrcSink { app: app.clone(), server: id.to_string() });
     let app2 = app.clone();
     let id2 = id.to_string();
     tauri::async_runtime::spawn(async move {
-        net::run(conn, Session::new(cfg), sink, rx).await;
+        task.await;
         app2.state::<App>().servers.lock().unwrap().remove(&id2);
     });
 
-    if settings.open_console {
+    if open_console {
         let _ = open(app, Kind::Console(id.to_string()), false);
     }
     Ok(())
@@ -453,9 +433,9 @@ impl Kind {
     /// (width, height, min width, min height), logical pixels.
     fn size(&self) -> (f64, f64, f64, f64) {
         match self {
-            Kind::Launcher => (206.0, 466.0, 206.0, 80.0),
+            Kind::Launcher => (190.0, 520.0, 190.0, 300.0),
             Kind::Servers => (640.0, 480.0, 520.0, 320.0),
-            Kind::Settings => (440.0, 660.0, 400.0, 300.0),
+            Kind::Settings => (440.0, 400.0, 400.0, 300.0),
             Kind::About => (340.0, 370.0, 340.0, 250.0),
             Kind::Join => (380.0, 190.0, 340.0, 150.0),
             Kind::Console(_) => (640.0, 360.0, 360.0, 160.0),
@@ -467,7 +447,7 @@ impl Kind {
     }
 
     fn resizable(&self) -> bool {
-        !matches!(self, Kind::Launcher | Kind::About | Kind::Join | Kind::Whois(_, _) | Kind::Switcher)
+        !matches!(self, Kind::About | Kind::Join | Kind::Whois(_, _) | Kind::Switcher)
     }
 
     fn url(&self, title: &str, theme: &str) -> String {
@@ -519,6 +499,9 @@ pub fn open(app: &AppHandle, kind: Kind, focus: bool) -> Result<(), String> {
             if st.is_hidden() {
                 show_all(app);
             }
+            if crate::tabs::is_hidden_tab(app, &label) {
+                crate::tabs::activate(app, &label); // a tab behind another one: bring it forward
+            }
             let _ = w.show();
             let _ = w.unminimize();
             let _ = w.set_focus();
@@ -551,7 +534,14 @@ pub fn open(app: &AppHandle, kind: Kind, focus: bool) -> Result<(), String> {
         .focused(focus && !hidden)
         .visible(false)
         .background_color(FRAME_BG)
+        // Wry's default arguments, plus no LCD text: ClearType puts coloured fringes on the pixel font, whose
+        // letters must be exactly white on the panel, as in KDX.
+        .additional_browser_args("--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --disable-lcd-text")
         .on_navigation(|url| url.scheme() == "tauri" || url.host_str() == Some("tauri.localhost"));
+    if matches!(kind, Kind::Launcher) {
+        // the main window grows downwards only, to give the list of open channels more room
+        b = b.max_inner_size(w, 4000.0);
+    }
     if saved.is_none() {
         b = if matches!(kind, Kind::Launcher) { b.position(24.0, 24.0) } else { b.position(250.0 + step, 40.0 + step) };
     }
@@ -561,7 +551,9 @@ pub fn open(app: &AppHandle, kind: Kind, focus: bool) -> Result<(), String> {
     }
     st.mins.lock().unwrap().insert(label.clone(), (min_w, min_h));
     if let Some(g) = saved {
-        let _ = win.set_size(PhysicalSize::new(g.w, g.h));
+        // the main window only keeps its height: its width is fixed
+        let gw = if matches!(kind, Kind::Launcher) { (w * win.scale_factor().unwrap_or(1.0)).round() as u32 } else { g.w };
+        let _ = win.set_size(PhysicalSize::new(gw, g.h));
         let _ = win.set_position(PhysicalPosition::new(g.x, g.y));
     }
 
@@ -611,7 +603,7 @@ fn remember_geometry(app: &AppHandle, label: &str, key: &str) {
         return;
     }
     let Some(win) = app.get_webview_window(label) else { return };
-    if win.is_minimized().unwrap_or(false) {
+    if win.is_minimized().unwrap_or(false) || win.is_maximized().unwrap_or(false) {
         return;
     }
     let (Ok(pos), Ok(size)) = (win.outer_position(), win.inner_size()) else { return };
@@ -625,6 +617,7 @@ fn remember_geometry(app: &AppHandle, label: &str, key: &str) {
 fn on_destroyed(app: &AppHandle, kind: &Kind, label: &str) {
     let st = app.state::<App>();
     st.shaded.lock().unwrap().remove(label);
+    crate::tabs::forget(app, label);
     st.mins.lock().unwrap().remove(label);
     st.drags.lock().unwrap().remove(label);
     st.resizes.lock().unwrap().remove(label);
@@ -666,8 +659,10 @@ pub fn hide_all(app: &AppHandle) {
 pub fn show_all(app: &AppHandle) {
     let st = app.state::<App>();
     st.hidden.store(false, Ordering::Relaxed);
-    for w in app.webview_windows().values() {
-        let _ = w.show();
+    for (label, w) in app.webview_windows() {
+        if !crate::tabs::is_hidden_tab(app, &label) {
+            let _ = w.show();
+        }
     }
     if let Some(l) = app.get_webview_window("launcher") {
         let _ = l.unminimize();
@@ -683,14 +678,14 @@ pub fn toggle_shade(app: &AppHandle, label: &str) {
     let Ok(size) = win.inner_size() else { return };
     let was = st.shaded.lock().unwrap().remove(label);
     match was {
-        Some(full_h) => {
+        Some((full_h, resizable)) => {
             let _ = win.set_size(PhysicalSize::new(size.width, full_h));
             restore_min_size(app, label, &win);
-            let _ = win.set_resizable(true);
+            let _ = win.set_resizable(resizable);
             let _ = app.emit_to(label, "shade", false);
         }
         None => {
-            st.shaded.lock().unwrap().insert(label.to_string(), size.height);
+            st.shaded.lock().unwrap().insert(label.to_string(), (size.height, win.is_resizable().unwrap_or(true)));
             let _ = win.set_resizable(false);
             let _ = win.set_min_size(None::<tauri::LogicalSize<f64>>);
             let _ = win.set_size(PhysicalSize::new(size.width, (SHADED_HEIGHT * scale).round() as u32));
@@ -699,11 +694,120 @@ pub fn toggle_shade(app: &AppHandle, label: &str) {
     }
 }
 
+/// The "+" of the title bar: fills the screen, or goes back to the previous size.
+pub fn toggle_zoom(app: &AppHandle, label: &str) {
+    if app.state::<App>().is_shaded(label) {
+        return;
+    }
+    let Some(win) = app.get_webview_window(label) else { return };
+    if win.is_maximized().unwrap_or(false) {
+        let _ = win.unmaximize();
+    } else {
+        let _ = win.maximize();
+    }
+}
+
 fn restore_min_size(app: &AppHandle, label: &str, win: &tauri::WebviewWindow) {
     let min = app.state::<App>().mins.lock().unwrap().get(label).copied();
     if let Some((w, h)) = min {
         let _ = win.set_min_size(Some(tauri::LogicalSize::new(w, h)));
     }
+}
+
+/// A window being dragged clings to the edges of the others (and of its screen) when it comes this close, in
+/// logical pixels; two windows that cling are left `SNAP_GAP` logical pixels apart, a window and the screen edge none.
+const SNAP_DIST: f64 = 10.0;
+const SNAP_GAP: f64 = 2.0;
+
+/// Where a window of size (w, h) dragged to (x, y) lands once it clings to the other windows (x, y, w, h) and to the
+/// edges of the screen's work area, within `dist` pixels; windows are left `gap` pixels apart, the screen edge none.
+pub fn snap_rect(x: i32, y: i32, w: i32, h: i32, others: &[(i32, i32, i32, i32)], area: Option<(i32, i32, i32, i32)>, dist: i32, gap: i32) -> (i32, i32) {
+    // (distance, new coordinate) of the closest edge found on each axis
+    let mut bx: Option<(i32, i32)> = None;
+    let mut by: Option<(i32, i32)> = None;
+    let near = |best: &mut Option<(i32, i32)>, at: i32, cand: i32| {
+        let d = (cand - at).abs();
+        if d <= dist && best.is_none_or(|(bd, _)| d < bd) {
+            *best = Some((d, cand));
+        }
+    };
+    for &(ox, oy, ow, oh) in others {
+        // only windows that face each other along the other axis are worth clinging to
+        if y < oy + oh + dist && y + h > oy - dist {
+            near(&mut bx, x, ox + ow + gap); // our left edge against their right edge
+            near(&mut bx, x, ox - w - gap); // our right edge against their left edge
+            near(&mut bx, x, ox); // left edges in line
+            near(&mut bx, x, ox + ow - w); // right edges in line
+        }
+        if x < ox + ow + dist && x + w > ox - dist {
+            near(&mut by, y, oy + oh + gap);
+            near(&mut by, y, oy - h - gap);
+            near(&mut by, y, oy);
+            near(&mut by, y, oy + oh - h);
+        }
+    }
+    if let Some((ax, ay, aw, ah)) = area {
+        near(&mut bx, x, ax);
+        near(&mut bx, x, ax + aw - w);
+        near(&mut by, y, ay);
+        near(&mut by, y, ay + ah - h);
+    }
+    (bx.map_or(x, |b| b.1), by.map_or(y, |b| b.1))
+}
+
+/// Rectangles (x, y, w, h) of the other visible windows of the application, and of the work area of the screen.
+fn neighbours(app: &AppHandle, label: &str, win: &tauri::WebviewWindow) -> (Vec<(i32, i32, i32, i32)>, Option<(i32, i32, i32, i32)>) {
+    let others = app
+        .webview_windows()
+        .into_iter()
+        .filter(|(l, w)| l != label && l != "switcher" && w.is_visible().unwrap_or(false) && !w.is_minimized().unwrap_or(false))
+        .filter_map(|(_, w)| Some((w.outer_position().ok()?, w.outer_size().ok()?)))
+        .map(|(p, s)| (p.x, p.y, s.width as i32, s.height as i32))
+        .collect();
+    let area = win.current_monitor().ok().flatten().map(|m| {
+        let a = m.work_area();
+        (a.position.x, a.position.y, a.size.width as i32, a.size.height as i32)
+    });
+    (others, area)
+}
+
+/// `snap_rect` for a window being dragged, against the other visible windows of the application.
+fn snap(app: &AppHandle, label: &str, win: &tauri::WebviewWindow, x: i32, y: i32) -> (i32, i32) {
+    let Ok(size) = win.outer_size() else { return (x, y) };
+    let scale = win.scale_factor().unwrap_or(1.0);
+    let (others, area) = neighbours(app, label, win);
+    snap_rect(x, y, size.width as i32, size.height as i32, &others, area, (SNAP_DIST * scale).round() as i32, (SNAP_GAP * scale).round() as i32)
+}
+
+/// The size a window at (x, y) takes when its right and bottom edges are dragged to (w, h) and cling to the edges
+/// of the other windows (leaving `gap`, or lining up with them) and of the screen, within `dist` pixels.
+pub fn snap_size(x: i32, y: i32, w: i32, h: i32, others: &[(i32, i32, i32, i32)], area: Option<(i32, i32, i32, i32)>, dist: i32, gap: i32) -> (i32, i32) {
+    let mut br: Option<(i32, i32)> = None; // closest right edge: (distance, coordinate)
+    let mut bb: Option<(i32, i32)> = None; // closest bottom edge
+    let near = |best: &mut Option<(i32, i32)>, at: i32, cand: i32| {
+        let d = (cand - at).abs();
+        if d <= dist && best.is_none_or(|(bd, _)| d < bd) {
+            *best = Some((d, cand));
+        }
+    };
+    let (right, bottom) = (x + w, y + h);
+    for &(ox, oy, ow, oh) in others {
+        if y < oy + oh + dist && bottom > oy - dist {
+            near(&mut br, right, ox - gap); // against the left side of a window on our right
+            near(&mut br, right, ox + ow); // right edges in line
+            near(&mut br, right, ox);
+        }
+        if x < ox + ow + dist && right > ox - dist {
+            near(&mut bb, bottom, oy - gap);
+            near(&mut bb, bottom, oy + oh);
+            near(&mut bb, bottom, oy);
+        }
+    }
+    if let Some((ax, ay, aw, ah)) = area {
+        near(&mut br, right, ax + aw);
+        near(&mut bb, bottom, ay + ah);
+    }
+    (br.map_or(w, |b| b.1 - x), bb.map_or(h, |b| b.1 - y))
 }
 
 pub fn drag(app: &AppHandle, label: &str, phase: &str) {
@@ -718,7 +822,9 @@ pub fn drag(app: &AppHandle, label: &str, phase: &str) {
         "move" => {
             let start = st.drags.lock().unwrap().get(label).copied();
             if let (Some(((cx, cy), (wx, wy))), Ok(c)) = (start, win.cursor_position()) {
-                let _ = win.set_position(PhysicalPosition::new(wx + (c.x - cx).round() as i32, wy + (c.y - cy).round() as i32));
+                let (x, y) = snap(app, label, &win, wx + (c.x - cx).round() as i32, wy + (c.y - cy).round() as i32);
+                let _ = win.set_position(PhysicalPosition::new(x, y));
+                crate::tabs::hover(app, label, &win);
             }
         }
         "rstart" => {
@@ -731,14 +837,23 @@ pub fn drag(app: &AppHandle, label: &str, phase: &str) {
             let min = st.mins.lock().unwrap().get(label).copied().unwrap_or((200.0, 100.0));
             let scale = win.scale_factor().unwrap_or(1.0);
             if let (Some(((cx, cy), (w, h))), Ok(c)) = (start, win.cursor_position()) {
-                let nw = (w as f64 + (c.x - cx)).max(min.0 * scale).round() as u32;
-                let nh = (h as f64 + (c.y - cy)).max(min.1 * scale).round() as u32;
+                let (mut nw, mut nh) = ((w as f64 + (c.x - cx)).round() as i32, (h as f64 + (c.y - cy)).round() as i32);
+                if let Ok(p) = win.outer_position() {
+                    let (others, area) = neighbours(app, label, &win);
+                    (nw, nh) = snap_size(p.x, p.y, nw, nh, &others, area, (SNAP_DIST * scale).round() as i32, (SNAP_GAP * scale).round() as i32);
+                }
+                if label == "launcher" {
+                    nw = w as i32; // the width of the main window is fixed
+                }
+                let nw = (nw as f64).max(min.0 * scale).round() as u32;
+                let nh = (nh as f64).max(min.1 * scale).round() as u32;
                 let _ = win.set_size(PhysicalSize::new(nw, nh));
             }
         }
         _ => {
             st.drags.lock().unwrap().remove(label);
             st.resizes.lock().unwrap().remove(label);
+            crate::tabs::drop_on_target(app, label);
         }
     }
 }
@@ -777,4 +892,57 @@ pub fn restore(app: &AppHandle) {
 
 pub fn status_of(app: &AppHandle, id: &str) -> ConnState {
     app.state::<App>().states.lock().unwrap().get(id).map_or(ConnState::Disconnected, |s| s.status)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{snap_rect, snap_size};
+
+    // A 300 x 200 window "B" sits at (500, 100); windows are 200 x 100.
+    const B: (i32, i32, i32, i32) = (500, 100, 300, 200);
+
+    #[test]
+    fn clings_to_the_side_of_another_window_leaving_the_gap() {
+        // our right edge (x + 200) is 6 px short of B's left edge: it lands 2 px away from it
+        assert_eq!(snap_rect(294, 120, 200, 100, &[B], None, 10, 2), (298, 120));
+        // our left edge is 5 px inside B's right edge (800): it lands 2 px beyond it
+        assert_eq!(snap_rect(805, 120, 200, 100, &[B], None, 10, 2), (802, 120));
+    }
+
+    #[test]
+    fn clings_above_and_below_and_lines_edges_up() {
+        assert_eq!(snap_rect(520, 304, 200, 100, &[B], None, 10, 2), (520, 302)); // under B
+        assert_eq!(snap_rect(520, -4, 200, 100, &[B], None, 10, 2), (520, -2)); // above B: bottom edge 2 px above 100
+        assert_eq!(snap_rect(503, 130, 200, 100, &[B], None, 10, 2), (500, 130)); // left edges in line
+    }
+
+    #[test]
+    fn far_or_unrelated_windows_do_nothing() {
+        assert_eq!(snap_rect(100, 120, 200, 100, &[B], None, 10, 2), (100, 120)); // too far
+        // beside B's x range but far above it: nothing to cling to vertically, and not facing it horizontally
+        assert_eq!(snap_rect(490, 600, 200, 100, &[B], None, 10, 2), (490, 600));
+    }
+
+    #[test]
+    fn clings_to_the_screen_edges_without_a_gap_and_takes_the_closest() {
+        let screen = Some((0, 0, 1920, 1040));
+        assert_eq!(snap_rect(7, 6, 200, 100, &[], screen, 10, 2), (0, 0));
+        assert_eq!(snap_rect(1715, 935, 200, 100, &[], screen, 10, 2), (1720, 940));
+        // 4 px from the screen edge, but only 2 px from the other window's clinging spot: the closest wins
+        assert_eq!(snap_rect(4, 120, 200, 100, &[(204, 100, 300, 200)], Some((0, 0, 1920, 1040)), 10, 2), (2, 120));
+    }
+
+    #[test]
+    fn resizing_clings_the_right_and_bottom_edges() {
+        // our window is at (100, 120); stretching it so that its right edge is 4 px short of B's left edge (500)
+        assert_eq!(snap_size(100, 120, 396, 100, &[B], None, 10, 2), (398, 100)); // right edge ends 2 px from B
+        // a bottom edge near the top of B's row would need B to be below: B is beside, so nothing happens
+        assert_eq!(snap_size(100, 120, 200, 500, &[B], None, 10, 2), (200, 500));
+        // right edges in line with B's right edge (800)
+        assert_eq!(snap_size(100, 120, 697, 100, &[B], None, 10, 2), (700, 100));
+        // against the screen
+        assert_eq!(snap_size(100, 120, 1815, 915, &[], Some((0, 0, 1920, 1040)), 10, 2), (1820, 920));
+        // far from everything
+        assert_eq!(snap_size(100, 120, 300, 300, &[B], Some((0, 0, 1920, 1040)), 10, 2), (300, 300));
+    }
 }

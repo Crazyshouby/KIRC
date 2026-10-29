@@ -47,13 +47,12 @@ def crates():
 def main():
     parts = [HEAD]
     parts.append("------------------------------------------------------------------------------\n"
-                 "Polices\n"
+                 "Police\n"
                  "------------------------------------------------------------------------------\n"
-                 "Archivo (Omnibus-Type) et Overpass Mono (Delve Withrington, Red Hat), sous licence SIL Open Font\n"
-                 "License 1.1, intégrées à l'interface sous forme de sous-ensembles latins.\n\n")
-    for name in ("OFL-Archivo.txt", "OFL-OverpassMono.txt"):
-        parts.append(f"--- {name} ---\n")
-        parts.append((root / "third_party" / "fonts" / name).read_text(encoding="utf-8").strip() + "\n\n")
+                 "KIRC Pixel et KIRC Pixel Log (tools/gen_font.py) reproduisent, pixel par pixel, les deux polices bitmap de\n"
+                 "l'interface de KDX (Haxial Software), relevées sur des captures d'écran de KDX 1.6 ; les glyphes que ces\n"
+                 "captures ne montrent pas ont été dessinés pour KIRC. Les formes des lettres restent l'oeuvre de Haxial :\n"
+                 "leur redistribution relève de la décision de l'auteur de KIRC. Aucune police tierce n'est embarquée.\n\n")
     rows = crates()
     parts.append("------------------------------------------------------------------------------\n"
                  f"Bibliothèques Rust ({len(rows)}) liées à la version Windows\n"

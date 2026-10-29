@@ -111,7 +111,7 @@ async function main() {
 
   const con = await page(win("console"), 10000);
   await until(() => con.eval("document.querySelector('#consoleLog').textContent.includes('Bienvenue sur FakeNet')"), "welcome in the console");
-  check((await con.eval("document.querySelector('#consoleLog .ln.motd .fmt-b, #consoleLog .ln.motd span[style*=\"800\"]') !== null")), "MOTD bold rendered");
+  check((await con.eval("document.querySelector('#consoleLog .ln.motd .fmt-b, #consoleLog .ln.motd span[style*=\"text-shadow\"]') !== null")), "MOTD bold rendered");
   check((await con.eval("!!document.querySelector('#consoleLog a.link')")), "MOTD link rendered");
   check((await con.eval("document.querySelector('#consoleLog a.link').textContent")) === "https://example.org/page", "link without the final dot");
   await con.shot("04-console");
@@ -144,7 +144,7 @@ async function main() {
   await say("/unknown");
   await until(async () => (await lines()).some(l => l.includes("Commande inconnue")), "unknown command reported");
   // An event of another server (same channel name) must not show up here.
-  await chat.eval(`window.__TAURI__.event.emit("irc", { server: "autre", seq: 999999, event: { kind: "line", line: { buffer: "#test", kind: "msg", nick: "intrus", text: "FOREIGN", time: Date.now(), highlight: false, own: false } } })`);
+  await chat.eval(`window.__TAURI__.event.emit("chat", { server: "autre", seq: 999999, event: { kind: "line", line: { buffer: "#test", kind: "msg", nick: "intrus", text: "FOREIGN", time: Date.now(), highlight: false, own: false } } })`);
   await sleep(400);
   check(!(await lines()).some(l => l.includes("FOREIGN")), "events of another server are ignored");
   await say("/topic Nouveau sujet");
@@ -398,6 +398,37 @@ async function main() {
   const logText = await readFile(join(data, "logs", "Serveur de test", "#test.log"), "utf8");
   check(logText.includes("<kirc> bonjour tout le monde") && logText.includes("<bob> salut kirc"), "the conversation is written to a log file");
   check(!logText.includes("<bob> SECRET-IGNORED"), "ignored messages are not logged");
+
+  console.log("protocols");
+  const overview = (await inv("get_overview")).ok;
+  const known = overview.servers[0];
+  check(known.protocol === "irc" && known.caps.ranks === true && known.caps.channel_list === true, "a server carries its protocol and what it can do");
+  const snapshot = (await inv("buffer_snapshot", { server: known.id, buffer: "#test" })).ok;
+  check(snapshot.caps.whois === true && snapshot.caps.topic === true, "a window learns what its server can do");
+  check(((await inv("save_server", { entry: { ...known, id: "", name: "Inconnu", protocol: "telegram" } })).err || "").includes("Protocole inconnu"), "a server of an unknown protocol is refused");
+  check(await chat.eval("[...document.querySelectorAll('#memberList .mem')].length > 0"), "the member list still fills through the renamed event");
+
+  console.log("tabs: merging two windows");
+  const labelOf = p => p.eval("window.__TAURI_INTERNALS__.metadata.currentWindow.label");
+  const [chatLabel, conLabel] = [await labelOf(chat), await labelOf(con)];
+  const shown = async label => (await inv("window_visible", { label })).ok === true;
+  check((await inv("tab_merge", { dragged: conLabel, target: chatLabel })).err === undefined, "the console is merged into the channel window");
+  await until(() => con.eval("!document.querySelector('.tabs').hidden"), "the strip of tabs shows in the merged window", 8000);
+  await until(() => chat.eval("!document.querySelector('.tabs').hidden"), "and in the window it joined", 8000);
+  check((await chat.eval("document.querySelectorAll('.tabs .tab').length")) === 2, "two tabs");
+  check((await chat.eval("document.querySelector('.tabs .tab.on')?.textContent")) === "Messages — Serveur de test", "the dropped window is the tab shown");
+  check((await chat.eval("[...document.querySelectorAll('.tabs .tab')].map(t => t.textContent).includes('#test')")), "a channel tab carries the channel name alone");
+  await sleep(300);
+  check((await shown(conLabel)) && !(await shown(chatLabel)), "only the tab shown is on screen");
+  check(await settings.eval("document.querySelector('.tabs').hidden"), "a third window outside the group shows no strip of tabs");
+  check(await settings.eval("!document.body.classList.contains('droptarget')"), "and is not lit up as a drop target");
+  await chat.shot("21-tabs-console");
+  await con.eval("[...document.querySelectorAll('.tabs .tab')].find(t => !t.classList.contains('on')).click()");
+  await until(async () => (await shown(chatLabel)) && !(await shown(conLabel)), "clicking the other tab brings its window forward", 8000);
+  await chat.shot("22-tabs-chat");
+  check((await inv("tab_detach", { label: conLabel })).err === undefined, "a tab is detached");
+  await until(() => chat.eval("document.querySelector('.tabs').hidden"), "a lone window has no strip of tabs", 8000);
+  await until(() => shown(conLabel), "the detached window is on screen again", 8000);
 
   console.log("connection drop");
   await say("/quote XDROP");
