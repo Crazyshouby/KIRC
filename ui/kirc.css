@@ -2,10 +2,6 @@
    (index.html) opened with ?w=<kind>; html[data-panel] picks the one that shows.
    Colours and controls come from theme.css (the KDX look). */
 
- background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='8'%3E%3Cpath d='M0 0v8l4-4z' fill='%23888'/%3E%3C/svg%3E"); }
-
-
-
 select.text-input option { background: #2a2a2a; color: #fff; }
 
 /* ---------- Which window this page shows ---------- */
