@@ -58,11 +58,8 @@ async function call(cmd, args) {
 }
 
 // ---------------------------------------------------------------- window chrome
-const TB_GLYPHS = {
-  x: '<svg viewBox="0 0 9 9"><path d="M1 1L8 8M8 1L1 8" stroke="#fff" stroke-width="2" fill="none"/></svg>',
-  minus: '<svg viewBox="0 0 9 9"><path d="M1 4.5H8" stroke="#fff" stroke-width="2" fill="none"/></svg>',
-  plus: '<svg viewBox="0 0 9 9"><path d="M1 4.5H8M4.5 1V8" stroke="#fff" stroke-width="2" fill="none"/></svg>',
-};
+// The frame (title bar, buttons, grip, active / shaded / theme events) is kdx-frame.js, shared by the whole KDX suite; it talks to
+// the application through kdx-bridge.js (the "tauri" transport: win_drag, win_shade, win_zoom, win_close, win_ready).
 
 // The hatched button of the title bar: the commands of the window.
 function windowMenu(btn) {
@@ -73,57 +70,9 @@ function windowMenu(btn) {
   openMenu(r.left, r.bottom + 2, btn.closest(".tb").querySelector(".tb-title").textContent, items);
 }
 function initChrome() {
-  for (const tb of document.querySelectorAll(".tb")) {
-    // Moving: the page reports press / movement / release, the application reads the cursor and
-    // moves the window. Two presses within 400 ms roll the window up or down.
-    let lastDown = 0, dragging = false, queued = false;
-    tb.addEventListener("pointerdown", ev => {
-      if (ev.button !== 0 || ev.target.closest(".tb-btn")) return;
-      const now = performance.now();
-      if (now - lastDown < 400) { lastDown = 0; invoke("win_shade"); return; }
-      lastDown = now;
-      dragging = true;
-      tb.setPointerCapture(ev.pointerId);
-      invoke("win_drag", { phase: "start" });
-    });
-    tb.addEventListener("pointermove", () => {
-      if (!dragging || queued) return;
-      queued = true;
-      requestAnimationFrame(() => { queued = false; if (dragging) invoke("win_drag", { phase: "move" }); });
-    });
-    const end = () => { if (dragging) { dragging = false; invoke("win_drag", { phase: "end" }); } };
-    tb.addEventListener("pointerup", end);
-    tb.addEventListener("pointercancel", end);
-    for (const b of tb.querySelectorAll(".tb-btn")) {
-      if (b.dataset.glyph) b.innerHTML = TB_GLYPHS[b.dataset.glyph] || TB_GLYPHS.minus;
-      b.addEventListener("click", () => {
-        if (b.dataset.act === "menu") windowMenu(b);
-        else invoke({ close: "win_close", zoom: "win_zoom" }[b.dataset.act] || "win_shade");
-      });
-    }
-  }
-  for (const g of document.querySelectorAll(".grip-rz")) {
-    let sizing = false, queued = false;
-    g.addEventListener("pointerdown", ev => {
-      if (ev.button !== 0) return;
-      sizing = true;
-      g.setPointerCapture(ev.pointerId);
-      invoke("win_drag", { phase: "rstart" });
-    });
-    g.addEventListener("pointermove", () => {
-      if (!sizing || queued) return;
-      queued = true;
-      requestAnimationFrame(() => { queued = false; if (sizing) invoke("win_drag", { phase: "rmove" }); });
-    });
-    const end = () => { if (sizing) { sizing = false; invoke("win_drag", { phase: "end" }); } };
-    g.addEventListener("pointerup", end);
-    g.addEventListener("pointercancel", end);
-  }
-  listen("active", e => document.body.classList.toggle("active", !!e.payload));
-  listen("theme", e => applyTheme(e.payload));
+  document.addEventListener("kdx:menu", e => windowMenu(e.target.closest(".tb-btn")));
+  KdxFrame.init();   // also tells the application that the window is ready (win_ready)
   listen("settings", e => applySettings(e.payload));
-  listen("shade", e => document.body.classList.toggle("shaded", !!e.payload));
-  invoke("win_ready");
 }
 initChrome();
 
