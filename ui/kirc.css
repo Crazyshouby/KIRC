@@ -171,17 +171,6 @@ body.nots .ln .ts { display: none; }
 .banner[hidden] { display: none; }
 .banner .t { flex: 1; min-width: 0; }
 
-/* Context menu on a member */
-#ctxMenu {
-  position: fixed; z-index: 20; min-width: 200px; display: none;
-  background: var(--panel); border: 1px solid #000; box-shadow: var(--ring), 4px 5px 0 rgba(0, 0, 0, 0.5); padding: 6px;
-}
-#ctxMenu.show { display: block; }
-.ctx-title { padding: 4px 8px 6px; background: var(--tb-grad); margin: -6px -6px 4px; color: #fff; text-shadow: 0 1px 0 #000; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center; }
-.ctx-item { display: flex; align-items: center; gap: 8px; padding: 5px 8px; color: var(--text); cursor: pointer; }
-.ctx-item:hover { background: var(--sel-bg); color: var(--sel-fg); }
-.ctx-sep { height: 1px; background: var(--line); margin: 4px 6px; }
-
 /* ---------- 0.2 ---------- */
 .ln.past { opacity: 0.6; }
 .ln.sep { color: #888888; text-align: center; border-top: 1px solid var(--a-hover); margin: 3px 0; padding-top: 3px; }
@@ -256,7 +245,6 @@ body.nots .ln .ts { display: none; }
 .row-item:hover .sub, .row-item.sel .sub, .chan-row:hover .t, .chan-row.sel .t { color: var(--faint); }
 .mem:hover { background: #1e1e1e; }
 .mem:hover .nm, .mem:hover .sym { color: var(--nc, var(--text)); }
-.ctx-item:hover { background: #444; color: var(--text); box-shadow: inset 0 0 0 1px #777; }
 .mynick { margin-right: 14px; }
 #consoleForm { align-items: center; }
 #consoleForm .text-input { height: 24px; }

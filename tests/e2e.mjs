@@ -470,11 +470,11 @@ async function main() {
   await until(async () => (await menuRows(".hiddenrow")).some(t => t.includes("#test")), "the heading opens the hidden chats", 8000);
   await launcher.shot("25-hidden-chats");
   await launcher.eval("document.querySelector('#openList .hiddenrow').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 20, clientY: 20 }))");
-  check(await launcher.eval("[...document.querySelectorAll('#ctxMenu .ctx-item')].map(e => e.textContent).includes('Réafficher dans la liste')"), "the right-click menu offers to show it again");
-  await launcher.eval("[...document.querySelectorAll('#ctxMenu .ctx-item')].find(e => e.textContent === 'Réafficher dans la liste').click()");
+  check(await launcher.eval("[...document.querySelectorAll('.menu .menu-item')].map(e => e.textContent).includes('Réafficher dans la liste')"), "the right-click menu offers to show it again");
+  await launcher.eval("[...document.querySelectorAll('.menu .menu-item')].find(e => e.textContent === 'Réafficher dans la liste').click()");
   await until(async () => (await menuRows(":not(.hidhead)")).some(t => t.includes("#test")) && (await menuRows(".hidhead")).length === 0, "shown again: back in the list, no heading left", 8000);
   await launcher.eval("document.querySelector('#openList .row-item').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 20, clientY: 20 }))");
-  check(await launcher.eval("[...document.querySelectorAll('#ctxMenu .ctx-item')].map(e => e.textContent).includes('Masquer de la liste')"), "the right-click menu of a chat in the list offers to hide it");
+  check(await launcher.eval("[...document.querySelectorAll('.menu .menu-item')].map(e => e.textContent).includes('Masquer de la liste')"), "the right-click menu of a chat in the list offers to hide it");
   await launcher.eval("document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); document.body.click()");
 
   console.log("tabs: merging two windows");

@@ -67,7 +67,7 @@ function windowMenu(btn) {
   const items = [["Enrouler la fenêtre", () => invoke("win_shade")]];
   if (document.querySelector(".log")) items.push(["Effacer le texte", () => document.querySelectorAll(".log").forEach(l => { l.textContent = ""; })]);
   items.push(null, ["Fermer", () => invoke("win_close")]);
-  openMenu(r.left, r.bottom + 2, btn.closest(".tb").querySelector(".tb-title").textContent, items);
+  KdxFrame.menu(items, r.left, r.bottom + 2, btn.closest(".tb").querySelector(".tb-title").textContent);
 }
 function initChrome() {
   document.addEventListener("kdx:menu", e => windowMenu(e.target.closest(".tb-btn")));
@@ -101,10 +101,10 @@ function initTabs() {
       b.addEventListener("auxclick", ev => { if (ev.button === 1) invoke("tab_close", { label: t.label }); });
       b.addEventListener("contextmenu", ev => {
         ev.preventDefault();
-        openMenu(ev.clientX, ev.clientY, t.title, [
+        KdxFrame.menu([
           ["Détacher l'onglet", () => invoke("tab_detach", { label: t.label })],
           ["Fermer l'onglet", () => invoke("tab_close", { label: t.label })],
-        ]);
+        ], ev.clientX, ev.clientY, t.title);
       });
       bar.appendChild(b);
     }
@@ -653,10 +653,10 @@ function initLauncher() {
       row.addEventListener("keydown", e => { if (e.key === "Enter") open(); });
       row.addEventListener("contextmenu", e => {
         e.preventDefault();
-        openMenu(e.clientX, e.clientY, c, [
+        KdxFrame.menu([
           ["Ouvrir", open],
           isHidden ? ["Réafficher dans la liste", () => setHidden(c, false)] : ["Masquer de la liste", () => setHidden(c, true)],
-        ]);
+        ], e.clientX, e.clientY, c);
       });
       list.appendChild(row);
     };
@@ -1161,7 +1161,7 @@ function initChat() {
     if (caps.moderation) items.push(null,
       ["Expulser", () => say("/kick " + nick)],
       ["Bannir", () => say("/ban " + nick)]);
-    openMenu(e.clientX, e.clientY, nick, items);
+    KdxFrame.menu(items, e.clientX, e.clientY, nick);
   });
 
   // ---- topic
@@ -1534,24 +1534,6 @@ function initSwitcher() {
 }
 
 // ---------------------------------------------------------------- context menu
-function openMenu(x, y, title, items) {
-  const m = $("#ctxMenu");
-  m.textContent = "";
-  const t = document.createElement("div"); t.className = "ctx-title"; t.textContent = title; m.appendChild(t);
-  for (const it of items) {
-    if (!it) { const s = document.createElement("div"); s.className = "ctx-sep"; m.appendChild(s); continue; }
-    const row = document.createElement("div"); row.className = "ctx-item"; row.textContent = it[0];
-    row.addEventListener("click", () => { closeMenu(); it[1](); });
-    m.appendChild(row);
-  }
-  m.classList.add("show");
-  const r = m.getBoundingClientRect();
-  m.style.left = Math.max(2, Math.min(x, innerWidth - r.width - 2)) + "px";
-  m.style.top = Math.max(2, Math.min(y, innerHeight - r.height - 2)) + "px";
-}
-function closeMenu() { $("#ctxMenu").classList.remove("show"); }
-document.addEventListener("pointerdown", e => { if (!e.target.closest("#ctxMenu")) closeMenu(); });
-window.addEventListener("blur", closeMenu);
 
 // ---------------------------------------------------------------- start
 ({ launcher: initLauncher, servers: initServers, settings: initSettings, about: initAbout, join: initJoin, console: initConsole, chat: initChat, whois: initWhois, list: initList, switcher: initSwitcher }[PANEL] || (() => {}))();
