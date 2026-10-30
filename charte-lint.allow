@@ -1,0 +1,8 @@
+# Exceptions justifiées propres à KIRC : règle<TAB>fragment du fichier<TAB>fragment de la ligne<TAB>raison. Aucune exception sans raison.
+gradient	kirc.css	radial-gradient(ellipse 70%	Bannière illustrée du lanceur : l'équivalent du cadran de KDX, une image et non un composant
+gradient	kirc.css	linear-gradient(#fff 0	Lettrage de la bannière illustrée du lanceur (même illustration)
+color	kirc.css	radial-gradient(ellipse 70%	Couleurs de la bannière illustrée du lanceur (même illustration)
+color	kirc.css	.mem.r	Couleur de rang d'un membre de salon (fondateur, opérateur, voix...) : donnée IRC qui doit rester distincte de l'accent
+color	kirc.js	const MIRC	Palette des 16 codes couleur IRC (^C) : imposée par le protocole, identique chez tous les clients
+color	kirc.js	"#ffff40"	Suite de la palette des codes couleur IRC (^C)
+color	kirc.js	NICK_COLORS	Couleurs d'auteur des pseudos dans la console : donnée choisie pour se distinguer, comme --nc de la charte (CHARTE.md §6)

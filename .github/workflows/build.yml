@@ -45,6 +45,11 @@ jobs:
         shell: pwsh
         run: node tools/kdx-verify.mjs ui/kdx/kdx-sync.json
 
+      # The pages follow the charter rules (CHARTE.md section 8); the exceptions are justified one by one in charte-lint.allow.
+      - name: Pages follow the charter
+        shell: pwsh
+        run: node tools/charte-lint.mjs ui --manifest ui/kdx/kdx-sync.json --allow charte-lint.allow
+
       # Generated files are committed: regenerating them must change nothing.
       - name: Generated notices are up to date
         shell: pwsh
