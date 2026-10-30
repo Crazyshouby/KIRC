@@ -20,8 +20,9 @@ Un client IRC pour Windows, dans le style de **KDX** (Haxial) : chaque fonction 
 - **Mise à jour automatique** depuis les releases GitHub : l'installateur téléchargé est vérifié avec une signature avant d'être lancé (réglable : les réglages permettent de ne plus rien contacter).
 - **Reconnexion automatique** avec délai croissant ; les salons sont rejoints de nouveau.
 - **Mémoire des fenêtres** : position et taille de chacune, retrouvées au démarrage.
+- **Masquer** un salon ou une conversation de la liste du menu principal (clic droit) ; les lignes masquées sont sous un titre « Masquées » qui s'ouvre et se ferme.
 - Zone de notification : le bouton « − » du menu principal range tout, un clic sur l'icône ramène tout.
-- **WhatsApp (facultatif, version compilée avec la fonction `whatsapp`)** : KIRC se lie à votre compte comme un appareil de plus (code à scanner dans la fenêtre des messages) ; les groupes sont dans le menu principal, les conversations s'ouvrent à l'arrivée d'un message ou par `/query numéro`. **Client non officiel** : WhatsApp n'autorise pas les clients tiers, le compte peut être suspendu. Texte et images (aperçu, puis image entière au clic ; envoi par le bouton « Image… » ou le collage) ; les vidéos, messages vocaux et fichiers apparaissent comme `[vidéo]`, etc. ; pas d'appels.
+- **WhatsApp (facultatif, version compilée avec la fonction `whatsapp`)** : KIRC se lie à votre compte comme un appareil de plus (code à scanner dans la fenêtre des messages) ; les groupes sont dans le menu principal, les conversations s'ouvrent à l'arrivée d'un message ou par `/query numéro`. **Client non officiel** : WhatsApp n'autorise pas les clients tiers, le compte peut être suspendu. Texte et images (aperçu, puis image entière au clic ; envoi par le bouton « Image… » ou le collage) ; les vidéos, messages vocaux et fichiers apparaissent comme `[vidéo]`, etc. ; appels audio et vidéo en 1:1 (essai) ; pas d'appel de groupe.
 
 Fermer la fenêtre d'un **salon** le quitte (comme dans la plupart des clients) ; fermer celle d'une conversation privée ne fait que la fermer.
 
@@ -53,8 +54,7 @@ npm run build               # installateur NSIS dans src-tauri/target/release/bu
 cd src-tauri && cargo test  # tests unitaires + 4 tests réseau
 cd src-tauri && cargo build --features whatsapp   # avec WhatsApp (Rust 1.94 ou plus)
 node tests/e2e.mjs          # test de bout en bout de la vraie application (voir ci-dessous)
-python tools/gen_assets.py  # régénère polices et pictogrammes (fichiers versionnés)
-python tools/gen_themes.py  # régénère ui/themes.css
+node tools/kdx-verify.mjs ui/kdx/kdx-sync.json   # les copies de la charte (ui/kdx) sont intactes (elles viennent du dépôt kdx-ui)
 ```
 
 `tests/e2e.mjs` démarre `tools/fake_ircd.py` (un petit serveur IRC scripté, avec TLS) puis l'application avec un dossier de données jetable, la pilote par le port de débogage de WebView2 et enregistre une capture de chaque fenêtre dans `tests/shots/`. Il écrit brièvement dans le coffre Windows (puis le vide) pour vérifier SASL.

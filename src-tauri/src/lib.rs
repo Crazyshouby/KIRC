@@ -3,9 +3,12 @@ pub mod chat;
 pub mod commands;
 pub mod config;
 pub mod irc;
+#[allow(dead_code)]
+pub mod kdx_bus;
 pub mod logs;
 pub mod secrets;
 pub mod store;
+pub mod suite;
 pub mod switcher;
 pub mod tabs;
 pub mod text;
@@ -23,6 +26,7 @@ pub fn run() {
     let (cfg, writable) = config::load_checked(&dir);
     let state = App::new(dir, cfg);
     state.set_writable(writable);
+    suite::init(); // l'accent de la suite KDX, avant d'ouvrir une fenêtre
 
     let built = tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
@@ -51,6 +55,12 @@ pub fn run() {
             commands::send_input,
             commands::buffer_snapshot,
             commands::get_media,
+            commands::set_hidden,
+            commands::call_start,
+            commands::call_answer,
+            commands::call_hangup,
+            commands::call_mute,
+            commands::call_media,
             commands::send_image,
             commands::clear_buffer,
             commands::save_settings,
@@ -72,6 +82,7 @@ pub fn run() {
         ])
         .setup(|app| {
             let handle = app.handle().clone();
+            suite::start(handle.clone()); // recolore les fenêtres quand l'accent de la suite change
 
             let show = MenuItem::with_id(app, "show", "Afficher KIRC", true, None::<&str>)?;
             let quit = MenuItem::with_id(app, "quit", "Quitter", true, None::<&str>)?;

@@ -1,0 +1,29 @@
+{
+  "kdxUi": "1.0.0",
+  "files": {
+    "ui/kdx/kdx-ui.css": {
+      "from": "kdx-ui.css",
+      "sha256": "f1a7588db2ce8b8496999762a2b8e414c3309a19ff57a6e6d4f05c07a4cfda7a"
+    },
+    "ui/kdx/themes.css": {
+      "from": "themes.css",
+      "sha256": "36d5fc8e9b28459cf890700d128ad50daabe9c2047bf83a489445bdff538c336"
+    },
+    "ui/kdx/fonts.css": {
+      "from": "fonts.css",
+      "sha256": "42e6d1d1f8f7268a15631b5d982fc41a9080665140bfc3d844f88480ecdca0c7"
+    },
+    "ui/kdx/icons.js": {
+      "from": "icons.js",
+      "sha256": "3e225987c4d5e6526cc42e42c94e1e716ff53b003bc23de80b1617295ad788b5"
+    },
+    "src-tauri/src/kdx_bus.rs": {
+      "from": "kdx_bus.rs",
+      "sha256": "d1abd9e20ef5aaaa12fad424e3eec0dc2041c191f8db54ae045a4ac7f62365db"
+    },
+    "tools/kdx-verify.mjs": {
+      "from": "kdx-verify.mjs",
+      "sha256": "49afd3380630058abf08a44d3f84632054db182fce837d9eeb791fbf270dbe1a"
+    }
+  }
+}

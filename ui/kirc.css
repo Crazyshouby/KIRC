@@ -2,69 +2,16 @@
    (index.html) opened with ?w=<kind>; html[data-panel] picks the one that shows.
    Colours and controls come from theme.css (the KDX look). */
 
-/* Scroll bars as in KDX: 15 px wide, a pair of arrow buttons at each end, a bevelled thumb with grip lines. */
-::-webkit-scrollbar { width: 15px; height: 15px; }
-::-webkit-scrollbar-track { background: #333; box-shadow: inset 1px 1px 0 #111; }
-::-webkit-scrollbar-thumb { background-color: var(--btn); border: 1px solid #000; border-radius: 2px; box-shadow: var(--bevel); background-repeat: no-repeat; background-position: center; }
-::-webkit-scrollbar-thumb:vertical { background-image: repeating-linear-gradient(#999 0 1px, transparent 1px 2px); background-size: 7px 5px; }
-::-webkit-scrollbar-thumb:horizontal { background-image: repeating-linear-gradient(90deg, #999 0 1px, transparent 1px 2px); background-size: 5px 7px; }
-::-webkit-scrollbar-corner { background: #333; }
-::-webkit-scrollbar-button {
-  display: block; width: 15px; height: 15px; background-color: var(--btn); background-repeat: no-repeat; background-position: center;
-  border: 1px solid #000; box-shadow: var(--bevel);
-}
-::-webkit-scrollbar-button:vertical:decrement { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='4'%3E%3Cpath d='M0 4h8L4 0z' fill='%23888'/%3E%3C/svg%3E"); }
-::-webkit-scrollbar-button:vertical:increment { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='4'%3E%3Cpath d='M0 0h8L4 4z' fill='%23888'/%3E%3C/svg%3E"); }
-::-webkit-scrollbar-button:horizontal:decrement { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='8'%3E%3Cpath d='M4 0v8L0 4z' fill='%23888'/%3E%3C/svg%3E"); }
-::-webkit-scrollbar-button:horizontal:increment { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='8'%3E%3Cpath d='M0 0v8l4-4z' fill='%23888'/%3E%3C/svg%3E"); }
+ background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='8'%3E%3Cpath d='M0 0v8l4-4z' fill='%23888'/%3E%3C/svg%3E"); }
 
-/* Orbs: round status lamps (green = connected, amber = busy, grey = off). */
-.orb { width: 11px; height: 11px; border-radius: 50%; flex: none; background: radial-gradient(circle at 35% 30%, #8a8a8a, #3a3a3a 60%, #1c1c1c); }
-.orb.green { background: radial-gradient(circle at 35% 30%, #8af08a, #18a828 55%, #0a5a14); }
-.orb.amber { background: radial-gradient(circle at 35% 30%, #ffe090, #faa320 55%, #b05a00); }
-.orb.red { background: radial-gradient(circle at 35% 30%, #ff9a8a, #e02020 55%, #7a0202); }
-.orb[hidden] { display: none; }
 
-/* Status readout: a black console strip with a red frame. */
-.status {
-  display: flex; align-items: center; gap: 8px; min-width: 0; background: var(--ink);
-  border: 2px solid var(--red-frame); padding: 5px 9px; color: var(--field-ink);
-  font: 14px/16px var(--font);
-}
-.status > span:last-child { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.status .dot { width: 11px; height: 11px; border-radius: 50%; flex: none; background: radial-gradient(circle at 35% 30%, #8a8a8a, #3a3a3a 60%, #1c1c1c); }
-.status.on .dot { background: radial-gradient(circle at 35% 30%, #8af08a, #18a828 55%, #0a5a14); }
-.status.busy .dot { background: radial-gradient(circle at 35% 30%, #ffe090, #faa320 55%, #b05a00); animation: pulse 1s ease-in-out infinite; }
-@keyframes pulse { 50% { opacity: 0.4; } }
 
-/* The default button of a KDX dialog: red double ring around the bevel. */
-.primary {
-  position: relative; font: inherit; font-weight: 700; color: #fff; cursor: pointer; height: 28px; padding: 0 16px;
-  background: var(--btn); border: 1px solid #000; border-radius: 3px; margin: 0 4px;
-  box-shadow: var(--bevel), 0 0 0 1px #000, 0 0 0 2px var(--a-mid), 0 0 0 3px var(--a-edge), 0 0 0 4px #000;
-}
-.primary:hover:not(:disabled) { background: #3b3b3b; }
-.primary:active:not(:disabled) { background: #2a2a2a; }
-.primary:disabled { cursor: default; color: #888888; }
-.primary:focus-visible { outline: 2px solid var(--warn); outline-offset: 2px; }
-.primary.quiet { box-shadow: var(--bevel); }
-
-/* ---------- Text inputs: black field, green text, red ring when focused ---------- */
-.text-input {
-  flex: 1; min-width: 0; background: var(--ink); border: 2px solid #111;
-  color: var(--field-ink); padding: 4px 7px; font: 14px/16px var(--font);
-  outline: none; caret-color: var(--bar-top); user-select: text;
-}
-.text-input:focus { border-color: var(--red-frame); }
-.text-input:focus-visible { outline: none; } /* the red ring is the focus mark */
-.text-input:disabled { opacity: 0.45; }
-.text-input::placeholder { color: var(--faint); }
-select.text-input { background-color: var(--btn); border: 1px solid #000; box-shadow: var(--bevel); color: var(--text); font: inherit; font-weight: 700; border-radius: 3px; user-select: none; }
 select.text-input option { background: #2a2a2a; color: #fff; }
-textarea.text-input { resize: none; line-height: 1.4; }
 
 /* ---------- Which window this page shows ---------- */
 .win { display: none; }
+html[data-panel]:not([data-panel="all"]) .win { position: fixed; inset: 0; }
+.cb { gap: 0; } /* the charter spaces the children of a window by 5 px; the KIRC pages space them with their own margins */
 html[data-panel="launcher"] #launcherWin,
 html[data-panel="servers"] #serversWin,
 html[data-panel="settings"] #settingsWin,
@@ -91,8 +38,8 @@ html[data-panel="launcher"] .grip-rz, html[data-panel="chat"] .grip-rz, html[dat
 .lbtns { display: flex; flex-direction: column; gap: 1px; }
 .lbtn {
   position: relative; display: flex; align-items: center; gap: 8px; height: 24px; padding: 0 8px; text-align: left;
-  font: inherit; font-weight: 700; color: var(--text); cursor: pointer; white-space: nowrap;
-  background: var(--btn); border: 1px solid #000; border-radius: 3px; box-shadow: var(--bevel);
+  font: inherit; color: var(--text); cursor: pointer; white-space: nowrap;
+  background: var(--btn); border: 1px solid #000; box-shadow: var(--bevel);
 }
 .lbtn:hover:not(:disabled) { background: #3b3b3b; }
 .lbtn:focus-visible { outline: 2px solid var(--warn); outline-offset: 1px; }
@@ -100,8 +47,8 @@ html[data-panel="launcher"] .grip-rz, html[data-panel="chat"] .grip-rz, html[dat
 .lbtn:disabled { color: #888888; cursor: default; }
 .lbtn .orb { position: absolute; right: 8px; top: 6px; }
 .lsel {
-  width: 100%; height: 24px; padding: 0 6px; font: inherit; font-weight: 700; color: var(--text); cursor: pointer;
-  background-color: var(--btn); border: 1px solid #000; border-radius: 3px; box-shadow: var(--bevel);
+  width: 100%; height: 24px; padding: 0 6px; font: inherit; color: var(--text); cursor: pointer;
+  background-color: var(--btn); border: 1px solid #000; box-shadow: var(--bevel);
 }
 .lsel option { background: #2a2a2a; color: #fff; }
 .lsel:disabled { color: #888888; }
@@ -120,19 +67,15 @@ html[data-panel="launcher"] .grip-rz, html[data-panel="chat"] .grip-rz, html[dat
 }
 
 /* Lists: ruled rows, hover = peach, selected = navy, status = left bar. */
-.list { flex: 1; min-height: 0; overflow-y: auto; background: var(--panel); border: 1px solid #000; box-shadow: 0 1px 0 #555; }
 .row-item {
   display: flex; align-items: center; gap: 8px; padding: 5px 8px 5px 6px; border-left: 6px solid transparent;
   border-bottom: 1px solid var(--line); cursor: pointer; outline: none; min-width: 0;
 }
-.row-item:hover { background: var(--accent-2); color: var(--hover-fg); }
 .row-item:focus-visible { outline: 2px solid var(--warn); outline-offset: -2px; }
 .row-item.sel { background: var(--sel-bg); color: var(--sel-fg); }
 .row-item .grow { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .row-item .sub { display: block; font: 14px/16px var(--font); color: var(--faint); }
-.row-item:hover .sub { color: var(--hover-fg); }
-.row-item.sel .sub { color: #b8b0ff; }
-.empty { color: var(--faint); text-align: center; padding: 22px 12px; font-weight: 600; }
+.empty { color: var(--faint); text-align: center; padding: 22px 12px; }
 .launcher .list { min-height: 60px; }
 
 /* ---------- Forms ---------- */
@@ -144,7 +87,7 @@ html[data-panel="launcher"] .grip-rz, html[data-panel="chat"] .grip-rz, html[dat
 .form .col2 { grid-column: 2; }
 [hidden] { display: none !important; }
 .form .port { flex: none; width: 90px; }
-.form .hint { grid-column: 2; color: var(--faint); font-weight: 600; line-height: 1.4; margin-top: -3px; }
+.form .hint { grid-column: 2; color: var(--faint); line-height: 1.4; margin-top: -3px; }
 /* A group: a box etched into the panel, its title set in the top edge (KDX's "File System" box). */
 .form .grp {
   grid-column: 1 / -1; display: grid; grid-template-columns: 112px 1fr; gap: 7px 10px; align-items: center; min-width: 0;
@@ -175,15 +118,10 @@ html[data-panel="launcher"] .grip-rz, html[data-panel="chat"] .grip-rz, html[dat
 .chat { gap: 6px; padding: 6px; position: relative; }
 .chat-main { flex: 1; min-height: 0; display: flex; gap: 6px; }
 .pane-l { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 6px; position: relative; }
-.log {
-  flex: 1; min-width: 0; min-height: 0; overflow-y: auto; overflow-x: hidden; background: var(--ink); border: 2px solid #111; padding: 4px 0;
-  font: 14px/16px var(--font); color: var(--field-ink); user-select: text; cursor: text;
-}
-.log:focus { outline: none; border-color: var(--red-frame); }
 /* Everything in the transcript is bright green on black, as in KDX; only errors and kicks are red. */
 .ln { padding: 0 8px 0 6px; white-space: pre-wrap; overflow-wrap: anywhere; border-left: 3px solid transparent; }
 .ln .ts { color: #888888; margin-right: 6px; user-select: none; }
-.ln .nk { margin-right: 6px; font-weight: 700; }
+.ln .nk { margin-right: 6px; }
 .ln.kick { color: var(--red); }
 .ln.error { color: var(--red); border-left-color: var(--red); }
 .ln.hl { background: var(--sel-bg); border-left-color: var(--sel-fg); }
@@ -213,11 +151,10 @@ body.nots .ln .ts { display: none; }
 }
 .mem .sym { width: 11px; flex: none; text-align: center; font: 14px/16px var(--font); color: var(--nc, var(--text)); }
 .mem .nm { overflow: hidden; text-overflow: ellipsis; color: var(--nc, var(--text)); }
-.mem.away { background: var(--away-bg); }
+.mem.away { background: var(--card-2); }
 .mem.away .nm { color: var(--faint); }
-.mem.away .nm::after { content: "   \25B6  absent"; color: var(--faint); font-weight: 600; }
+.mem.away .nm::after { content: "   \25B6  absent"; color: var(--faint); }
 .mem:hover { background: var(--accent-2); }
-.mem:hover .nm, .mem:hover .sym { color: var(--hover-fg); }
 .mem.r0 { border-left-color: #ff5cf0; } .mem.r1 { border-left-color: #ff8a3c; } .mem.r2 { border-left-color: #ff3030; }
 .mem.r3 { border-left-color: #faa320; } .mem.r4 { border-left-color: #2a5ae0; }
 
@@ -227,7 +164,7 @@ body.nots .ln .ts { display: none; }
 .topicrow { display: flex; align-items: center; gap: 8px; flex: none; min-height: 22px; cursor: default; }
 .topicrow[hidden] { display: none; }
 .topicrow .tbtn { min-height: 20px; padding: 0 10px; flex: none; }
-.topicrow .t { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text); font-weight: 700; }
+.topicrow .t { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text); }
 .topicrow .text-input { padding: 2px 6px; }
 .mynick { flex: none; max-width: 40%; color: var(--accent-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font: 14px/16px var(--font); }
 .banner { display: flex; align-items: center; gap: 10px; flex: none; background: var(--ink); border: 2px solid var(--red-frame); color: var(--warn); padding: 4px 9px; font: 14px/16px var(--font); }
@@ -240,7 +177,7 @@ body.nots .ln .ts { display: none; }
   background: var(--panel); border: 1px solid #000; box-shadow: var(--ring), 4px 5px 0 rgba(0, 0, 0, 0.5); padding: 6px;
 }
 #ctxMenu.show { display: block; }
-.ctx-title { padding: 4px 8px 6px; background: var(--title); margin: -6px -6px 4px; color: #fff; text-shadow: 0 1px 0 #000; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center; }
+.ctx-title { padding: 4px 8px 6px; background: var(--tb-grad); margin: -6px -6px 4px; color: #fff; text-shadow: 0 1px 0 #000; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center; }
 .ctx-item { display: flex; align-items: center; gap: 8px; padding: 5px 8px; color: var(--text); cursor: pointer; }
 .ctx-item:hover { background: var(--sel-bg); color: var(--sel-fg); }
 .ctx-sep { height: 1px; background: var(--line); margin: 4px 6px; }
@@ -250,7 +187,7 @@ body.nots .ln .ts { display: none; }
 .ln.sep { color: #888888; text-align: center; border-top: 1px solid var(--a-hover); margin: 3px 0; padding-top: 3px; }
 .row-item .count { flex: none; min-width: 18px; text-align: center; padding: 0 5px; font: 14px/16px var(--font); background: #b05a00; color: #fff; border: 1px solid #000; }
 .row-item .count.hot { background: var(--a-edge); }
-.row-item.unread .grow { font-weight: 800; color: var(--warn); }
+.row-item.unread .grow { color: var(--warn); }
 .row-item.unread.sel .grow, .row-item.unread:hover .grow { color: inherit; }
 .whois { grid-template-columns: 96px 1fr; gap: 6px 10px; }
 .whois .v { color: var(--field-ink); font: 14px/16px var(--font); user-select: text; overflow-wrap: anywhere; }
@@ -259,7 +196,7 @@ body.nots .ln .ts { display: none; }
 .listbar .text-input { padding: 3px 7px; }
 .lhead { display: grid; grid-template-columns: 187px 85px 1fr; flex: none; padding-right: 15px; margin-bottom: 3px; }
 .lh {
-  white-space: nowrap; overflow: hidden; font: inherit; font-weight: 700; color: var(--text); text-align: left; padding: 0 8px; height: 22px; cursor: pointer;
+  white-space: nowrap; overflow: hidden; font: inherit; color: var(--text); text-align: left; padding: 0 8px; height: 22px; cursor: pointer;
   background: var(--btn); border: 1px solid #000; box-shadow: var(--bevel);
 }
 .lh:hover { background: #3b3b3b; }
@@ -267,13 +204,10 @@ body.nots .ln .ts { display: none; }
 .lh.static { cursor: default; display: flex; align-items: center; }
 .lh.static:hover { background: var(--btn); }
 .chan-row { display: grid; grid-template-columns: 170px 70px 1fr; gap: 10px; align-items: baseline; padding: 4px 8px 4px 6px; border-left: 6px solid transparent; border-bottom: 1px solid var(--line); cursor: pointer; }
-.chan-row:hover { background: var(--accent-2); color: var(--hover-fg); }
 .chan-row.sel { background: var(--sel-bg); color: var(--sel-fg); }
-.chan-row .n { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 800; }
+.chan-row .n { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .chan-row .u { text-align: right; font: 14px/16px var(--font); }
-.chan-row .t { color: var(--faint); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.chan-row:hover .t { color: var(--hover-fg); }
-.chan-row.sel .t { color: #b8b0ff; }
+.chan-row .t { color: var(--faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #lStatus { margin-top: 6px; flex: none; }
 #lMin { flex: none; width: 70px; }
 
@@ -299,20 +233,8 @@ body.nots .ln .ts { display: none; }
 /* ---------- Pixel metrics, measured on a real KDX 1.6 window ----------
    Fields are sunken (dark top and left, light #666 bottom and right); buttons stack with one shared black line;
    scroll bars are flat #333 with #888 arrows; margins are 4-5 px; a selected row is outlined, not coloured. */
-::-webkit-scrollbar-track { background: #333; box-shadow: inset 1px 0 0 #222; }
-::-webkit-scrollbar-thumb { background-color: #333; border: 0; border-radius: 0; box-shadow: inset 1px 1px 0 #444, inset -1px -1px 0 #222, inset -2px -2px 0 #2a2a2a; }
-::-webkit-scrollbar-thumb:vertical { background-image: repeating-linear-gradient(#555 0 1px, transparent 1px 2px); }
-::-webkit-scrollbar-thumb:horizontal { background-image: repeating-linear-gradient(90deg, #555 0 1px, transparent 1px 2px); }
-::-webkit-scrollbar-button { border: 0; background-color: #333; box-shadow: inset 0 1px 0 #444, inset 0 -1px 0 #222, inset 0 -2px 0 #2a2a2a; }
-::-webkit-scrollbar-corner { background: #333; }
 
-.text-input, .log, .list, .status { border: 1px solid; border-color: #111 #666 #666 #111; box-shadow: inset 1px 1px 0 #000; }
-.text-input { padding: 3px 6px; }
-.text-input:focus, .log:focus { border-color: var(--red-frame); box-shadow: inset 0 0 0 1px var(--red-frame); }
-select.text-input { border: 1px solid #000; box-shadow: var(--bevel); }
-select.text-input:focus { border-color: #000; box-shadow: var(--bevel); }
 .members .list { border: 1px solid; border-color: #111 #666 #666 #111; box-shadow: inset 1px 1px 0 #000; }
-.status { padding: 4px 7px; }
 .topicrow .text-input { padding: 2px 6px; }
 
 .launcher { background: var(--panel); gap: 4px; padding: 4px; }
@@ -320,7 +242,6 @@ select.text-input:focus { border-color: #000; box-shadow: var(--bevel); }
 .lbtn { height: 22px; margin-top: -1px; padding: 0 6px; }
 .lbtns .lbtn:first-child { margin-top: 0; }
 .lsel { height: 22px; }
-.primary { height: 20px; padding: 0 14px; line-height: 14px; }
 .launcher .primary { height: 22px; }
 .counters { padding: 0 6px; }
 .chat { gap: 5px; padding: 5px; }
@@ -340,16 +261,9 @@ select.text-input:focus { border-color: #000; box-shadow: var(--bevel); }
 #consoleForm { align-items: center; }
 #consoleForm .text-input { height: 24px; }
 
-/* ---------- Corners: KDX has no round corners. Bar buttons are square; dialog buttons lose their three corner
-   pixels (a 2 px chamfer); pop-up menus lose one. The default button's red ring is black, #880000, #cc0000, black
-   from the button outwards. */
-:root {
-  --chamfer2: polygon(2px 0, calc(100% - 2px) 0, calc(100% - 2px) 1px, calc(100% - 1px) 1px, calc(100% - 1px) 2px, 100% 2px, 100% calc(100% - 2px), calc(100% - 1px) calc(100% - 2px), calc(100% - 1px) calc(100% - 1px), calc(100% - 2px) calc(100% - 1px), calc(100% - 2px) 100%, 2px 100%, 2px calc(100% - 1px), 1px calc(100% - 1px), 1px calc(100% - 2px), 0 calc(100% - 2px), 0 2px, 1px 2px, 1px 1px, 2px 1px);
-  --chamfer1: polygon(1px 0, calc(100% - 1px) 0, calc(100% - 1px) 1px, 100% 1px, 100% calc(100% - 1px), calc(100% - 1px) calc(100% - 1px), calc(100% - 1px) 100%, 1px 100%, 1px calc(100% - 1px), 0 calc(100% - 1px), 0 1px, 1px 1px);
-}
-.ghost-btn, .bevel, .track { border-radius: 0; clip-path: var(--chamfer2); }
-.primary, .lbtn, .lh, .row-item .count, .ln .rp { border-radius: 0; }
-.lsel, select.text-input, select.ghost-btn { border-radius: 0; clip-path: var(--chamfer1); }
+/* ---------- Corners: KDX has no round corners (the chamfers are in the charter). Launcher buttons lose their corner pixels too. */
+.lbtn, .ln .rp { border-radius: 0; }
+.lsel { border-radius: 0; clip-path: var(--chamfer1); }
 .mynick { color: var(--text); }
 
 /* Chat transcripts and what is typed under them use KDX's smaller font, 13 px from line to line. */
@@ -391,6 +305,21 @@ body:not(.plainchat) .ln.motd { color: #c8c8c8; }
 body.shaded .tabs { display: none; }
 /* the window a dragged one would join */
 body.droptarget .win::after { content: ""; position: absolute; inset: 0; z-index: 9; pointer-events: none; box-shadow: inset 0 0 0 3px #ffffff; }
+
+/* ---------- A call, above the log of the conversation ---------- */
+.callbox { flex: none; display: flex; flex-direction: column; gap: 6px; padding: 6px; background: var(--ink); border: 1px solid; border-color: #111 #666 #666 #111; box-shadow: inset 1px 1px 0 #000; }
+.callbox[hidden] { display: none; }
+.call-pics { display: flex; gap: 6px; justify-content: center; align-items: flex-end; }
+.call-pics canvas { max-width: 100%; max-height: 200px; background: #000; border: 1px solid #000; }
+.call-pics video { width: 96px; max-height: 72px; background: #000; border: 1px solid #000; transform: scaleX(-1); }
+.call-pics [hidden] { display: none; }
+.call-info { text-align: center; color: var(--field-ink); }
+.call-btns { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+.call-btns [hidden] { display: none; }
+
+/* ---------- Chats hidden from the main menu: a heading at the bottom of the list, then the hidden ones, dimmed ---------- */
+.row-item.hidhead { color: var(--faint); border-top: 1px solid var(--line); }
+.row-item.hiddenrow { opacity: 0.6; }
 
 /* ---------- Images in the chat: a preview under the line, the whole image in a viewer over the window ---------- */
 .ln .thumb { display: block; margin: 3px 0 3px 6px; padding: 0; max-width: 200px; background: #000; border: 1px solid #000; box-shadow: var(--bevel); cursor: pointer; color: var(--text); font: inherit; }

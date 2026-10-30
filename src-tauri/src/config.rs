@@ -98,7 +98,7 @@ impl ServerEntry {
     }
 }
 
-/// The themes the pages know (ui/themes.css); "kdx" is the default look.
+/// The themes the pages know (ui/kdx/themes.css); "kdx" is the default look.
 pub const THEMES: [&str; 7] = ["kdx", "bleu", "vert", "violet", "ambre", "sarcelle", "charbon"];
 
 /// Entries kept in each of the ignore and alert lists.
@@ -223,9 +223,13 @@ pub struct Config {
     pub windows: HashMap<String, Geometry>,
     /// Windows other than chats that were open at exit and come back at start.
     pub open_windows: Vec<String>,
+    /// Chats hidden from the main menu's list, per server (folded names).
+    pub hidden: HashMap<String, Vec<String>>,
 }
 
 const MAX_WINDOWS: usize = 300;
+/// Chats hidden per server.
+const MAX_HIDDEN: usize = 500;
 
 impl Config {
     pub fn server(&self, id: &str) -> Option<&ServerEntry> {
@@ -248,7 +252,38 @@ impl Config {
         Ok(id)
     }
 
+    pub fn is_hidden(&self, server: &str, buffer: &str) -> bool {
+        let key = crate::chat::fold(buffer);
+        self.hidden.get(server).is_some_and(|v| v.contains(&key))
+    }
+
+    /// Hides a chat from the list of the main menu, or shows it again; true when something changed.
+    pub fn set_hidden(&mut self, server: &str, buffer: &str, hide: bool) -> bool {
+        let key = crate::chat::fold(buffer);
+        if key.is_empty() || self.server(server).is_none() {
+            return false;
+        }
+        let list = self.hidden.entry(server.to_string()).or_default();
+        let at = list.iter().position(|b| *b == key);
+        let changed = match (hide, at) {
+            (true, None) if list.len() < MAX_HIDDEN => {
+                list.push(key);
+                true
+            }
+            (false, Some(i)) => {
+                list.remove(i);
+                true
+            }
+            _ => false,
+        };
+        if list.is_empty() {
+            self.hidden.remove(server);
+        }
+        changed
+    }
+
     pub fn remove_server(&mut self, id: &str) {
+        self.hidden.remove(id);
         self.servers.retain(|s| s.id != id);
         let prefix_a = format!("chat:{id}:");
         let console = format!("console:{id}");
@@ -353,6 +388,31 @@ mod tests {
         let mut e = entry("a", "h");
         e.protocol = "telegram".into();
         assert_eq!(e.validate(), Err("Protocole inconnu".to_string()));
+    }
+
+    #[test]
+    fn a_chat_can_be_hidden_and_shown_again() {
+        let mut c = Config::default();
+        let id = c.upsert_server(entry("a", "irc.example.org")).unwrap();
+        assert!(!c.is_hidden(&id, "#Rust"));
+        assert!(c.set_hidden(&id, "#Rust", true));
+        assert!(c.is_hidden(&id, "#rust"), "the case does not matter");
+        assert!(!c.set_hidden(&id, "#RUST", true), "already hidden: nothing changes");
+        assert!(!c.is_hidden("other", "#rust"));
+        assert!(c.set_hidden(&id, "#rust", false));
+        assert!(!c.is_hidden(&id, "#Rust"));
+        assert!(c.hidden.is_empty(), "an empty list is not kept");
+        assert!(!c.set_hidden(&id, "#rust", false), "not hidden: nothing to do");
+        assert!(!c.set_hidden("unknown", "#rust", true), "a server that does not exist");
+    }
+
+    #[test]
+    fn removing_a_server_forgets_what_was_hidden() {
+        let mut c = Config::default();
+        let id = c.upsert_server(entry("a", "irc.example.org")).unwrap();
+        c.set_hidden(&id, "#a", true);
+        c.remove_server(&id);
+        assert!(c.hidden.is_empty());
     }
 
     #[test]

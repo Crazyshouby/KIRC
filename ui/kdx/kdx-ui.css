@@ -10,20 +10,21 @@
 
 /* ================================================================ Jetons */
 :root {
+  /* tokens:begin -- généré par gen/gen_tokens.py depuis tokens.json : ne pas modifier à la main */
   /* Gris neutres : jamais de teinte dans les gris. */
-  --frame: #222222;          /* fond de la fenêtre, cadre */
-  --panel: #333333;          /* surface des panneaux et des boutons */
+  --frame: #222222;
+  --panel: #333333;
   --btn: #333333;
-  --card-2: #2a2a2a;         /* surface un cran plus sombre (menus déroulants, onglet actif) */
-  --ink: #000000;            /* champs et consoles : noir pur */
-  --line: #555555;           /* filets entre lignes */
-  --hi: #666666;             /* arête claire d'un bouton */
+  --card-2: #2a2a2a;
+  --ink: #000000;
+  --line: #555555;
+  --hi: #666666;
   --lo: #000000;
 
   /* Texte */
   --text: #ffffff;
   --muted: #ffffff;
-  --faint: #888888;          /* désactivé, secondaire, légendes */
+  --faint: #888888;
   --field-ink: #00ff00;      /* texte des champs et des consoles (vert KDX) */
 
   /* Rampe d'accent (défaut : rouge KDX, mesuré sur KDX 1.6). themes.css la remplace par thème. */
@@ -33,6 +34,7 @@
   --accent: #d41818; --accent-2: #ffcc99; --accent-rgb: 212, 24, 24;
   --bar: linear-gradient(var(--bar-top), var(--bar-mid) 45%, var(--bar-bot));
   --title-focus: linear-gradient(var(--a-title-from), var(--a-title-to));
+  --ic-accent: #e02020; --ic-accent-dark: #8a0202;   /* le rouge des icônes pixel : suit l'accent */
 
   /* Sélection et survol */
   --sel-bg: #001177; --sel-fg: #ff00ff;     /* sélection « marquée » (menus, texte sélectionné) */
@@ -46,6 +48,7 @@
   --warn: #faa320;           /* attention, occupé */
   --red: #ff5a4a;            /* problème */
   --red-frame: var(--a-mid);
+  /* tokens:end */
 
   /* Polices (voir fonts.css). Un pixel de la police = un pixel CSS à 14 px. */
   --font: "KIRC Pixel", "Segoe UI Symbol", "Segoe UI", sans-serif;
@@ -134,7 +137,7 @@ body.active, .win.active { --tb-edge: var(--a-edge); --tb-low: var(--a-dark); --
   --tbb-fill: var(--a-mid); --tbb-hi: var(--a-edge); --tbb-lo: var(--a-dark); }
 body.active .win, .win.active { background: var(--a-mid); box-shadow: var(--ring-focus); }
 body.active .grip-rz, .win.active .grip-rz { background: repeating-linear-gradient(135deg, var(--a-dark) 0 2px, var(--a-edge) 2px 3px); }
-body.shaded .cb, body.shaded .grip-rz, .win.shaded .cb, .win.shaded .grip-rz, body.shaded .tabs, .win.shaded .tabs { display: none; }
+body.shaded .cb, body.shaded .grip-rz, .win.shaded .cb, .win.shaded .grip-rz, body.shaded .tabs, .win.shaded .tabs { display: none !important; }   /* !important : les pages affichent la poignée fenêtre par fenêtre */
 /* Cible d'un dépôt (fusion en onglets) : le haut de la fenêtre s'entoure de blanc. */
 body.droptarget .win::after, .win.droptarget::after { content: ""; position: absolute; inset: 0; z-index: 9; pointer-events: none; box-shadow: inset 0 0 0 3px #fff; }
 
@@ -189,7 +192,7 @@ body.droptarget .win::after, .win.droptarget::after { content: ""; position: abs
 textarea.text-input { resize: none; line-height: 13px; font-family: var(--font-log); }
 
 /* Menu déroulant : un bouton biseauté dont la case de flèche est séparée par un filet. */
-select.btn, select.ghost-btn, select.text-input {
+select.btn, select.ghost-btn, select.text-input, select.lsel {
   -webkit-appearance: none; appearance: none; padding-right: 26px;
   background-color: var(--btn); color: var(--text); font: inherit; font-weight: 700; user-select: none;
   border: 1px solid #000; box-shadow: var(--bevel); border-radius: 0; clip-path: var(--chamfer1);
@@ -204,7 +207,7 @@ select option { background: var(--card-2); color: #fff; }
 
 /* Case à cocher : un plot biseauté ; cochée, il disparaît et ne reste qu'une coche blanche.
    <label class="switch"><input type="checkbox"><span class="track"></span></label> */
-.switch { position: relative; width: 14px; height: 14px; flex: none; cursor: pointer; }
+.switch, .row > label.switch { position: relative; width: 14px; height: 14px; flex: none; cursor: pointer; }
 .switch input { position: absolute; opacity: 0; inset: 0; cursor: pointer; }
 .track { position: absolute; inset: 0; background: var(--btn); border: 1px solid #000; border-radius: 0; clip-path: var(--chamfer2); box-shadow: var(--bevel); pointer-events: none; }
 .track::after { content: ""; position: absolute; left: 3px; top: -3px; width: 5px; height: 11px; border: solid #fff; border-width: 0 3px 3px 0; transform: rotate(45deg) scale(0); }
@@ -277,12 +280,12 @@ input[type="range"]:focus-visible { outline: var(--focus-ring); outline-offset: 
 .tab.on { color: #fff; background: var(--card-2); box-shadow: var(--bevel-down); }
 
 /* ================================================================ État et voyants */
-.orb { width: 11px; height: 11px; border-radius: 50%; flex: none; background: radial-gradient(circle at 35% 30%, #8a8a8a, #3a3a3a 60%, #1c1c1c); }
-.orb.green { background: radial-gradient(circle at 35% 30%, #8af08a, #18a828 55%, #0a5a14); }
-.orb.amber { background: radial-gradient(circle at 35% 30%, #ffe090, #faa320 55%, #b05a00); }
+.orb, .status .dot { width: 11px; height: 11px; border-radius: 50%; flex: none; background: radial-gradient(circle at 35% 30%, #8a8a8a, #3a3a3a 60%, #1c1c1c); }
+.orb.green, .status.on .dot { background: radial-gradient(circle at 35% 30%, #8af08a, #18a828 55%, #0a5a14); }
+.orb.amber, .status.busy .dot { background: radial-gradient(circle at 35% 30%, #ffe090, #faa320 55%, #b05a00); }
 .orb.red { background: radial-gradient(circle at 35% 30%, #ff9a8a, #e02020 55%, #7a0202); }
 @keyframes pulse { 50% { opacity: 0.4; } }
-.orb.pulse { animation: pulse 1s ease-in-out infinite; }
+.orb.pulse, .status.busy .dot { animation: pulse 1s ease-in-out infinite; }   /* le voyant d'un .status suit la classe du .status (on, busy) */
 /* Afficheur : une bande de console noire, texte vert, creusée. */
 .status {
   display: flex; align-items: center; gap: 8px; min-width: 0; background: var(--ink); color: var(--field-ink); padding: 4px 7px;
@@ -300,6 +303,8 @@ input[type="range"]:focus-visible { outline: var(--focus-ring); outline-offset: 
 }
 .toast.ok { color: var(--green); border-color: #007f00; }
 .toast.show { opacity: 1; transform: none; }
+.toast-text { min-width: 0; }
+.toast .toast-action { flex: none; padding: 3px 10px; min-height: 0; }
 
 /* Menu contextuel : un mini-cadre ; le titre prend le dégradé de la barre de titre. */
 .menu { position: fixed; z-index: 20; min-width: 200px; background: var(--panel); border: 1px solid #000; box-shadow: var(--ring), 4px 5px 0 rgba(0, 0, 0, 0.5); padding: 6px; }

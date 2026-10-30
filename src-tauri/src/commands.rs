@@ -29,6 +29,8 @@ pub struct Overview {
     states: HashMap<String, ServerSummary>,
     /// The protocols of this build, for the address book.
     protocols: Vec<crate::chat::ProtocolInfo>,
+    /// Chats hidden from the list of the main menu, per server.
+    hidden: HashMap<String, Vec<String>>,
 }
 
 #[derive(Serialize)]
@@ -58,9 +60,9 @@ pub fn app_info(state: State<'_, App>) -> AppInfo {
 
 #[tauri::command]
 pub async fn get_overview(state: State<'_, App>) -> R<Overview> {
-    let (settings, entries) = {
+    let (settings, entries, hidden) = {
         let c = state.config.lock().unwrap();
-        (c.settings.clone(), c.servers.clone())
+        (c.settings.clone(), c.servers.clone(), c.hidden.clone())
     };
     // The credential manager is asked outside the lock: it can take a moment.
     let servers = entries
@@ -73,7 +75,21 @@ pub async fn get_overview(state: State<'_, App>) -> R<Overview> {
         })
         .collect();
     let states = state.states.lock().unwrap().iter().map(|(k, v)| (k.clone(), v.summary())).collect();
-    Ok(Overview { settings, servers, states, protocols: Protocol::available() })
+    Ok(Overview { settings, servers, states, protocols: Protocol::available(), hidden })
+}
+
+/// Hides a chat from the list of the main menu (or shows it again).
+#[tauri::command]
+pub fn set_hidden(state: State<'_, App>, server: String, buffer: String, hidden: bool) -> R<bool> {
+    if buffer.len() > 200 {
+        return Err("Nom trop long".into());
+    }
+    let changed = state.config.lock().unwrap().set_hidden(&server, &buffer, hidden);
+    if changed {
+        state.mark_dirty();
+        state.flush();
+    }
+    Ok(changed)
 }
 
 #[derive(Serialize)]
@@ -209,7 +225,7 @@ pub async fn save_settings(app: AppHandle, state: State<'_, App>, settings: Sett
     settings.validate()?;
     push_filters(&app, &state, &settings.ignores, &settings.alert_words);
     let theme_changed = state.config.lock().unwrap().settings.theme != settings.theme;
-    let theme = settings.theme.clone();
+    let theme = crate::suite::effective(&settings.theme);
     let for_pages = settings.clone();
     let n = settings.scrollback as usize;
     state.config.lock().unwrap().settings = settings;
@@ -243,6 +259,10 @@ pub async fn open_window(app: AppHandle, kind: String, server: Option<String>, b
 pub fn open_url(app: AppHandle, url: String) -> R<()> {
     if !text::is_web_url(&url) {
         return Err("Seuls les liens http et https peuvent être ouverts".into());
+    }
+    // Dans le navigateur KDX s'il est là (lancé ou installé), sinon dans celui du système.
+    if crate::suite::open_in_kdx_browser(&url) {
+        return Ok(());
     }
     tauri_plugin_opener::OpenerExt::opener(&app).open_url(url, None::<&str>).map_err(|e| e.to_string())
 }
@@ -376,6 +396,54 @@ pub async fn send_image(app: AppHandle, state: State<'_, App>, server: String, b
         .await
         .map_err(|_| "Délai dépassé : l'image n'est pas partie".to_string())?
         .map_err(|_| "Connexion fermée".to_string())?
+}
+
+// ------------------------------------------------------------------ calls
+
+/// Sends something about a call to the connection of `server`; the protocol must have calls.
+fn call_command(app: &AppHandle, state: &App, server: &str, cmd: crate::chat::CallCommand) -> R<()> {
+    let can = state.config.lock().unwrap().server(server).map_or(false, |e| caps_of(e).calls);
+    if !can {
+        return Err("Les appels ne sont pas pris en charge par ce serveur".into());
+    }
+    app::send_command(app, server, Command::Call(cmd))
+}
+
+#[tauri::command]
+pub fn call_start(app: AppHandle, state: State<'_, App>, server: String, buffer: String, video: bool) -> R<()> {
+    call_command(&app, &state, &server, crate::chat::CallCommand::Start { buffer, video })
+}
+
+#[tauri::command]
+pub fn call_answer(app: AppHandle, state: State<'_, App>, server: String, id: String, accept: bool, video: bool) -> R<()> {
+    let cmd = if accept { crate::chat::CallCommand::Accept { id, video } } else { crate::chat::CallCommand::Reject { id } };
+    call_command(&app, &state, &server, cmd)
+}
+
+#[tauri::command]
+pub fn call_hangup(app: AppHandle, state: State<'_, App>, server: String, id: String) -> R<()> {
+    call_command(&app, &state, &server, crate::chat::CallCommand::Hangup { id })
+}
+
+#[tauri::command]
+pub fn call_mute(app: AppHandle, state: State<'_, App>, server: String, id: String, muted: bool) -> R<()> {
+    call_command(&app, &state, &server, crate::chat::CallCommand::Mute { id, muted })
+}
+
+/// A frame of the microphone (`kind` "audio") or of the camera ("video"), in base64.
+#[tauri::command]
+pub fn call_media(app: AppHandle, state: State<'_, App>, server: String, id: String, kind: String, data: String) -> R<()> {
+    use base64::Engine as _;
+    if data.len() > 600_000 {
+        return Err("Trame trop grosse".into());
+    }
+    let bytes = base64::engine::general_purpose::STANDARD.decode(data).map_err(|_| "Trame illisible".to_string())?;
+    let cmd = match kind.as_str() {
+        "audio" if bytes.len() == 1920 => crate::chat::CallCommand::Audio { id, pcm: bytes },
+        "video" => crate::chat::CallCommand::Video { id, au: bytes },
+        _ => return Err("Trame inconnue".into()),
+    };
+    call_command(&app, &state, &server, cmd)
 }
 
 /// The end of the log of a conversation, older than `before` (ms), to show above the live lines.

@@ -157,6 +157,19 @@ impl Sink for AppSink {
     fn emit(&self, event: Event) {
         handle_event(&self.app, &self.server, event);
     }
+
+    fn media(&self, call: &str, kind: &'static str, data: &[u8]) {
+        use base64::Engine as _;
+        #[derive(Serialize, Clone)]
+        struct Media<'a> {
+            server: &'a str,
+            call: &'a str,
+            kind: &'static str,
+            data: String,
+        }
+        let data = base64::engine::general_purpose::STANDARD.encode(data);
+        let _ = self.app.emit("call-media", Media { server: &self.server, call, kind, data });
+    }
 }
 
 /// A line made by the application itself (the answer to a command it handles), shown in a buffer.
@@ -168,9 +181,10 @@ pub fn local_line(app: &AppHandle, server: &str, buffer: &str, kind: LineKind, t
 
 fn handle_event(app: &AppHandle, server: &str, ev: Event) {
     let st = app.state::<App>();
-    let (open_queries, notifications, log_enabled, server_name) = {
+    let (open_queries, notifications, log_enabled, server_name, hidden) = {
         let c = st.config.lock().unwrap();
-        (c.settings.open_queries, c.settings.notifications, c.settings.log_enabled, c.server(server).map(|e| e.name.clone()))
+        let hidden = matches!(&ev, Event::Line { line } if c.is_hidden(server, &line.buffer));
+        (c.settings.open_queries, c.settings.notifications, c.settings.log_enabled, c.server(server).map(|e| e.name.clone()), hidden)
     };
     // Is somebody looking at the window of the buffer a line belongs to?
     // Asked before taking any lock: `is_focused` waits for the main thread, which may itself be
@@ -219,6 +233,7 @@ fn handle_event(app: &AppHandle, server: &str, ev: Event) {
                 }
             }
             if notifications
+                && !hidden
                 && line.highlight
                 && !line.own
                 && !watched
@@ -250,6 +265,16 @@ fn handle_event(app: &AppHandle, server: &str, ev: Event) {
         Event::ListStart => {
             let _ = open(app, Kind::List(server.to_string()), st.recent_input());
         }
+        // Someone calls: the window of their conversation opens, and the desktop tells.
+        Event::Call { call } if call.state == crate::chat::event::CallState::Incoming => {
+            let wanted = Kind::Chat(server.to_string(), call.buffer.clone());
+            if let Err(e) = open(app, wanted, true) {
+                log::error!("fenêtre de l'appel : {e}");
+            }
+            if notifications && !hidden {
+                notify(app, call.buffer.as_str(), "", &format!("Appel {} de {}", if call.video { "vidéo" } else { "audio" }, call.text));
+            }
+        }
         // The code to link an account is shown in the window of the server's messages.
         Event::Pairing { .. } => {
             let _ = open(app, Kind::Console(server.to_string()), true);
@@ -272,6 +297,7 @@ fn notify(app: &AppHandle, buffer: &str, nick: &str, body: &str) {
     let title = if buffer.is_empty() { "KIRC".to_string() } else { text::truncate(buffer, 60) };
     let body = text::strip_formatting(body);
     let body = if nick.is_empty() { body } else { format!("{nick} : {body}") };
+    crate::suite::notify_shell(&title, &body, "info"); // et dans le centre rapide du shell KDX, s'il tourne
     let _ = app.notification().builder().title(title).body(text::truncate(&body, 200)).show();
 }
 
@@ -529,7 +555,7 @@ pub fn open(app: &AppHandle, kind: Kind, focus: bool) -> Result<(), String> {
     // which may itself be waiting for this lock (a window moved at that moment).
     let (remembered, theme) = {
         let c = st.config.lock().unwrap();
-        (c.windows.get(&key).copied(), c.settings.theme.clone())
+        (c.windows.get(&key).copied(), crate::suite::effective(&c.settings.theme))
     };
     let saved = remembered.filter(|g| on_screen(app, g)).filter(|_| kind != Kind::Switcher);
     let title = kind.title(app);

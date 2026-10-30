@@ -345,6 +345,193 @@ function imageBox(line) {
   return box;
 }
 
+// ---------------------------------------------------------------- calls
+// The window of a conversation is the microphone, the camera and the screen of its call: the microphone is cut into frames
+// of 60 ms (960 samples of 16 kHz) and the camera into H.264 access units, sent to the application; what comes back is
+// played with Web Audio and drawn from WebCodecs. Nothing of it is markup: bytes only.
+const bytesToB64 = u8 => { let s = ""; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode(...u8.subarray(i, i + 0x8000)); return btoa(s); };
+const b64ToBytes = b => Uint8Array.from(atob(b), c => c.charCodeAt(0));
+const H264 = { codec: "avc1.42E01F", width: 640, height: 480, framerate: 15, bitrate: 700000, avc: { format: "annexb" }, latencyMode: "realtime" };
+
+function initCalls(getBuffer, getCaps) {
+  const box = $("#callbox"), info = $("#callInfo"), remote = $("#callRemote"), local = $("#callLocal");
+  let call = null, muted = false, media = null, ring = null, clock = 0, since = 0, fade = 0;
+  const mine = c => fold(c.buffer) === fold(getBuffer());
+  const send = (kind, bytes) => invoke("call_media", { server: SERVER, id: call.id, kind, data: bytesToB64(bytes) }).catch(() => {});
+
+  function render() {
+    clearTimeout(fade);
+    if (!call) { box.hidden = true; return; }
+    const incoming = call.state === "incoming", active = call.state === "active";
+    box.hidden = false;
+    $("#callAnswer").hidden = !incoming;
+    $("#callAnswerVideo").hidden = !(incoming && call.video);
+    $("#callMute").hidden = !(call.state === "calling" || active);
+    $("#callHang").hidden = call.state === "ended";
+    $("#callHang").textContent = incoming ? "Refuser" : "Raccrocher";
+    $("#callMute").textContent = muted ? "Remettre le micro" : "Couper le micro";
+    const kind = call.video ? "vidéo" : "audio";
+    info.textContent = incoming ? `Appel ${kind} de ${call.text}`
+      : call.state === "calling" ? `Appel ${kind} avec ${call.text} : connexion…`
+      : active ? `Appel ${kind} avec ${call.text} · ${elapsed()}`
+      : call.text;
+  }
+  const elapsed = () => { const s = Math.floor((Date.now() - since) / 1000); return String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0"); };
+
+  // a ring while someone calls (a short two-tone beep, every 2 seconds)
+  function ringStart() {
+    if (ring) return;
+    try {
+      const ctx = new AudioContext();
+      const beep = () => { for (const [f, t] of [[440, 0], [480, 0.25]]) { const o = ctx.createOscillator(), g = ctx.createGain(); o.frequency.value = f; g.gain.value = 0.05; o.connect(g); g.connect(ctx.destination); o.start(ctx.currentTime + t); o.stop(ctx.currentTime + t + 0.22); } };
+      beep();
+      ring = { ctx, timer: setInterval(beep, 2000) };
+    } catch { ring = null; }
+  }
+  function ringStop() { if (ring) { clearInterval(ring.timer); ring.ctx.close().catch(() => {}); ring = null; } }
+
+  // the microphone and, if wanted, the camera: returns whether video is on
+  async function startMedia(wantVideo) {
+    stopMedia();
+    let video = wantVideo;
+    if (video && !(typeof VideoEncoder !== "undefined" && (await VideoEncoder.isConfigSupported(H264).catch(() => ({}))).supported)) {
+      toast("La vidéo n'est pas disponible sur cet ordinateur : appel audio seulement");
+      video = false;
+    }
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 }, video: video ? { width: 640, height: 480, frameRate: 15 } : false });
+    const ctx = new AudioContext({ sampleRate: 16000 });
+    const m = { stream, ctx, next: 0, timers: [], gotKey: false };
+    const src = ctx.createMediaStreamSource(stream);
+    const proc = ctx.createScriptProcessor(1024, 1, 1);
+    let frame = new Int16Array(960), n = 0;
+    proc.onaudioprocess = e => {
+      if (muted || !call) return;
+      const x = e.inputBuffer.getChannelData(0);
+      for (let i = 0; i < x.length; i++) {
+        frame[n++] = Math.max(-32768, Math.min(32767, Math.round(x[i] * 32767)));
+        if (n === 960) { send("audio", new Uint8Array(frame.buffer)); frame = new Int16Array(960); n = 0; }
+      }
+    };
+    src.connect(proc); proc.connect(ctx.destination); // connected so that it runs; it writes nothing to the speakers
+    m.proc = proc;
+    if (video) {
+      local.srcObject = new MediaStream(stream.getVideoTracks());
+      await local.play().catch(() => {});
+      local.hidden = false;
+      const cv = document.createElement("canvas"); cv.width = H264.width; cv.height = H264.height;
+      const g = cv.getContext("2d");
+      const enc = new VideoEncoder({
+        output: chunk => { if (!call) return; const d = new Uint8Array(chunk.byteLength); chunk.copyTo(d); send("video", d); },
+        error: () => {},
+      });
+      enc.configure(H264);
+      let k = 0;
+      m.timers.push(setInterval(() => {
+        if (!call || enc.encodeQueueSize > 4) return;
+        g.drawImage(local, 0, 0, cv.width, cv.height);
+        const f = new VideoFrame(cv, { timestamp: Math.round(performance.now() * 1000) });
+        enc.encode(f, { keyFrame: k++ % 30 === 0 });
+        f.close();
+      }, 1000 / H264.framerate));
+      m.encoder = enc;
+    }
+    media = m;
+    return video;
+  }
+  function stopMedia() {
+    if (!media) return;
+    media.timers.forEach(clearInterval);
+    try { media.proc.disconnect(); media.proc.onaudioprocess = null; } catch { /* already */ }
+    media.stream.getTracks().forEach(t => t.stop());
+    try { media.encoder && media.encoder.close(); } catch { /* already */ }
+    try { media.decoder && media.decoder.close(); } catch { /* already */ }
+    media.ctx.close().catch(() => {});
+    media = null;
+    local.hidden = true; local.srcObject = null;
+    remote.hidden = true;
+  }
+
+  function playAudio(bytes) {
+    if (!media || bytes.length < 2) return;
+    const ctx = media.ctx, n = bytes.length >> 1, f = new Float32Array(n);
+    const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    for (let i = 0; i < n; i++) f[i] = dv.getInt16(i * 2, true) / 32768;
+    const buf = ctx.createBuffer(1, n, 16000);
+    buf.copyToChannel(f, 0);
+    const s = ctx.createBufferSource();
+    s.buffer = buf; s.connect(ctx.destination);
+    const now = ctx.currentTime;
+    let t = Math.max(media.next, now + 0.12);
+    if (t - now > 0.6) t = now + 0.12; // too far behind: catch up
+    s.start(t);
+    media.next = t + n / 16000;
+  }
+  function playVideo(bytes) {
+    if (!media || typeof VideoDecoder === "undefined" || bytes.length < 6) return;
+    const key = bytes[0] === 1;
+    if (!media.decoder) {
+      const g = remote.getContext("2d");
+      media.decoder = new VideoDecoder({
+        output: fr => { if (remote.width !== fr.displayWidth) { remote.width = fr.displayWidth; remote.height = fr.displayHeight; } g.drawImage(fr, 0, 0); fr.close(); remote.hidden = false; },
+        error: () => { media && (media.gotKey = false); },
+      });
+      media.decoder.configure({ codec: H264.codec, optimizeForLatency: true });
+    }
+    if (!media.gotKey && !key) return; // a decoder starts on a key frame
+    media.gotKey = true;
+    try { media.decoder.decode(new EncodedVideoChunk({ type: key ? "key" : "delta", timestamp: Math.round(performance.now() * 1000), data: bytes.subarray(1) })); } catch { media.gotKey = false; }
+  }
+  listen("call-media", e => {
+    const p = e.payload;
+    if (!call || p.server !== SERVER || p.call !== call.id || typeof p.data !== "string") return;
+    try { const b = b64ToBytes(p.data); if (p.kind === "audio") playAudio(b); else if (p.kind === "video") playVideo(b); } catch { /* a bad frame */ }
+  });
+
+  // what the application tells about the call
+  function onCall(c) {
+    if (!mine(c)) return;
+    // news of another call than the one in progress does not concern it
+    if (call && call.state !== "ended" && call.id && c.id && c.id !== call.id && c.state !== "incoming") return;
+    clearInterval(clock);
+    if (c.state === "ended") {
+      const wasMine = call !== null;
+      stopMedia(); ringStop();
+      call = { ...c }; muted = false;
+      render();
+      if (wasMine || c.text) fade = setTimeout(() => { call = null; render(); }, 4000);
+      return;
+    }
+    call = { ...c };
+    if (c.state === "incoming") ringStart(); else ringStop();
+    if (c.state === "active") { if (!since || !clock) since = Date.now(); clock = setInterval(render, 1000); }
+    render();
+  }
+
+  async function begin(video) {
+    const buffer = getBuffer();
+    try { video = await startMedia(video); } catch (e) { toast("Micro ou caméra inaccessible : " + (e && e.message ? e.message : e)); stopMedia(); return null; }
+    since = 0;
+    return { buffer, video };
+  }
+  $("#btnCall").addEventListener("click", async () => { const r = await begin(false); if (r) { call = call || { id: "", state: "calling", video: false, text: "", buffer: r.buffer }; if (await call_ok("call_start", { server: SERVER, buffer: r.buffer, video: false })) { render(); } else stopMedia(); } });
+  $("#btnVideoCall").addEventListener("click", async () => { const r = await begin(true); if (r) { call = call || { id: "", state: "calling", video: r.video, text: "", buffer: r.buffer }; if (await call_ok("call_start", { server: SERVER, buffer: r.buffer, video: r.video })) { render(); } else stopMedia(); } });
+  async function call_ok(cmd, args) { const r = await invoke(cmd, args).then(() => true, err => { toast(String(err)); return false; }); if (!r) call = null; return r; }
+  $("#callAnswer").addEventListener("click", async () => { const id = call.id; if (await begin(false) && await call_ok("call_answer", { server: SERVER, id, accept: true, video: false })) ringStop(); else if (call === null) render(); });
+  $("#callAnswerVideo").addEventListener("click", async () => { const id = call.id; const r = await begin(true); if (r && await call_ok("call_answer", { server: SERVER, id, accept: true, video: r.video })) ringStop(); else if (call === null) render(); });
+  $("#callHang").addEventListener("click", () => {
+    if (!call) return;
+    if (call.state === "incoming") invoke("call_answer", { server: SERVER, id: call.id, accept: false, video: false }).catch(e => toast(String(e)));
+    else invoke("call_hangup", { server: SERVER, id: call.id }).catch(e => toast(String(e)));
+    ringStop();
+  });
+  $("#callMute").addEventListener("click", () => {
+    muted = !muted;
+    if (call) invoke("call_mute", { server: SERVER, id: call.id, muted }).catch(() => {});
+    render();
+  });
+  return { onCall, restore: c => { if (c) onCall(c); }, show: () => { $("#btnCall").hidden = !(getCaps().calls && !/^[#&+!]/.test(getBuffer())); $("#btnVideoCall").hidden = $("#btnCall").hidden; } };
+}
+
 async function openImage(msgid) {
   const viewer = $("#viewer");
   if (!viewer) return;
@@ -485,17 +672,22 @@ function initLauncher() {
     list.textContent = "";
     const sv = ov.servers.length ? stateOf(current()) : { channels: [], queries: [] };
     const items = [...sv.channels.map(c => [c, "salon"]), ...(sv.queries || []).map(q => [q, "message"])];
-    if (!items.length) {
+    // what the user hid goes under a heading at the bottom of the list, that opens and closes
+    const hid = new Set(((ov.hidden && ov.hidden[current()]) || []).map(fold));
+    const shown = items.filter(([c]) => !hid.has(fold(c)));
+    const hiddenItems = items.filter(([c]) => hid.has(fold(c)));
+    if (!shown.length && !hiddenItems.length) {
       const e = document.createElement("div");
       e.className = "empty";
       e.textContent = ov.servers.length ? "Aucun salon ouvert" : "Ajoutez un serveur dans le carnet d'adresses";
       list.appendChild(e);
     }
     const act = new Map((sv.activity || []).map(a => [fold(a.name), a]));
-    for (const [c, icon] of items) {
+    const server = current();
+    const addRow = ([c, icon], isHidden) => {
       const a = act.get(fold(c));
       const row = document.createElement("div");
-      row.className = "row-item" + (a ? " unread" : "");
+      row.className = "row-item" + (a ? " unread" : "") + (isHidden ? " hiddenrow" : "");
       row.tabIndex = 0;
       const ic = document.createElement("span"); ic.className = "pix"; ic.innerHTML = pix(icon, 14);
       const name = document.createElement("span"); name.className = "grow"; name.textContent = c;
@@ -507,11 +699,40 @@ function initLauncher() {
         n.title = a.mentions ? `${a.unread} non lus dont ${a.mentions} mention(s)` : `${a.unread} non lus`;
         row.appendChild(n);
       }
-      const open = () => call("open_window", { kind: "chat", server: current(), buffer: c });
+      const open = () => call("open_window", { kind: "chat", server, buffer: c });
       row.addEventListener("click", open);
       row.addEventListener("keydown", e => { if (e.key === "Enter") open(); });
+      row.addEventListener("contextmenu", e => {
+        e.preventDefault();
+        openMenu(e.clientX, e.clientY, c, [
+          ["Ouvrir", open],
+          isHidden ? ["Réafficher dans la liste", () => setHidden(c, false)] : ["Masquer de la liste", () => setHidden(c, true)],
+        ]);
+      });
       list.appendChild(row);
+    };
+    for (const it of shown) addRow(it, false);
+    if (hiddenItems.length) {
+      let open = false;
+      try { open = localStorage.getItem("kirc.hiddenOpen") === "1"; } catch { /* no storage: closed */ }
+      const head = document.createElement("div");
+      head.className = "row-item hidhead" + (hiddenItems.some(([c]) => act.has(fold(c))) ? " unread" : "");
+      head.tabIndex = 0;
+      const label = document.createElement("span");
+      label.className = "grow";
+      label.textContent = `${open ? "▼" : "▶"} Masquées (${hiddenItems.length})`;
+      head.appendChild(label);
+      const toggle = () => { try { localStorage.setItem("kirc.hiddenOpen", open ? "0" : "1"); } catch { /* ignore */ } render(); };
+      head.addEventListener("click", toggle);
+      head.addEventListener("keydown", e => { if (e.key === "Enter") toggle(); });
+      list.appendChild(head);
+      if (open) for (const it of hiddenItems) addRow(it, true);
     }
+  }
+  async function setHidden(buffer, hide) {
+    if (await call("set_hidden", { server: current(), buffer, hidden: hide }) === null) return;
+    const o = await call("get_overview");
+    if (o) { ov = o; render(); }
   }
   let pending = false;
   async function refresh() {
@@ -880,7 +1101,8 @@ function initChat() {
   const log = new Log($("#log"), 1000, $("#newMsg"));
   let myNick = "", buffer = BUFFER;
   // What the protocol of this server can do (told by the snapshot): the menu and the topic bar follow it.
-  let caps = { ranks: true, whois: true, moderation: true, channel_list: true, topic: true, images: false };
+  let caps = { ranks: true, whois: true, moderation: true, channel_list: true, topic: true, images: false, calls: false };
+  const calls = initCalls(() => buffer, () => caps);
   const users = new Map();
   const input = $("#msgInput");
   // Answering a message: the bar above the input line shows what is answered (Esc cancels).
@@ -1080,6 +1302,7 @@ function initChat() {
       case "joined": if (sameBuffer(ev.buffer)) { users.clear(); paintMembers(); } break;
       case "me": setNick(ev.nick); break;
       case "status": banner(ev.state, ev.text); break;
+      case "call": calls.onCall(ev.call); break;
     }
   });
 
@@ -1111,6 +1334,8 @@ function initChat() {
     caps = snap.caps || caps;
     if (!caps.topic) $("#topicBar").hidden = true;
     $("#btnImage").hidden = !caps.images;
+    calls.show();
+    calls.restore(snap.server.call);
     log.limit = snap.settings.scrollback;
     buffer = snap.buffer.name || BUFFER;
     setNick(snap.server.nick);

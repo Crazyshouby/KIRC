@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <title>KIRC</title>
-<link rel="stylesheet" href="fonts.css">
-<link rel="stylesheet" href="theme.css">
-<link rel="stylesheet" href="themes.css">
+<link rel="stylesheet" href="kdx/fonts.css">
+<link rel="stylesheet" href="kdx/kdx-ui.css">
+<link rel="stylesheet" href="kdx/themes.css">
 <link rel="stylesheet" href="kirc.css">
 </head>
 <body>
@@ -265,6 +265,16 @@
       <div class="viewer" id="viewer" hidden><span class="vmsg" id="viewerMsg"></span><img id="viewerImg" alt=""></div>
       <div class="chat-main">
         <div class="pane-l">
+          <div class="callbox" id="callbox" hidden>
+            <div class="call-pics"><canvas id="callRemote" width="320" height="240" hidden></canvas><video id="callLocal" muted playsinline hidden></video></div>
+            <div class="call-info" id="callInfo"></div>
+            <div class="call-btns">
+              <button type="button" class="primary" id="callAnswer">Répondre</button>
+              <button type="button" class="ghost-btn" id="callAnswerVideo">Répondre avec la vidéo</button>
+              <button type="button" class="ghost-btn" id="callMute">Couper le micro</button>
+              <button type="button" class="ghost-btn" id="callHang">Raccrocher</button>
+            </div>
+          </div>
           <div class="log" id="log" tabindex="0"></div>
           <button class="ghost-btn newmsg" id="newMsg" hidden>▼ Nouveaux messages</button>
           <div class="banner" id="replyBar" hidden><span class="orb green"></span><span class="t" id="replyText"></span><button type="button" class="ghost-btn" id="replyCancel" title="Annuler la réponse (Échap)">✕</button></div>
@@ -273,6 +283,8 @@
           <form class="inputbar" id="inputForm" autocomplete="off">
             <textarea class="text-input" id="msgInput" rows="3" maxlength="2000" spellcheck="false" aria-label="Message"></textarea>
             <button type="button" class="ghost-btn" id="btnImage" title="Envoyer une image (ou la coller dans la zone de saisie)" hidden>Image…</button>
+            <button type="button" class="ghost-btn" id="btnCall" title="Appeler (audio)" hidden>Appel</button>
+            <button type="button" class="ghost-btn" id="btnVideoCall" title="Appeler avec la vidéo" hidden>Vidéo</button>
             <input type="file" id="fileImage" accept="image/jpeg,image/png,image/webp" hidden>
           </form>
         </div>
@@ -289,7 +301,7 @@
 </div>
 <div id="ctxMenu"></div>
 <div id="toasts"></div>
-<script src="icons.js"></script>
+<script src="kdx/icons.js"></script>
 <script src="kirc.js"></script>
 </body>
 </html>
