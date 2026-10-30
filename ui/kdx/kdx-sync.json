@@ -3,7 +3,7 @@
   "files": {
     "ui/kdx/kdx-ui.css": {
       "from": "kdx-ui.css",
-      "sha256": "958821e393649076e29a1c9fa038c644d3e503477e10761c1e56163d5fb8d762"
+      "sha256": "834d7f0ccc8dd23569465aa8c10a554d24cd1aaf065f96d59b15ea4e54ea1272"
     },
     "ui/kdx/themes.css": {
       "from": "themes.css",
@@ -52,6 +52,10 @@
     "ui/kdx/kdx-columns.js": {
       "from": "kdx-columns.js",
       "sha256": "9eea4842fa98ce675850ceb97b099619fbbdfaa3904dc1c2127825b0d4c4bfcb"
+    },
+    "ui/kdx/kdx-split.js": {
+      "from": "kdx-split.js",
+      "sha256": "0f887183b5c57b3ea5c69e83173b77e1feab9221652c1e723b9a437beb69a0f4"
     }
   }
 }

@@ -743,6 +743,7 @@ function initLauncher() {
 
 // ================================================================ address book
 function initServers() {
+  KdxSplit.init({ pane: $(".book .side"), side: "left", key: "carnet", min: 140, max: 360, minOther: 260 });   // la barre entre les serveurs et leur détail
   let ov = null, selected = "", fresh = false;
   const f = id => $("#" + id);
   const stateOf = id => (ov && ov.states[id]) || { status: "disconnected" };
@@ -1046,6 +1047,7 @@ const RANKS = "~&@%+";
 const SYMBOL_NAMES = { "~": "propriétaire", "&": "administrateur", "@": "opérateur", "%": "demi-opérateur", "+": "voix" };
 
 function initChat() {
+  KdxSplit.init({ pane: $("#membersBox"), side: "right", key: "membres", min: 110, max: 420, minOther: 220 });   // la barre entre la conversation et les membres
   const isChannel = /^[#&+!]/.test(BUFFER);
   const log = new Log($("#log"), 1000, $("#newMsg"));
   let myNick = "", buffer = BUFFER;

@@ -98,6 +98,15 @@ async function main() {
   await launcher.eval("document.querySelector('#connectBtn').click()");
   const chat = await page(win("chat", { b: "#test" }), 15000);
   await until(() => chat.eval("document.querySelectorAll('#memberList .mem').length === 4"), "4 members (3 virtual + us)");
+  // La barre entre la conversation et les membres (kdx-split.js). La webview partage son stockage avec le vrai KIRC : on repart des largeurs d'origine et on n'y laisse rien.
+  await chat.eval("document.querySelector('#membersBox').previousElementSibling.firstElementChild.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }))");   // largeur d'origine, même si une largeur était gardée
+  check(await chat.eval("document.querySelector('#membersBox').previousElementSibling.classList.contains('kdx-split')"), "the members pane has a drag bar");
+  const mw = () => chat.eval("Math.round(document.querySelector('#membersBox').getBoundingClientRect().width)");
+  const mw0 = await mw();
+  await chat.eval("(() => { const s = document.querySelector('#membersBox').previousElementSibling.firstElementChild, x = s.getBoundingClientRect().left; for (const [t, d] of [['pointerdown', 0], ['pointermove', -40], ['pointerup', -40]]) s.dispatchEvent(new PointerEvent(t, { bubbles: true, button: 0, pointerId: 6, clientX: x + d })); })()");
+  check((await mw()) === mw0 + 40, `dragging the bar 40 px to the left widens the members pane (${mw0} -> ${await mw()})`);
+  await chat.eval("document.querySelector('#membersBox').previousElementSibling.firstElementChild.dispatchEvent(new MouseEvent('dblclick', { bubbles: true })); localStorage.removeItem('kdx.split.membres')");
+  check((await mw()) === mw0, "a double click on the bar gives the original width back");
   const members = await chat.eval("[...document.querySelectorAll('#memberList .mem')].map(e => e.textContent)");
   check(members.join(" ") === "@alice +bob carol kirc", "member list sorted by rank: " + members.join(" "));
   const first = members[0];
