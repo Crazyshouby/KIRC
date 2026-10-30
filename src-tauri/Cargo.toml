@@ -32,7 +32,7 @@ log = "0.4"
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
 
 # WhatsApp (unofficial client, off by default): cargo build --features whatsapp
-whatsapp-rust = { version = "0.7", default-features = false, features = ["sqlite-storage", "tokio-transport", "tokio-runtime", "ureq-client", "tokio-native"], optional = true }
+whatsapp-rust = { version = "0.7", default-features = false, features = ["sqlite-storage", "tokio-transport", "tokio-runtime", "ureq-client", "tokio-native", "voip-mlow"], optional = true }
 qrcode = { version = "0.14", default-features = false, optional = true }
 
 [features]

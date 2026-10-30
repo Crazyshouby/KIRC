@@ -1,0 +1,32 @@
+[package]
+name = "kdx-frames"
+version = "0.1.0"
+description = "Draws the KDX window frame (bevelled border, gradient title bar, 14 px buttons, pixel font) around the windows of chosen programs"
+edition = "2021"
+license = "MIT"
+
+[dependencies]
+serde_json = "1"
+png = "0.17"
+
+[target.'cfg(windows)'.dependencies.windows]
+version = "0.62"
+features = [
+  "Win32_Foundation",
+  "Win32_Graphics_Dwm",
+  "Win32_Security",
+  "Win32_Graphics_Gdi",
+  "Win32_System_Console",
+  "Win32_System_LibraryLoader",
+  "Win32_System_Registry",
+  "Win32_System_Threading",
+  "Win32_UI_HiDpi",
+  "Win32_UI_Input_KeyboardAndMouse",
+  "Win32_UI_Shell",
+  "Win32_UI_WindowsAndMessaging",
+]
+
+[profile.release]
+opt-level = "s"
+lto = true
+strip = true

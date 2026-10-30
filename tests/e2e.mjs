@@ -442,6 +442,41 @@ async function main() {
   await chat.eval("document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))");
   check(await chat.eval("document.querySelector('#viewer').hidden"), "Esc closes the viewer");
 
+  console.log("calls (the panel follows what the application tells)");
+  const callEvent = c => toChat({ kind: "call", call: { id: "c1", buffer: "#test", video: false, text: "Alice", ...c } });
+  await callEvent({ state: "incoming" });
+  await until(() => chat.eval("!document.querySelector('#callbox').hidden && document.querySelector('#callInfo').textContent.includes('Alice')"), "an incoming call shows the panel with who calls", 8000);
+  check(await chat.eval("!document.querySelector('#callAnswer').hidden && document.querySelector('#callAnswerVideo').hidden && document.querySelector('#callHang').textContent === 'Refuser'"), "an audio call can be answered or refused");
+  await callEvent({ state: "incoming", video: true });
+  await until(() => chat.eval("!document.querySelector('#callAnswerVideo').hidden"), "a video call can be answered with the video", 8000);
+  await callEvent({ state: "active" });
+  await until(() => chat.eval("document.querySelector('#callAnswer').hidden && !document.querySelector('#callMute').hidden && document.querySelector('#callHang').textContent === 'Raccrocher'"), "an active call offers to mute and to hang up", 8000);
+  await callEvent({ id: "other", state: "ended", text: "autre" });
+  await sleep(300);
+  check(await chat.eval("!document.querySelector('#callbox').hidden && document.querySelector('#callInfo').textContent.includes('Alice')"), "news of another call does not end this one");
+  await callEvent({ state: "ended", text: "Appel terminé (00:12)" });
+  await until(() => chat.eval("document.querySelector('#callInfo').textContent.includes('Appel terminé (00:12)') && document.querySelector('#callHang').hidden"), "the end of the call is told", 8000);
+  check(await chat.eval("document.querySelector('#btnCall').hidden && document.querySelector('#btnVideoCall').hidden"), "an IRC window offers no call buttons");
+
+  console.log("hiding a chat from the list of the main menu");
+  const menuRows = (sel = "") => launcher.eval(`[...document.querySelectorAll('#openList .row-item${sel}')].map(e => e.textContent)`);
+  const refreshLauncher = () => launcher.eval("window.dispatchEvent(new Event('focus'))");
+  await launcher.eval("localStorage.removeItem('kirc.hiddenOpen')");
+  check((await inv("set_hidden", { server: known.id, buffer: "#TEST", hidden: true })).err === undefined, "a chat is hidden (the case does not matter)");
+  await refreshLauncher();
+  await until(async () => (await menuRows(".hidhead")).some(t => t.includes("Masquées (1)")), "the hidden chat goes under a heading", 8000);
+  check(!(await menuRows(":not(.hidhead)")).some(t => t.includes("#test")), "it is gone from the list while the heading is closed");
+  await launcher.eval("document.querySelector('#openList .hidhead').click()");
+  await until(async () => (await menuRows(".hiddenrow")).some(t => t.includes("#test")), "the heading opens the hidden chats", 8000);
+  await launcher.shot("25-hidden-chats");
+  await launcher.eval("document.querySelector('#openList .hiddenrow').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 20, clientY: 20 }))");
+  check(await launcher.eval("[...document.querySelectorAll('#ctxMenu .ctx-item')].map(e => e.textContent).includes('Réafficher dans la liste')"), "the right-click menu offers to show it again");
+  await launcher.eval("[...document.querySelectorAll('#ctxMenu .ctx-item')].find(e => e.textContent === 'Réafficher dans la liste').click()");
+  await until(async () => (await menuRows(":not(.hidhead)")).some(t => t.includes("#test")) && (await menuRows(".hidhead")).length === 0, "shown again: back in the list, no heading left", 8000);
+  await launcher.eval("document.querySelector('#openList .row-item').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 20, clientY: 20 }))");
+  check(await launcher.eval("[...document.querySelectorAll('#ctxMenu .ctx-item')].map(e => e.textContent).includes('Masquer de la liste')"), "the right-click menu of a chat in the list offers to hide it");
+  await launcher.eval("document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); document.body.click()");
+
   console.log("tabs: merging two windows");
   const labelOf = p => p.eval("window.__TAURI_INTERNALS__.metadata.currentWindow.label");
   const [chatLabel, conLabel] = [await labelOf(chat), await labelOf(con)];

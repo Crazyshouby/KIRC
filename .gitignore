@@ -5,3 +5,4 @@ src-tauri/gen/
 tests/shots/
 tools/kirc-pixel*.ttf
 __pycache__/
+kdx-frames/target/

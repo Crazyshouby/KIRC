@@ -113,6 +113,31 @@ pub struct PairingCode {
     pub seconds: u32,
 }
 
+#[derive(Serialize, Clone, Copy, Debug, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum CallState {
+    /// Someone is calling us.
+    Incoming,
+    /// We are calling, and it rings.
+    Calling,
+    /// The call is connected.
+    Active,
+    /// Over (hung up, refused, missed, or failed).
+    Ended,
+}
+
+/// A voice or video call of the account (one at a time).
+#[derive(Serialize, Clone, Debug, PartialEq, Eq)]
+pub struct CallInfo {
+    pub id: String,
+    /// The conversation the call belongs to: its window shows the call.
+    pub buffer: String,
+    pub state: CallState,
+    pub video: bool,
+    /// Who calls, or why it ended.
+    pub text: String,
+}
+
 #[derive(Serialize, Clone, Debug)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum Event {
@@ -138,6 +163,8 @@ pub enum Event {
     Pairing { code: PairingCode },
     /// Linking is over (done, or given up).
     Paired,
+    /// A call begins, changes or ends.
+    Call { call: CallInfo },
     /// Our own nick and the network name as the server announces it.
     Me { nick: String, network: String },
     /// We are marked away (or not any more).

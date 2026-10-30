@@ -58,7 +58,7 @@ pub async fn run(conn: ConnectionConfig, mut session: Session, sink: Arc<dyn Sin
                 r = &mut connecting => break Some(r),
                 cmd = cmds.recv() => match cmd {
                     None | Some(Command::Disconnect(_)) => break None,
-                    Some(c @ (Command::FetchMedia { .. } | Command::SendImage { .. })) => c.refuse_media(),
+                    Some(c @ (Command::FetchMedia { .. } | Command::SendImage { .. } | Command::Call(_))) => c.refuse_media(),
                     Some(Command::ConnectNow) => {}
                     Some(Command::SetFilters { ignores, alert_words }) => session.set_filters(ignores, alert_words),
                     Some(Command::Input { buffer, text, .. }) => offline_input(&mut session, &*sink, &buffer, &text),
@@ -120,7 +120,7 @@ pub async fn run(conn: ConnectionConfig, mut session: Session, sink: Arc<dyn Sin
                         sink.emit(Event::Status { state: ConnState::Disconnected, text: "Déconnecté".into() });
                         return;
                     }
-                    Some(c @ (Command::FetchMedia { .. } | Command::SendImage { .. })) => c.refuse_media(),
+                    Some(c @ (Command::FetchMedia { .. } | Command::SendImage { .. } | Command::Call(_))) => c.refuse_media(),
                     Some(Command::ConnectNow) => break,
                     Some(Command::SetFilters { ignores, alert_words }) => session.set_filters(ignores, alert_words),
                     Some(Command::Input { buffer, text, .. }) => offline_input(&mut session, &*sink, &buffer, &text),
@@ -322,7 +322,7 @@ async fn link(
                             let _ = dispatch(outs, &mut wr, &mut limiter, sink, &mut quit_at).await;
                             break 'main End::Quit;
                         }
-                        Some(c @ (Command::FetchMedia { .. } | Command::SendImage { .. })) => c.refuse_media(),
+                        Some(c @ (Command::FetchMedia { .. } | Command::SendImage { .. } | Command::Call(_))) => c.refuse_media(),
                         Some(Command::ConnectNow) => {}
                         Some(Command::SetFilters { ignores, alert_words }) => session.set_filters(ignores, alert_words),
                         Some(Command::Input { buffer, text, reply }) => {

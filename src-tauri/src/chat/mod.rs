@@ -21,6 +21,10 @@ use tokio::sync::mpsc::UnboundedReceiver;
 /// Where the events of one account go (the application emits them to the pages).
 pub trait Sink: Send + Sync + 'static {
     fn emit(&self, event: Event);
+    /// A piece of the sound or the picture of a call, for the page that shows it ("audio": 16-bit little-endian PCM,
+    /// 16 kHz mono; "video": a flag byte, 1 for a key frame, then an H.264 access unit). Not an event of the state:
+    /// it neither counts in the sequence nor is kept.
+    fn media(&self, _call: &str, _kind: &'static str, _data: &[u8]) {}
 }
 
 /// What the application asks of a connection.
@@ -36,8 +40,24 @@ pub enum Command {
     SetFilters { ignores: Vec<String>, alert_words: Vec<String> },
     /// The page wants the whole image of a message (the preview was not enough).
     FetchMedia { msgid: String, reply: tokio::sync::oneshot::Sender<Result<Vec<u8>, String>> },
+    /// Something about the call (starting, answering, hanging up, the microphone and the camera).
+    Call(CallCommand),
     /// Send an image to a buffer, with its preview (a small JPEG, may be empty) and a caption.
     SendImage { buffer: String, data: Vec<u8>, thumb: Vec<u8>, caption: String, reply: tokio::sync::oneshot::Sender<Result<(), String>> },
+}
+
+/// What the page tells the connection about a call.
+#[derive(Debug)]
+pub enum CallCommand {
+    Start { buffer: String, video: bool },
+    Accept { id: String, video: bool },
+    Reject { id: String },
+    Hangup { id: String },
+    Mute { id: String, muted: bool },
+    /// One frame of the microphone: 960 samples of 16-bit little-endian PCM, 16 kHz mono (60 ms).
+    Audio { id: String, pcm: Vec<u8> },
+    /// One access unit of the camera, H.264 in Annex-B form.
+    Video { id: String, au: Vec<u8> },
 }
 
 impl Command {
@@ -98,6 +118,8 @@ pub struct Caps {
     pub topic: bool,
     /// Images can be shown (a preview, then the whole image) and sent.
     pub images: bool,
+    /// Voice and video calls.
+    pub calls: bool,
 }
 
 impl Protocol {
@@ -146,8 +168,8 @@ impl Protocol {
 
     pub fn caps(self) -> Caps {
         match self {
-            Protocol::Irc => Caps { ranks: true, whois: true, moderation: true, channel_list: true, topic: true, images: false },
-            Protocol::WhatsApp => Caps { ranks: false, whois: false, moderation: false, channel_list: false, topic: false, images: true },
+            Protocol::Irc => Caps { ranks: true, whois: true, moderation: true, channel_list: true, topic: true, images: false, calls: false },
+            Protocol::WhatsApp => Caps { ranks: false, whois: false, moderation: false, channel_list: false, topic: false, images: true, calls: cfg!(feature = "whatsapp") },
         }
     }
 }

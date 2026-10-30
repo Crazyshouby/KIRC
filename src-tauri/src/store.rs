@@ -2,7 +2,7 @@
 //! and, per buffer, the topic, the member list and the recent lines. It is fed
 //! by the same events as the pages, so both always agree.
 
-use crate::chat::event::{ChannelEntry, ConnState, Event, Line, PairingCode, UserEntry, WhoisInfo};
+use crate::chat::event::{CallInfo, CallState, ChannelEntry, ConnState, Event, Line, PairingCode, UserEntry, WhoisInfo};
 use crate::chat::fold;
 use serde::Serialize;
 use std::collections::{HashMap, VecDeque};
@@ -39,6 +39,8 @@ pub struct ServerState {
     pub away: bool,
     /// The code to scan to link the account, while there is one.
     pub pairing: Option<PairingCode>,
+    /// The call in progress, if any.
+    pub call: Option<CallInfo>,
     /// Counts the events applied: a page that fetched a snapshot ignores older events.
     pub seq: u64,
     channel_list: Vec<ChannelEntry>,
@@ -74,6 +76,7 @@ pub struct ServerSummary {
     pub network: String,
     pub away: bool,
     pub pairing: Option<PairingCode>,
+    pub call: Option<CallInfo>,
     pub channels: Vec<String>,
     /// Buffers with lines nobody looked at yet.
     pub activity: Vec<Activity>,
@@ -90,6 +93,7 @@ impl ServerState {
             network: String::new(),
             away: false,
             pairing: None,
+            call: None,
             seq: 0,
             channel_list: Vec::new(),
             list_loading: false,
@@ -134,6 +138,7 @@ impl ServerState {
             network: self.network.clone(),
             away: self.away,
             pairing: self.pairing.clone(),
+            call: self.call.clone(),
             channels,
         }
     }
@@ -218,6 +223,7 @@ impl ServerState {
                 self.status_text = text.clone();
                 if *state == ConnState::Disconnected {
                     self.pairing = None;
+                    self.call = None;
                 }
             }
             Event::Line { line } => {
@@ -262,6 +268,7 @@ impl ServerState {
             Event::Backlog { .. } => {}
             Event::Pairing { code } => self.pairing = Some(code.clone()),
             Event::Paired => self.pairing = None,
+            Event::Call { call } => self.call = (call.state != CallState::Ended).then(|| call.clone()),
             Event::Me { nick, network } => {
                 self.nick = nick.clone();
                 if !network.is_empty() {
@@ -326,6 +333,21 @@ mod tests {
         s.apply(&Event::Listed { buffer: "#Famille".into() });
         assert_eq!(s.summary().channels, vec!["#Famille"]);
         assert_eq!(s.snapshot("#famille").users.len(), 1, "Listed does not clear the members, unlike Joined");
+    }
+
+    #[test]
+    fn a_call_is_kept_until_it_ends_or_the_link_drops() {
+        let mut s = ServerState::new(100);
+        let call = |state| CallInfo { id: "c1".into(), buffer: "Alice".into(), state, video: false, text: "Alice".into() };
+        s.apply(&Event::Call { call: call(CallState::Incoming) });
+        assert_eq!(s.summary().call.map(|c| c.state), Some(CallState::Incoming));
+        s.apply(&Event::Call { call: call(CallState::Active) });
+        assert_eq!(s.summary().call.map(|c| c.state), Some(CallState::Active));
+        s.apply(&Event::Call { call: call(CallState::Ended) });
+        assert!(s.summary().call.is_none());
+        s.apply(&Event::Call { call: call(CallState::Calling) });
+        s.apply(&Event::Status { state: ConnState::Disconnected, text: String::new() });
+        assert!(s.summary().call.is_none(), "a dropped connection ends the call");
     }
 
     #[test]

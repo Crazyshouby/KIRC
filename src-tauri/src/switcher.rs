@@ -62,6 +62,7 @@ mod tests {
             network: String::new(),
             away: false,
             pairing: None,
+            call: None,
             channels: channels.iter().map(|s| s.to_string()).collect(),
             activity,
             queries: queries.iter().map(|s| s.to_string()).collect(),

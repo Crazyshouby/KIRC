@@ -2,12 +2,14 @@
 
 use super::chats::{group_buffer, user_buffer, user_of, Registry};
 use crate::chat::event::{ConnState, Event as Ev, Line, LineKind, Media, PairingCode, UserEntry};
-use crate::chat::{now_ms, sniff_image, Command, Sink, Start, Task, MAX_IMAGE_BYTES};
+use crate::chat::{now_ms, sniff_image, CallCommand, Command, Sink, Start, Task, MAX_IMAGE_BYTES};
 use base64::Engine as _;
 use std::collections::{HashSet, VecDeque};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicI64, Ordering};
 use std::sync::{Arc, Mutex};
+mod calls;
+
 use whatsapp_rust::features::GroupParticipant;
 use whatsapp_rust::prelude::*;
 
@@ -26,6 +28,8 @@ struct Ctx {
     sent: Mutex<Vec<String>>,
     /// The device was unlinked (from the phone, or by `/logout`): the account is over.
     unlinked: AtomicBool,
+    /// Calls (ringing, and the one in progress).
+    calls: calls::Calls,
     /// The last messages that carry an image (by identifier), to fetch the whole image when asked.
     images: Mutex<VecDeque<(String, Arc<wa::Message>)>>,
     /// Chats of the account's history, kept until the names have arrived (see `touch`).
@@ -74,6 +78,7 @@ pub fn launch(start: Start) -> Result<Task, String> {
         announced: Mutex::new(HashSet::new()),
         sent: Mutex::new(Vec::new()),
         unlinked: AtomicBool::new(false),
+        calls: calls::Calls::default(),
         images: Mutex::new(VecDeque::new()),
         pending: Mutex::new(Vec::new()),
         last_activity: AtomicI64::new(0),
@@ -114,12 +119,19 @@ async fn run(ctx: Arc<Ctx>, db: PathBuf, mut commands: tokio::sync::mpsc::Unboun
             _ = &mut handle => break,
             cmd = commands.recv() => match cmd {
                 None | Some(Command::Disconnect(_)) => {
+                    ctx.hang_up_everything().await;
                     handle.shutdown().await;
                     ctx.registry.lock().unwrap().save();
                     ctx.status(ConnState::Disconnected, "Déconnecté");
                     return;
                 }
                 Some(Command::Input { buffer, text, reply }) => ctx.on_input(&client, &buffer, &text, reply).await,
+                // the frames of a call keep their order: handed over at once; the rest of a call may wait for the network
+                Some(Command::Call(c @ (CallCommand::Audio { .. } | CallCommand::Video { .. }))) => ctx.call_media_in(c),
+                Some(Command::Call(c)) => {
+                    let (ctx, client) = (ctx.clone(), client.clone());
+                    tokio::spawn(async move { ctx.on_call_command(&client, c).await });
+                }
                 // an image can take a while to travel: the other commands do not wait for it
                 Some(Command::FetchMedia { msgid, reply }) => {
                     let (ctx, client) = (ctx.clone(), client.clone());
@@ -188,6 +200,9 @@ impl Ctx {
                 self.sink.emit(Ev::Paired);
                 self.line("", LineKind::Error, "WhatsApp a délié cet appareil : liez-le de nouveau pour continuer.");
             }
+            Event::IncomingCall(c) => self.on_incoming_call(client, c).await,
+            Event::MissedCall(m) => self.end_incoming(&m.call_id, "Appel manqué"),
+            Event::CallEndedElsewhere(e) => self.end_incoming(&e.call_id, "Appel pris sur un autre appareil"),
             Event::ClientOutdated(_) => self.line("", LineKind::Error, "WhatsApp refuse cette version de la bibliothèque : mettez KIRC à jour."),
             Event::TemporaryBan(_) => self.line("", LineKind::Error, "WhatsApp a suspendu temporairement ce compte."),
             Event::PushNameUpdate(u) => self.registry.lock().unwrap().set_name(&u.jid.to_string(), &u.new_push_name),
