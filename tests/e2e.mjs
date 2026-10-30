@@ -289,6 +289,17 @@ async function main() {
   await until(() => lst.eval("document.querySelectorAll('#chanList .chan-row').length === 1"), "list filter");
   await lst.eval("(() => { const i = document.querySelector('#lFilter'); i.value = ''; i.dispatchEvent(new Event('input')); })()");
   await until(() => lst.eval("document.querySelectorAll('#chanList .chan-row').length === 200"), "filter cleared");
+  check(await lst.eval("document.querySelectorAll('#lHead .kdx-colrz').length === 2"), "the list header has a handle on each column but the last");
+  // La webview partage son stockage avec le vrai KIRC : on part des largeurs d'origine (double-clic sur une poignée) et on ne laisse rien derrière soi.
+  await lst.eval("document.querySelector('#lHead .kdx-colrz').dispatchEvent(new MouseEvent('dblclick', { bubbles: true }))");
+  const colW = () => lst.eval("JSON.stringify([...document.querySelectorAll('#lHead > .lh')].map(b => Math.round(b.getBoundingClientRect().width)))");
+  const w0 = JSON.parse(await colW());
+  await lst.eval("(() => { const h = document.querySelector('#lHead .kdx-colrz'), x = h.getBoundingClientRect().left; for (const [t, d] of [['pointerdown', 0], ['pointermove', 50], ['pointerup', 50]]) h.dispatchEvent(new PointerEvent(t, { bubbles: true, button: 0, pointerId: 5, clientX: x + d })); })()");
+  const w1 = JSON.parse(await colW());
+  check(w1[0] === w0[0] + 50 && w1[1] === w0[1] && w1[2] === w0[2] - 50 && w0[0] === 181 && w0[1] === 85, `dragging a column edge widens it and narrows the flexible one (${w0} -> ${w1})`);
+  check(await lst.eval("(() => { const r = document.querySelector('#chanList .chan-row'), h = document.querySelectorAll('#lHead > .lh'); return [0, 1].every(i => Math.abs(r.children[i].getBoundingClientRect().width - h[i].getBoundingClientRect().width) <= 1); })()"), "the rows follow the header columns");
+  check(await lst.eval("document.querySelector('#lHead .lh.on').dataset.sort === 'users'"), "dragging a column edge does not sort the list");
+  await lst.eval("document.querySelector('#lHead .kdx-colrz').dispatchEvent(new MouseEvent('dblclick', { bubbles: true })); localStorage.removeItem('kdx.cols.salons')");
   await lst.shot("14-list");
   await lst.fire("window.__TAURI__.core.invoke('win_close')");
 

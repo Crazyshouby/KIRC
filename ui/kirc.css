@@ -183,7 +183,8 @@ body.nots .ln .ts { display: none; }
 .whois .v.warn { color: var(--warn); }
 .listbar { display: flex; gap: 6px; flex: none; margin-bottom: 6px; }
 .listbar .text-input { padding: 3px 7px; }
-.lhead { display: grid; grid-template-columns: 187px 85px 1fr; flex: none; padding-right: 15px; margin-bottom: 3px; }
+/* Les colonnes de la liste des salons : --kdx-cols, posé par kdx-columns.js sur l'en-tête et ses lignes (largeurs d'origine en repli). */
+.lhead { display: grid; grid-template-columns: var(--kdx-cols, 181px 85px minmax(80px, 1fr)); flex: none; padding: 0 16px 0 7px; margin-bottom: 3px; }   /* 1 px de bordure de la liste + 6 px de la bordure des lignes ; 15 px de barre de défilement + 1 px */
 .lh {
   white-space: nowrap; overflow: hidden; font: inherit; color: var(--text); text-align: left; padding: 0 8px; height: 22px; cursor: pointer;
   background: var(--btn); border: 1px solid #000; box-shadow: var(--bevel);
@@ -192,11 +193,13 @@ body.nots .ln .ts { display: none; }
 .lh.on::after { content: ""; display: inline-block; margin-left: 7px; vertical-align: middle; border: 4px solid transparent; border-top: 5px solid #fff; border-bottom: 0; }
 .lh.static { cursor: default; display: flex; align-items: center; }
 .lh.static:hover { background: var(--btn); }
-.chan-row { display: grid; grid-template-columns: 170px 70px 1fr; gap: 10px; align-items: baseline; padding: 4px 8px 4px 6px; border-left: 6px solid transparent; border-bottom: 1px solid var(--line); cursor: pointer; }
+.chan-row { display: grid; grid-template-columns: var(--kdx-cols, 181px 85px minmax(80px, 1fr)); align-items: baseline; padding: 4px 0; border-left: 6px solid transparent; border-bottom: 1px solid var(--line); cursor: pointer; }
 .chan-row.sel { background: var(--sel-bg); color: var(--sel-fg); }
+.chan-row > * { padding: 0 8px; min-width: 0; }
 .chan-row .n { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .chan-row .u { text-align: right; font: 14px/16px var(--font); }
 .chan-row .t { color: var(--faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#chanList { scrollbar-gutter: stable; }   /* la place de la barre de défilement est toujours réservée : les colonnes restent sous leurs en-têtes */
 #lStatus { margin-top: 6px; flex: none; }
 #lMin { flex: none; width: 70px; }
 

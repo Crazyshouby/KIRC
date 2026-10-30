@@ -1391,6 +1391,7 @@ function initList() {
     st.classList.toggle("busy", page.loading); st.classList.toggle("on", !page.loading && page.total > 0);
     f("lStatusText").textContent = page.loading ? "Réception de la liste…" : `${page.matched} salon${page.matched > 1 ? "s" : ""} sur ${page.total}`;
   }
+  KdxColumns.init({ head: f("lHead"), cols: [181, 85, "1fr"], key: "salons" });   // colonnes redimensionnables
   const later = () => { clearTimeout(timer); timer = setTimeout(() => load(false), 200); };
   f("lFilter").addEventListener("input", later);
   f("lMin").addEventListener("input", later);

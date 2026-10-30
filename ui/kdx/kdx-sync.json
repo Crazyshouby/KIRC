@@ -3,7 +3,7 @@
   "files": {
     "ui/kdx/kdx-ui.css": {
       "from": "kdx-ui.css",
-      "sha256": "f1a7588db2ce8b8496999762a2b8e414c3309a19ff57a6e6d4f05c07a4cfda7a"
+      "sha256": "958821e393649076e29a1c9fa038c644d3e503477e10761c1e56163d5fb8d762"
     },
     "ui/kdx/themes.css": {
       "from": "themes.css",
@@ -48,6 +48,10 @@
     "tools/lib/lint.mjs": {
       "from": "lint.mjs",
       "sha256": "9b8c53ef75faeb6a56854a13c69f54bffa83ea759956d2ab5222603fa14110a7"
+    },
+    "ui/kdx/kdx-columns.js": {
+      "from": "kdx-columns.js",
+      "sha256": "9eea4842fa98ce675850ceb97b099619fbbdfaa3904dc1c2127825b0d4c4bfcb"
     }
   }
 }
