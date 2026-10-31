@@ -75,7 +75,7 @@ mod tests {
     #[test]
     fn red_is_cdx_and_the_others_keep_their_name() {
         assert_eq!(to_kirc("rouge"), "cdx");
-        assert_eq!(to_kirc("bleu"), "bleu");
+        assert_eq!(to_kirc("jean"), "jean");
         for a in cdx_bus::ACCENTS {
             assert!(crate::config::THEMES.contains(&to_kirc(a).as_str()), "{a}");
         }
@@ -83,8 +83,8 @@ mod tests {
 
     #[test]
     fn an_own_theme_wins_over_the_suite() {
-        *ACCENT.lock().unwrap() = "bleu".into();
-        assert_eq!(effective("cdx"), "bleu");
+        *ACCENT.lock().unwrap() = "jean".into();
+        assert_eq!(effective("cdx"), "jean");
         assert_eq!(effective("ambre"), "ambre");
         *ACCENT.lock().unwrap() = "rouge".into();
         assert_eq!(effective("cdx"), "cdx");

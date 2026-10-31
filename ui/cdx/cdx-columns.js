@@ -7,13 +7,16 @@
    - Une poignée se glisse sur le bord droit de chaque colonne sauf la dernière : le bord suit la souris. La largeur totale ne change pas : la place prise
      (ou rendue) l'est par la colonne « 1fr » si elle est à droite du bord, sinon par la colonne voisine de droite. Aucune colonne ne descend sous son
      minimum (48 px, et 80 px pour la colonne « 1fr »).
-   - Les largeurs sont gardées par page (localStorage « cdx.cols.<key> ») ; un double-clic sur une poignée rend les largeurs d'origine. */
+   - Les largeurs sont gardées par page (localStorage « cdx.cols.<key> ») ; un double-clic sur une poignée rend les largeurs d'origine.
+   - Rayures : comme KDX, les colonnes d'une liste alternent deux fonds (jetons --col-a et --col-b) sur toute sa hauteur. La liste (le premier .list du
+     parent, ou l'option `list`) reçoit --cdx-stripes, un dégradé par paliers aux largeurs réelles des en-têtes, recalculé quand elles changent. */
 (() => {
   const MIN = 48, FLEX_MIN = 80;
 
-  function init({ head, cols, key = "", min = MIN, scope }) {
+  function init({ head, cols, key = "", min = MIN, scope, list }) {
     if (!head || !cols || !cols.length) return null;
     scope = scope || head.parentElement;
+    list = list === undefined ? scope.querySelector(".list") : list;
     const kids = [...head.children].slice(0, cols.length), n = kids.length;
     if (n < 2) return null;
     const flex = cols.indexOf("1fr");                          // -1 : toutes les colonnes ont une largeur fixe
@@ -23,9 +26,17 @@
       const s = JSON.parse(localStorage.getItem("cdx.cols." + key));
       if (Array.isArray(s) && s.length === n && s.every((v, i) => i === flex || (typeof v === "number" && v >= min && v <= 3000))) w = s;
     } catch { /* pas de stockage, ou valeur illisible : largeurs d'origine */ }
-    const apply = () => scope.style.setProperty("--cdx-cols", w.map((v, i) => (i === flex ? `minmax(${FLEX_MIN}px, 1fr)` : v + "px")).join(" "));
+    // Les rayures : un palier par colonne, à la largeur réelle de son en-tête (la colonne « 1fr » comprise), la dernière couleur jusqu'au bord.
+    const stripes = () => {
+      if (!list) return;
+      let x = 0; const stops = [];
+      kids.forEach((k, i) => { const wi = k.getBoundingClientRect().width; stops.push(`var(--col-${i % 2 ? "b" : "a"}) ${x}px ${i === n - 1 ? "100%" : (x + wi) + "px"}`); x += wi; });
+      list.style.setProperty("--cdx-stripes", `linear-gradient(90deg, ${stops.join(", ")})`);
+    };
+    const apply = () => { scope.style.setProperty("--cdx-cols", w.map((v, i) => (i === flex ? `minmax(${FLEX_MIN}px, 1fr)` : v + "px")).join(" ")); requestAnimationFrame(stripes); };
     const save = () => { try { localStorage.setItem("cdx.cols." + key, JSON.stringify(w)); } catch { /* idem */ } };
     apply();
+    if (list && window.ResizeObserver) new ResizeObserver(() => stripes()).observe(head);
 
     for (let i = 0; i < n - 1; i++) {
       const h = document.createElement("i"); h.className = "cdx-colrz"; h.setAttribute("aria-hidden", "true");

@@ -1,13 +1,13 @@
 {
-  "cdxUi": "1.0.0",
+  "cdxUi": "2.0.0",
   "files": {
     "ui/cdx/cdx-ui.css": {
       "from": "cdx-ui.css",
-      "sha256": "1a5650dc9e9243de9e28820e15d13b1f4b95c8f9024fe16b17e673b513d1a8f7"
+      "sha256": "dd659ae997b2c679cd8a3056e341851cafb48a589a9c9f3476741fa08d92f862"
     },
     "ui/cdx/themes.css": {
       "from": "themes.css",
-      "sha256": "a0d689d0cc48b636d7ee9188078294fa15df5b7e71beca69038e3d2e44947e07"
+      "sha256": "9015ba7598fefedc18d417b066f2a12e36b0369738e7711e163178655db27379"
     },
     "ui/cdx/fonts.css": {
       "from": "fonts.css",
@@ -19,7 +19,7 @@
     },
     "src-tauri/src/cdx_bus.rs": {
       "from": "cdx_bus.rs",
-      "sha256": "a53f4a03b56bdb0ece8abd3c82b5ec1117685694434e1eafed4bf95ec775da9d"
+      "sha256": "a26241c529d477b28e318e4e3add0efdb562daa5c55e6275da166d5f8106d241"
     },
     "tools/cdx-verify.mjs": {
       "from": "cdx-verify.mjs",
@@ -27,19 +27,19 @@
     },
     "ui/cdx/cdx-bridge.js": {
       "from": "cdx-bridge.js",
-      "sha256": "f5f055ec0daec79fb04b18fd5dfe84f66aa47bdee8a8bf3468214878f839ef64"
+      "sha256": "0091f08e716e16a9b70eee00e5c2a46eac62c7250f9f1adc51e7dda3b2539663"
     },
     "ui/cdx/cdx-frame.js": {
       "from": "cdx-frame.js",
-      "sha256": "e4f7d34b1d4cc24b609e3fb47956e3da6977e7ccc66c8381bbe799ffa2ba8986"
+      "sha256": "77c9cb34656eaf90d7781a181ab436bf70b153334aeb33a0c32adc6b8e7c5d7e"
     },
     "ui/cdx/cdx-frame.css": {
       "from": "cdx-frame.css",
-      "sha256": "edba0157d03d56df2028b562b56cc47fc59a2ee283cc88c64ae72fc2a5b62321"
+      "sha256": "6282dd7d848a1688736723ed2037a6162593143d578c6130c5a0c3517121eb98"
     },
     "ui/cdx/tokens.json": {
       "from": "tokens.json",
-      "sha256": "5890b92eeed1adb47c9fca378f52fb43d4c1a1cf83990024ffeb41258e2b6429"
+      "sha256": "60d08b536c9073259dd19d92e80f7898bf7a2350716cf7c88b249491ce07fea7"
     },
     "tools/charte-lint.mjs": {
       "from": "charte-lint.mjs",
@@ -51,7 +51,7 @@
     },
     "ui/cdx/cdx-columns.js": {
       "from": "cdx-columns.js",
-      "sha256": "da30849048e92d729796e06ea4640b406c916c69801e0fad8721334929d47695"
+      "sha256": "908f8232b35c519a3b8df7c6825e6fba8bfb953007a2dc8485c44b27e3fd73ef"
     },
     "ui/cdx/cdx-split.js": {
       "from": "cdx-split.js",

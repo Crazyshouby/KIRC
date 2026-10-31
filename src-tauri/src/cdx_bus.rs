@@ -15,14 +15,21 @@ use std::time::{Duration, SystemTime};
 /// Longueur maximale d'une ligne du bus (64 Ko).
 pub const MAX_LINE: usize = 65536;
 
-/// Les accents de la suite (les thèmes de `themes.css`).
-pub const ACCENTS: [&str; 7] = ["rouge", "bleu", "vert", "violet", "ambre", "sarcelle", "charbon"];
+/// Les accents de la suite : les seize thèmes de `tokens.json` (les apparences de KDX 1.6).
+pub const ACCENTS: [&str; 16] = ["rouge", "marine", "ambre", "jean", "tramway", "sarcelle", "chocolat", "lavande", "oxygene", "couchant", "techno", "reve-bleu", "reve-vert", "reve-violet", "lagon", "turquoise"];
+/// Les anciens noms (cdx-ui 1.x) et le thème qu'ils désignent aujourd'hui.
+pub const ACCENT_ALIASES: [(&str, &str); 5] = [("bleu", "jean"), ("vert", "reve-vert"), ("violet", "reve-violet"), ("charbon", "techno"), ("cdx", "rouge")];
+
+/// Le nom actuel d'un accent (alias compris), ou `None`.
+pub fn canonical_accent(s: &str) -> Option<&'static str> {
+    ACCENTS.iter().copied().find(|a| *a == s).or_else(|| ACCENT_ALIASES.iter().find(|(a, _)| *a == s).map(|(_, b)| *b))
+}
 
 /// Les applications qui peuvent recevoir (un tube chacune).
 pub const APPS: [&str; 5] = ["shell", "explorer", "browser", "audiolinker", "kirc"];
 
 pub fn is_accent(s: &str) -> bool {
-    ACCENTS.contains(&s)
+    canonical_accent(s).is_some()
 }
 
 pub fn is_app(s: &str) -> bool {
@@ -52,9 +59,9 @@ pub fn parse_accent(json: &str, fallback: &str) -> String {
             return fallback.to_string();
         }
     }
-    match v.get("accent").and_then(Value::as_str) {
-        Some(a) if is_accent(a) => a.to_string(),
-        _ => fallback.to_string(),
+    match v.get("accent").and_then(Value::as_str).and_then(canonical_accent) {
+        Some(a) => a.to_string(),
+        None => fallback.to_string(),
     }
 }
 

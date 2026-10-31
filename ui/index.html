@@ -135,15 +135,47 @@
           <fieldset class="grp" data-panel="affichage"><legend>Affichage</legend>
           <label for="sTheme">Thème</label>
           <select class="text-input" id="sTheme">
-            <option value="cdx">Rouge CDX (défaut)</option>
-            <option value="bleu">Bleu électrique</option>
-            <option value="vert">Vert électrique</option>
-            <option value="violet">Violet électrique</option>
+            <option value="cdx">Clair-obscur rouge (défaut)</option>
+            <option value="marine">Marine et rose</option>
             <option value="ambre">Ambre CRT</option>
+            <option value="jean">Bleu jean</option>
+            <option value="tramway">Tramway</option>
             <option value="sarcelle">Sarcelle</option>
-            <option value="charbon">Charbon</option>
+            <option value="chocolat">Chocolat framboise</option>
+            <option value="lavande">Lavande</option>
+            <option value="oxygene">Oxygène</option>
+            <option value="couchant">Clair-obscur couchant</option>
+            <option value="techno">Techno électrique</option>
+            <option value="reve-bleu">Rêve bleu</option>
+            <option value="reve-vert">Rêve vert</option>
+            <option value="reve-violet">Rêve violet</option>
+            <option value="lagon">Lagon</option>
+            <option value="turquoise">Turquoise</option>
           </select>
           <div class="hint">L'aperçu est immédiat dans cette fenêtre ; « Enregistrer » l'applique à toutes.</div>
+          <label for="sFeed">Conversations WhatsApp</label>
+          <select class="text-input" id="sFeed">
+            <option value="blocs">Blocs par auteur</option>
+            <option value="aere">Texte aéré</option>
+            <option value="bulles">Bulles</option>
+            <option value="cartes">Cartes</option>
+            <option value="classique">Classique (comme IRC)</option>
+          </select>
+          <div class="hint">La façon dont les messages d'une conversation WhatsApp sont présentés. IRC ne change pas.</div>
+          <label for="sSide">Mes messages</label>
+          <select class="text-input" id="sSide">
+            <option value="auto">Selon la présentation</option>
+            <option value="gauche">À gauche</option>
+            <option value="droite">À droite</option>
+          </select>
+          <div class="hint">Le côté où s'affichent vos propres messages dans une conversation WhatsApp (« Selon la présentation » : à droite pour les bulles, à gauche pour les autres).</div>
+          <label for="sSize">Taille du texte</label>
+          <select class="text-input" id="sSize">
+            <option value="petite">Petite (actuelle)</option>
+            <option value="moyenne">Moyenne</option>
+            <option value="grande">Grande (double)</option>
+          </select>
+          <div class="hint">Pour les messages de toutes les fenêtres. Les polices pixel ne restent nettes qu'à ces tailles.</div>
           <span class="lbl"></span><label class="chk-row"><span class="switch"><input type="checkbox" id="sStamps"><span class="track"></span></span>Afficher l'heure devant les messages</label>
           <span class="lbl"></span><label class="chk-row"><span class="switch"><input type="checkbox" id="sJoins"><span class="track"></span></span>Afficher les arrivées et départs</label>
           <span class="lbl"></span><label class="chk-row"><span class="switch"><input type="checkbox" id="sSmall"><span class="track"></span></span>Petites icônes dans la liste des membres</label>

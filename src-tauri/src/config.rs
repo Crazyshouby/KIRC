@@ -98,8 +98,21 @@ impl ServerEntry {
     }
 }
 
-/// The themes the pages know (ui/cdx/themes.css); "cdx" is the default look.
-pub const THEMES: [&str; 7] = ["cdx", "bleu", "vert", "violet", "ambre", "sarcelle", "charbon"];
+/// The themes the pages know (ui/cdx/themes.css, the sixteen KDX appearances of cdx-ui/tokens.json); "cdx" is the default look (the suite's "rouge").
+pub const THEMES: [&str; 16] = ["cdx", "marine", "ambre", "jean", "tramway", "sarcelle", "chocolat", "lavande", "oxygene", "couchant", "techno", "reve-bleu", "reve-vert", "reve-violet", "lagon", "turquoise"];
+/// Theme names of cdx-ui 1.x, mapped to today's names when an old config.json is read.
+pub const THEME_ALIASES: [(&str, &str); 4] = [("bleu", "jean"), ("vert", "reve-vert"), ("violet", "reve-violet"), ("charbon", "techno")];
+
+/// The presentations of a conversation of a messaging protocol (WhatsApp): "classique" is the IRC transcript, the
+/// others are described in ui/kirc.css.
+pub const FEED_STYLES: [&str; 5] = ["classique", "aere", "blocs", "bulles", "cartes"];
+
+/// Where our own messages stand in a chat presentation: "auto" (to the right in "bulles", to the left in the others).
+pub const OWN_SIDES: [&str; 3] = ["auto", "gauche", "droite"];
+
+/// The sizes of the text of the transcripts: the transcript font (13 px between lines), the interface font, and the
+/// transcript font doubled (a pixel font stays sharp only at whole multiples).
+pub const TEXT_SIZES: [&str; 3] = ["petite", "moyenne", "grande"];
 
 /// Entries kept in each of the ignore and alert lists.
 pub const MAX_LIST_ITEMS: usize = 200;
@@ -124,6 +137,12 @@ pub struct Settings {
     pub small_member_icons: bool,
     /// Colours, bold and italic tell the kinds of lines of a transcript apart (off: all green, as in CDX).
     pub colored_chat: bool,
+    /// How a conversation of WhatsApp (and the like) is laid out, one of `FEED_STYLES`. IRC windows keep the transcript.
+    pub feed_style: String,
+    /// The size of the text of every transcript, one of `TEXT_SIZES`.
+    pub text_size: String,
+    /// Which side our own messages stand on in those presentations, one of `OWN_SIDES`.
+    pub own_side: String,
     /// Messages kept per window (50 to 5000).
     pub scrollback: u32,
     /// Open the server's console window when connecting.
@@ -159,6 +178,9 @@ impl Default for Settings {
             show_timestamps: false,
             small_member_icons: true,
             colored_chat: true,
+            feed_style: "blocs".into(),
+            text_size: "petite".into(),
+            own_side: "auto".into(),
             scrollback: 1000,
             open_console: true,
             theme: "cdx".into(),
@@ -186,6 +208,15 @@ impl Settings {
         }
         if !THEMES.contains(&self.theme.as_str()) {
             return Err("Thème inconnu".into());
+        }
+        if !FEED_STYLES.contains(&self.feed_style.as_str()) {
+            return Err("Présentation des conversations inconnue".into());
+        }
+        if !TEXT_SIZES.contains(&self.text_size.as_str()) {
+            return Err("Taille du texte inconnue".into());
+        }
+        if !OWN_SIDES.contains(&self.own_side.as_str()) {
+            return Err("Côté des messages inconnu".into());
         }
         if self.log_days > 3650 {
             return Err("La durée de conservation des journaux ne peut pas dépasser 3650 jours".into());
@@ -351,6 +382,7 @@ pub fn load_checked(dir: &Path) -> (Config, bool) {
             Ok(mut c) => {
                 c.version = 1;
                 if c.settings.theme == "kdx" { c.settings.theme = "cdx".into(); }   // le look par défaut s'appelait « kdx » (suite KDX, jusqu'au 31/10/2026)
+                if let Some((_, t)) = THEME_ALIASES.iter().find(|(a, _)| *a == c.settings.theme) { c.settings.theme = (*t).into(); }   // cdx-ui 1.x : bleu, vert, violet, charbon
                 migrate_protocols(dir, &mut c);
                 (c, true)
             }
@@ -475,6 +507,26 @@ mod tests {
         let mut e = entry("x", "h");
         e.auth = "kerberos".into();
         assert!(e.validate().is_err());
+    }
+
+    #[test]
+    fn the_presentation_and_the_text_size_are_among_the_known_ones() {
+        for f in FEED_STYLES {
+            assert!(Settings { feed_style: f.into(), ..Default::default() }.validate().is_ok(), "{f}");
+        }
+        for t in TEXT_SIZES {
+            assert!(Settings { text_size: t.into(), ..Default::default() }.validate().is_ok(), "{t}");
+        }
+        assert!(Settings { feed_style: "bulle".into(), ..Default::default() }.validate().is_err());
+        assert!(Settings { text_size: "énorme".into(), ..Default::default() }.validate().is_err());
+        for o in OWN_SIDES {
+            assert!(Settings { own_side: o.into(), ..Default::default() }.validate().is_ok(), "{o}");
+        }
+        assert!(Settings { own_side: "milieu".into(), ..Default::default() }.validate().is_err());
+        // a config saved before these settings existed gets the defaults
+        let s: Settings = serde_json::from_str(r#"{"nick":"x"}"#).unwrap();
+        assert_eq!((s.feed_style.as_str(), s.text_size.as_str()), ("blocs", "petite"));
+        assert_eq!(s.own_side, "auto");
     }
 
     #[test]

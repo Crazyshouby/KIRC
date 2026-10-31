@@ -7,9 +7,9 @@
 (() => {
   "use strict";
   const GLYPH = {
-    x: '<svg viewBox="0 0 9 9"><path d="M1 1L8 8M8 1L1 8" stroke="#fff" stroke-width="2" fill="none"/></svg>',
-    minus: '<svg viewBox="0 0 9 9"><path d="M1 4.5H8" stroke="#fff" stroke-width="2" fill="none"/></svg>',
-    plus: '<svg viewBox="0 0 9 9"><path d="M1 4.5H8M4.5 1V8" stroke="#fff" stroke-width="2" fill="none"/></svg>',
+    x: '<svg viewBox="0 0 9 9"><path d="M1 1L8 8M8 1L1 8" stroke="currentColor" stroke-width="2" fill="none"/></svg>',
+    minus: '<svg viewBox="0 0 9 9"><path d="M1 4.5H8" stroke="currentColor" stroke-width="2" fill="none"/></svg>',
+    plus: '<svg viewBox="0 0 9 9"><path d="M1 4.5H8M4.5 1V8" stroke="currentColor" stroke-width="2" fill="none"/></svg>',
   };
   const DEFAULT_GLYPH = { close: "x", min: "minus", shade: "minus", max: "plus", zoom: "plus" };
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
