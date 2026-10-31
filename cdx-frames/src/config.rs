@@ -1,13 +1,13 @@
 //! The list of the programs whose windows get the frame: a text file, one program per line.
 //!
-//! %APPDATA%\KDX-Frames\programmes.txt, created on the first run. A line is a program name (`charmap.exe`; `.exe` may be left
+//! %APPDATA%\CDX-Frames\programmes.txt, created on the first run. A line is a program name (`charmap.exe`; `.exe` may be left
 //! out); what follows a `#` is a comment. The file is read again whenever it changes, so the list can be edited while the
 //! program runs.
 
 use std::path::PathBuf;
 use std::time::SystemTime;
 
-pub const DEFAULT: &str = "# Programmes dont les fenêtres reçoivent le cadre KDX, un par ligne.\n\
+pub const DEFAULT: &str = "# Programmes dont les fenêtres reçoivent le cadre CDX, un par ligne.\n\
 # Les applications qui dessinent elles-mêmes leur barre de titre (Explorateur, navigateurs, Terminal Windows,\n\
 # applications du Store) perdraient leurs onglets : ne les mettez pas ici.\n\
 charmap.exe\n\
@@ -33,7 +33,7 @@ pub fn parse(text: &str) -> Vec<String> {
 }
 
 pub fn path() -> Option<PathBuf> {
-    std::env::var_os("APPDATA").map(|a| PathBuf::from(a).join("KDX-Frames").join("programmes.txt"))
+    std::env::var_os("APPDATA").map(|a| PathBuf::from(a).join("CDX-Frames").join("programmes.txt"))
 }
 
 /// The list in the file (created with the default content if there is none) and when it was last changed.

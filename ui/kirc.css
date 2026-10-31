@@ -1,6 +1,6 @@
 /* Layouts of the KIRC windows. Each window of the application is the same page
    (index.html) opened with ?w=<kind>; html[data-panel] picks the one that shows.
-   Colours and controls come from theme.css (the KDX look). */
+   Colours and controls come from theme.css (the CDX look). */
 
 select.text-input option { background: #2a2a2a; color: #fff; }
 
@@ -51,7 +51,7 @@ html[data-panel="launcher"] .grip-rz, html[data-panel="chat"] .grip-rz, html[dat
 .launcher .primary { width: calc(100% - 8px); margin: 6px 4px; }
 .counters { display: flex; justify-content: space-around; padding: 2px 6px 0; margin-top: auto; color: var(--text); }
 .counters .cnt { display: inline-flex; align-items: center; gap: 6px; }
-/* The banner on top of the button bar (KDX shows its dial there): a dark plate with a glow and the name. */
+/* The banner on top of the button bar (CDX shows its dial there): a dark plate with a glow and the name. */
 .logo-art {
   flex: none; height: 50px; display: grid; place-items: center; border: 1px solid #000; box-shadow: var(--bevel-down); overflow: hidden;
   background: radial-gradient(ellipse 70% 90% at 50% 130%, #f58a1a 0, #8a3a00 38%, transparent 72%), linear-gradient(#050505, #2c2c2c);
@@ -84,7 +84,7 @@ html[data-panel="launcher"] .grip-rz, html[data-panel="chat"] .grip-rz, html[dat
 [hidden] { display: none !important; }
 .form .port { flex: none; width: 90px; }
 .form .hint { grid-column: 2; color: var(--faint); line-height: 1.4; margin-top: -3px; }
-/* A group: a box etched into the panel, its title set in the top edge (KDX's "File System" box). */
+/* A group: a box etched into the panel, its title set in the top edge (CDX's "File System" box). */
 .form .grp {
   grid-column: 1 / -1; display: grid; grid-template-columns: 112px 1fr; gap: 7px 10px; align-items: center; min-width: 0;
   border: 1px solid #111; box-shadow: 1px 1px 0 #555, inset 1px 1px 0 #555; padding: 12px 10px 10px; margin-top: 6px;
@@ -114,7 +114,7 @@ html[data-panel="launcher"] .grip-rz, html[data-panel="chat"] .grip-rz, html[dat
 .chat { gap: 6px; padding: 6px; position: relative; }
 .chat-main { flex: 1; min-height: 0; display: flex; gap: 6px; }
 .pane-l { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 6px; position: relative; }
-/* Everything in the transcript is bright green on black, as in KDX; only errors and kicks are red. */
+/* Everything in the transcript is bright green on black, as in CDX; only errors and kicks are red. */
 .ln { padding: 0 8px 0 6px; white-space: pre-wrap; overflow-wrap: anywhere; border-left: 3px solid transparent; }
 .ln .ts { color: #888888; margin-right: 6px; user-select: none; }
 .ln .nk { margin-right: 6px; }
@@ -179,8 +179,8 @@ body.nots .ln .ts { display: none; }
 .whois .v.warn { color: var(--warn); }
 .listbar { display: flex; gap: 6px; flex: none; margin-bottom: 6px; }
 .listbar .text-input { padding: 3px 7px; }
-/* Les colonnes de la liste des salons : --kdx-cols, posé par kdx-columns.js sur l'en-tête et ses lignes (largeurs d'origine en repli). */
-.lhead { display: grid; grid-template-columns: var(--kdx-cols, 181px 85px minmax(80px, 1fr)); flex: none; padding: 0 16px 0 7px; margin-bottom: 3px; }   /* 1 px de bordure de la liste + 6 px de la bordure des lignes ; 15 px de barre de défilement + 1 px */
+/* Les colonnes de la liste des salons : --cdx-cols, posé par cdx-columns.js sur l'en-tête et ses lignes (largeurs d'origine en repli). */
+.lhead { display: grid; grid-template-columns: var(--cdx-cols, 181px 85px minmax(80px, 1fr)); flex: none; padding: 0 16px 0 7px; margin-bottom: 3px; }   /* 1 px de bordure de la liste + 6 px de la bordure des lignes ; 15 px de barre de défilement + 1 px */
 .lh {
   white-space: nowrap; overflow: hidden; font: inherit; color: var(--text); text-align: left; padding: 0 8px; height: 22px; cursor: pointer;
   background: var(--btn); border: 1px solid #000; box-shadow: var(--bevel);
@@ -189,7 +189,7 @@ body.nots .ln .ts { display: none; }
 .lh.on::after { content: ""; display: inline-block; margin-left: 7px; vertical-align: middle; border: 4px solid transparent; border-top: 5px solid #fff; border-bottom: 0; }
 .lh.static { cursor: default; display: flex; align-items: center; }
 .lh.static:hover { background: var(--btn); }
-.chan-row { display: grid; grid-template-columns: var(--kdx-cols, 181px 85px minmax(80px, 1fr)); align-items: baseline; padding: 4px 0; border-left: 6px solid transparent; border-bottom: 1px solid var(--line); cursor: pointer; }
+.chan-row { display: grid; grid-template-columns: var(--cdx-cols, 181px 85px minmax(80px, 1fr)); align-items: baseline; padding: 4px 0; border-left: 6px solid transparent; border-bottom: 1px solid var(--line); cursor: pointer; }
 .chan-row.sel { background: var(--sel-bg); color: var(--sel-fg); }
 .chan-row > * { padding: 0 8px; min-width: 0; }
 .chan-row .n { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -248,23 +248,23 @@ body.nots .ln .ts { display: none; }
 #consoleForm { align-items: center; }
 #consoleForm .text-input { height: 24px; }
 
-/* ---------- Corners: KDX has no round corners (the chamfers are in the charter). Launcher buttons lose their corner pixels too. */
+/* ---------- Corners: CDX has no round corners (the chamfers are in the charter). Launcher buttons lose their corner pixels too. */
 .lbtn, .ln .rp { border-radius: 0; }
 .lsel { border-radius: 0; clip-path: var(--chamfer1); }
 .mynick { color: var(--text); }
 
-/* Chat transcripts and what is typed under them use KDX's smaller font, 13 px from line to line. */
+/* Chat transcripts and what is typed under them use CDX's smaller font, 13 px from line to line. */
 .log, .ln, #msgInput, #consoleInput { font-family: var(--font-log); }
 .log { line-height: 13px; }
 #msgInput, #consoleInput { line-height: 13px; }
 
-/* Compact member list (the default, KDX's "small icons in user lists"): 16 px tiles, 17 px rows, a narrower pane. */
+/* Compact member list (the default, CDX's "small icons in user lists"): 16 px tiles, 17 px rows, a narrower pane. */
 .smallmem .members { width: 28%; min-width: 130px; max-width: 240px; }
 .smallmem .mem { height: 17px; gap: 4px; border-left-width: 4px; }
 .smallmem .mem::before { width: 16px; height: 16px; margin-right: 0; font: 14px/1 var(--font); text-shadow: none; box-shadow: inset 1px 1px 0 rgba(255, 255, 255, 0.35), inset -1px -1px 0 rgba(0, 0, 0, 0.6); }
 .smallmem .mem .sym { width: 9px; }
 
-/* ---------- Kinds of lines, told apart (Réglages > Affichage switches it off for KDX's all-green look) ----------
+/* ---------- Kinds of lines, told apart (Réglages > Affichage switches it off for CDX's all-green look) ----------
    who speaks: the nick in its own colour (white for us, with our text); what the room does: actions in
    pink italics, arrivals and departures in dark green italics, topic and modes in blue; what is announced: notices
    in amber, the server's own words in grey. A pixel font has one weight and doubling the letters (a text-shadow) makes

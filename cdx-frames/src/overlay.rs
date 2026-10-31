@@ -1,7 +1,7 @@
 //! The Windows side: finding the windows to decorate, one transparent overlay for each, the icon in the notification
 //! area, and what a click on the frame does.
 //!
-//! An overlay is a layered window placed just above the window it decorates. Its pixels are the KDX frame (see paint.rs);
+//! An overlay is a layered window placed just above the window it decorates. Its pixels are the CDX frame (see paint.rs);
 //! where it is transparent, the mouse goes through to the window. The window keeps running as it was: moving and sizing
 //! are handed back to it with the same system commands a native title bar uses.
 
@@ -85,7 +85,7 @@ fn run_key() -> PCWSTR {
     w!("Software\\Microsoft\\Windows\\CurrentVersion\\Run")
 }
 fn run_name() -> PCWSTR {
-    w!("KDX-Frames")
+    w!("CDX-Frames")
 }
 
 fn wide(s: &str) -> Vec<u16> {
@@ -95,9 +95,9 @@ fn wide(s: &str) -> Vec<u16> {
 pub fn run(cli_programs: Vec<String>, keep_console: bool) {
     unsafe {
         // one at a time: a second launch would draw a second frame on every window
-        let mutex = CreateMutexW(None, true, w!("Local\\KdxFramesSingleInstance"));
+        let mutex = CreateMutexW(None, true, w!("Local\\CdxFramesSingleInstance"));
         if mutex.is_ok() && GetLastError() == ERROR_ALREADY_EXISTS {
-            eprintln!("kdx-frames tourne déjà (voir l'icône dans la zone de notification).");
+            eprintln!("cdx-frames tourne déjà (voir l'icône dans la zone de notification).");
             return;
         }
         let _ = SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
@@ -108,19 +108,19 @@ pub fn run(cli_programs: Vec<String>, keep_console: bool) {
             lpfnWndProc: Some(wndproc),
             hInstance: hinst,
             hCursor: LoadCursorW(None, IDC_ARROW).unwrap_or_default(),
-            lpszClassName: w!("KdxFrame"),
+            lpszClassName: w!("CdxFrame"),
             ..Default::default()
         };
         RegisterClassExW(&class);
-        let tray_class = WNDCLASSEXW { lpfnWndProc: Some(tray_proc), lpszClassName: w!("KdxFramesTray"), style: CS_HREDRAW, ..class };
+        let tray_class = WNDCLASSEXW { lpfnWndProc: Some(tray_proc), lpszClassName: w!("CdxFramesTray"), style: CS_HREDRAW, ..class };
         RegisterClassExW(&tray_class);
-        let tray = CreateWindowExW(WS_EX_TOOLWINDOW, w!("KdxFramesTray"), w!("KDX-Frames"), WS_POPUP, 0, 0, 0, 0, None, None, Some(hinst), None).unwrap_or_default();
+        let tray = CreateWindowExW(WS_EX_TOOLWINDOW, w!("CdxFramesTray"), w!("CDX-Frames"), WS_POPUP, 0, 0, 0, 0, None, None, Some(hinst), None).unwrap_or_default();
 
         let fixed = !cli_programs.is_empty();
         let (programs, list_time) = if fixed { (cli_programs, None) } else { config::load() };
         MAIN_THREAD.store(GetCurrentThreadId(), Ordering::Relaxed);
         let _ = SetConsoleCtrlHandler(Some(ctrl_handler), true);
-        println!("kdx-frames : cadre KDX autour des fenêtres de {} (Ctrl+C, ou l'icône de la zone de notification, pour tout remettre comme avant)", programs.join(", "));
+        println!("cdx-frames : cadre CDX autour des fenêtres de {} (Ctrl+C, ou l'icône de la zone de notification, pour tout remettre comme avant)", programs.join(", "));
         APP.with(|a| {
             *a.borrow_mut() = Some(App {
                 programs,
@@ -164,7 +164,7 @@ unsafe extern "system" fn ctrl_handler(kind: u32) -> BOOL {
 
 // ------------------------------------------------------------------ the icon of the notification area
 
-/// A 16 x 16 icon: a small KDX window, red title bar.
+/// A 16 x 16 icon: a small CDX window, red title bar.
 unsafe fn make_icon() -> HICON {
     let mut c = Canvas::new(16, 16);
     c.rect(0, 0, 16, 16, 0xFF000000);
@@ -185,7 +185,7 @@ unsafe fn make_icon() -> HICON {
 
 unsafe fn tray_data(tray: HWND) -> NOTIFYICONDATAW {
     let mut nid = NOTIFYICONDATAW { cbSize: std::mem::size_of::<NOTIFYICONDATAW>() as u32, hWnd: tray, uID: 1, ..Default::default() };
-    let tip = wide("KDX-Frames : cadre KDX autour des fenêtres choisies");
+    let tip = wide("CDX-Frames : cadre CDX autour des fenêtres choisies");
     let n = tip.len().min(127);
     nid.szTip[..n].copy_from_slice(&tip[..n]);
     nid
@@ -431,14 +431,14 @@ fn follow(app: &mut App, w: HWND, g: &Geometry, active: bool) {
     let title = title_of(w);
     if !app.tracked.contains_key(&key) {
         unsafe {
-            let corner: u32 = 1; // DWMWCP_DONOTROUND: square corners, like KDX
+            let corner: u32 = 1; // DWMWCP_DONOTROUND: square corners, like CDX
             let _ = DwmSetWindowAttribute(w, DWMWA_CORNER, &corner as *const _ as *const _, 4);
             let none = COLOR_NONE;
             let _ = DwmSetWindowAttribute(w, DWMWA_BORDER, &none as *const _ as *const _, 4);
             let hinst = GetModuleHandleW(None).map(Into::into).unwrap_or_default();
             let overlay = CreateWindowExW(
                 WS_EX_LAYERED | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE,
-                w!("KdxFrame"),
+                w!("CdxFrame"),
                 w!(""),
                 WS_POPUP,
                 origin.0,

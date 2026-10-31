@@ -4,7 +4,7 @@ pub mod commands;
 pub mod config;
 pub mod irc;
 #[allow(dead_code)]
-pub mod kdx_bus;
+pub mod cdx_bus;
 pub mod logs;
 pub mod secrets;
 pub mod store;
@@ -26,7 +26,7 @@ pub fn run() {
     let (cfg, writable) = config::load_checked(&dir);
     let state = App::new(dir, cfg);
     state.set_writable(writable);
-    suite::init(); // l'accent de la suite KDX, avant d'ouvrir une fenêtre
+    suite::init(); // l'accent de la suite CDX, avant d'ouvrir une fenêtre
 
     let built = tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {

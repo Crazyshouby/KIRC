@@ -98,14 +98,14 @@ async function main() {
   await launcher.eval("document.querySelector('#connectBtn').click()");
   const chat = await page(win("chat", { b: "#test" }), 15000);
   await until(() => chat.eval("document.querySelectorAll('#memberList .mem').length === 4"), "4 members (3 virtual + us)");
-  // La barre entre la conversation et les membres (kdx-split.js). La webview partage son stockage avec le vrai KIRC : on repart des largeurs d'origine et on n'y laisse rien.
+  // La barre entre la conversation et les membres (cdx-split.js). La webview partage son stockage avec le vrai KIRC : on repart des largeurs d'origine et on n'y laisse rien.
   await chat.eval("document.querySelector('#membersBox').previousElementSibling.firstElementChild.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }))");   // largeur d'origine, même si une largeur était gardée
-  check(await chat.eval("document.querySelector('#membersBox').previousElementSibling.classList.contains('kdx-split')"), "the members pane has a drag bar");
+  check(await chat.eval("document.querySelector('#membersBox').previousElementSibling.classList.contains('cdx-split')"), "the members pane has a drag bar");
   const mw = () => chat.eval("Math.round(document.querySelector('#membersBox').getBoundingClientRect().width)");
   const mw0 = await mw();
   await chat.eval("(() => { const s = document.querySelector('#membersBox').previousElementSibling.firstElementChild, x = s.getBoundingClientRect().left; for (const [t, d] of [['pointerdown', 0], ['pointermove', -40], ['pointerup', -40]]) s.dispatchEvent(new PointerEvent(t, { bubbles: true, button: 0, pointerId: 6, clientX: x + d })); })()");
   check((await mw()) === mw0 + 40, `dragging the bar 40 px to the left widens the members pane (${mw0} -> ${await mw()})`);
-  await chat.eval("document.querySelector('#membersBox').previousElementSibling.firstElementChild.dispatchEvent(new MouseEvent('dblclick', { bubbles: true })); localStorage.removeItem('kdx.split.membres')");
+  await chat.eval("document.querySelector('#membersBox').previousElementSibling.firstElementChild.dispatchEvent(new MouseEvent('dblclick', { bubbles: true })); localStorage.removeItem('cdx.split.membres')");
   check((await mw()) === mw0, "a double click on the bar gives the original width back");
   const members = await chat.eval("[...document.querySelectorAll('#memberList .mem')].map(e => e.textContent)");
   check(members.join(" ") === "@alice +bob carol kirc", "member list sorted by rank: " + members.join(" "));
@@ -298,23 +298,23 @@ async function main() {
   await until(() => lst.eval("document.querySelectorAll('#chanList .chan-row').length === 1"), "list filter");
   await lst.eval("(() => { const i = document.querySelector('#lFilter'); i.value = ''; i.dispatchEvent(new Event('input')); })()");
   await until(() => lst.eval("document.querySelectorAll('#chanList .chan-row').length === 200"), "filter cleared");
-  check(await lst.eval("document.querySelectorAll('#lHead .kdx-colrz').length === 2"), "the list header has a handle on each column but the last");
+  check(await lst.eval("document.querySelectorAll('#lHead .cdx-colrz').length === 2"), "the list header has a handle on each column but the last");
   // La webview partage son stockage avec le vrai KIRC : on part des largeurs d'origine (double-clic sur une poignée) et on ne laisse rien derrière soi.
-  await lst.eval("document.querySelector('#lHead .kdx-colrz').dispatchEvent(new MouseEvent('dblclick', { bubbles: true }))");
+  await lst.eval("document.querySelector('#lHead .cdx-colrz').dispatchEvent(new MouseEvent('dblclick', { bubbles: true }))");
   const colW = () => lst.eval("JSON.stringify([...document.querySelectorAll('#lHead > .lh')].map(b => Math.round(b.getBoundingClientRect().width)))");
   const w0 = JSON.parse(await colW());
-  await lst.eval("(() => { const h = document.querySelector('#lHead .kdx-colrz'), x = h.getBoundingClientRect().left; for (const [t, d] of [['pointerdown', 0], ['pointermove', 50], ['pointerup', 50]]) h.dispatchEvent(new PointerEvent(t, { bubbles: true, button: 0, pointerId: 5, clientX: x + d })); })()");
+  await lst.eval("(() => { const h = document.querySelector('#lHead .cdx-colrz'), x = h.getBoundingClientRect().left; for (const [t, d] of [['pointerdown', 0], ['pointermove', 50], ['pointerup', 50]]) h.dispatchEvent(new PointerEvent(t, { bubbles: true, button: 0, pointerId: 5, clientX: x + d })); })()");
   const w1 = JSON.parse(await colW());
   check(w1[0] === w0[0] + 50 && w1[1] === w0[1] && w1[2] === w0[2] - 50 && w0[0] === 181 && w0[1] === 85, `dragging a column edge widens it and narrows the flexible one (${w0} -> ${w1})`);
   check(await lst.eval("(() => { const r = document.querySelector('#chanList .chan-row'), h = document.querySelectorAll('#lHead > .lh'); return [0, 1].every(i => Math.abs(r.children[i].getBoundingClientRect().width - h[i].getBoundingClientRect().width) <= 1); })()"), "the rows follow the header columns");
   check(await lst.eval("document.querySelector('#lHead .lh.on').dataset.sort === 'users'"), "dragging a column edge does not sort the list");
-  await lst.eval("document.querySelector('#lHead .kdx-colrz').dispatchEvent(new MouseEvent('dblclick', { bubbles: true })); localStorage.removeItem('kdx.cols.salons')");
+  await lst.eval("document.querySelector('#lHead .cdx-colrz').dispatchEvent(new MouseEvent('dblclick', { bubbles: true })); localStorage.removeItem('cdx.cols.salons')");
   await lst.shot("14-list");
   await lst.fire("window.__TAURI__.core.invoke('win_close')");
 
   console.log("themes");
   const mid = page => page.eval("getComputedStyle(document.documentElement).getPropertyValue('--a-mid').trim()");
-  check((await mid(chat)) === "#880000", "the default theme is the KDX red");
+  check((await mid(chat)) === "#880000", "the default theme is the CDX red");
   const seen = new Set(["#880000"]);
   for (const th of ["bleu", "vert", "violet", "ambre", "sarcelle", "charbon"]) {
     const r = await inv("save_settings", { settings: { ...ovNow.settings, theme: th } });
@@ -330,7 +330,7 @@ async function main() {
   const aboutT = await page(win("about"), 10000);
   check((await aboutT.eval("document.documentElement.dataset.theme")) === "charbon", "a window opened later has the current theme at once");
   await aboutT.fire("window.__TAURI__.core.invoke('win_close')");
-  await inv("save_settings", { settings: { ...ovNow.settings, theme: "kdx" } });
+  await inv("save_settings", { settings: { ...ovNow.settings, theme: "cdx" } });
   await until(async () => (await mid(chat)) === "#880000", "back to the default theme", 5000);
 
   console.log("update check");

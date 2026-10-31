@@ -98,8 +98,8 @@ impl ServerEntry {
     }
 }
 
-/// The themes the pages know (ui/kdx/themes.css); "kdx" is the default look.
-pub const THEMES: [&str; 7] = ["kdx", "bleu", "vert", "violet", "ambre", "sarcelle", "charbon"];
+/// The themes the pages know (ui/cdx/themes.css); "cdx" is the default look.
+pub const THEMES: [&str; 7] = ["cdx", "bleu", "vert", "violet", "ambre", "sarcelle", "charbon"];
 
 /// Entries kept in each of the ignore and alert lists.
 pub const MAX_LIST_ITEMS: usize = 200;
@@ -120,9 +120,9 @@ pub struct Settings {
     /// Join, part, quit, nick lines in the channels.
     pub show_joins: bool,
     pub show_timestamps: bool,
-    /// Small (16 px) tiles and rows in the member lists, like KDX's "Use Small Icons In User Lists".
+    /// Small (16 px) tiles and rows in the member lists, like CDX's "Use Small Icons In User Lists".
     pub small_member_icons: bool,
-    /// Colours, bold and italic tell the kinds of lines of a transcript apart (off: all green, as in KDX).
+    /// Colours, bold and italic tell the kinds of lines of a transcript apart (off: all green, as in CDX).
     pub colored_chat: bool,
     /// Messages kept per window (50 to 5000).
     pub scrollback: u32,
@@ -161,7 +161,7 @@ impl Default for Settings {
             colored_chat: true,
             scrollback: 1000,
             open_console: true,
-            theme: "kdx".into(),
+            theme: "cdx".into(),
             check_updates: true,
             ignores: Vec::new(),
             alert_words: Vec::new(),
@@ -335,6 +335,7 @@ pub fn load_checked(dir: &Path) -> (Config, bool) {
         Ok(text) => match serde_json::from_str::<Config>(&text) {
             Ok(mut c) => {
                 c.version = 1;
+                if c.settings.theme == "kdx" { c.settings.theme = "cdx".into(); }   // le look par défaut s'appelait « kdx » (suite KDX, jusqu'au 31/10/2026)
                 (c, true)
             }
             Err(e) => {
@@ -469,7 +470,7 @@ mod tests {
         assert!(Settings { theme: "../x".into(), ..Default::default() }.validate().is_err());
         // A file written before themes existed has none: it gets the default.
         let old: Settings = serde_json::from_str(r#"{"nick":"a"}"#).unwrap();
-        assert_eq!(old.theme, "kdx");
+        assert_eq!(old.theme, "cdx");
     }
 
     #[test]

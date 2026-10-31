@@ -1,7 +1,7 @@
 [package]
-name = "kdx-frames"
+name = "cdx-frames"
 version = "0.1.0"
-description = "Draws the KDX window frame (bevelled border, gradient title bar, 14 px buttons, pixel font) around the windows of chosen programs"
+description = "Draws the CDX window frame (bevelled border, gradient title bar, 14 px buttons, pixel font) around the windows of chosen programs"
 edition = "2021"
 license = "MIT"
 

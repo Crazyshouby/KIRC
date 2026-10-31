@@ -1,9 +1,9 @@
-//! kdx-frames: the KDX window frame around the windows of the programs named on the command line.
+//! cdx-frames: the CDX window frame around the windows of the programs named on the command line.
 //!
-//!     kdx-frames.exe                            decorates the programs of the list in %APPDATA%\KDX-Frames\programmes.txt
-//!     kdx-frames.exe programme.exe ...          decorates these programs instead of the list
-//!     kdx-frames.exe --console ...              keeps the console window (Ctrl+C then puts the windows back as they were)
-//!     kdx-frames.exe --preview image.png        draws a sample frame to an image, without touching any window
+//!     cdx-frames.exe                            decorates the programs of the list in %APPDATA%\CDX-Frames\programmes.txt
+//!     cdx-frames.exe programme.exe ...          decorates these programs instead of the list
+//!     cdx-frames.exe --console ...              keeps the console window (Ctrl+C then puts the windows back as they were)
+//!     cdx-frames.exe --preview image.png        draws a sample frame to an image, without touching any window
 //!
 //! Only the windows of the listed programs are touched: nothing else on the desktop changes.
 
@@ -54,7 +54,7 @@ fn preview(path: &str) {
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     if args.first().map(String::as_str) == Some("--preview") {
-        preview(args.get(1).map_or("kdx-frames-preview.png", String::as_str));
+        preview(args.get(1).map_or("cdx-frames-preview.png", String::as_str));
         return;
     }
     #[cfg(windows)]
@@ -65,5 +65,5 @@ fn main() {
         overlay::run(programs, keep_console);
     }
     #[cfg(not(windows))]
-    eprintln!("kdx-frames only draws on Windows (use --preview to see the frame)");
+    eprintln!("cdx-frames only draws on Windows (use --preview to see the frame)");
 }

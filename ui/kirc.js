@@ -22,7 +22,7 @@ for (const el of document.querySelectorAll("[data-title]")) el.textContent = doc
 // Theme: an accent ramp chosen in the settings (see themes.css). The window is opened with its
 // theme in the address, so it never shows the wrong one first; a change reaches open windows as an event.
 function applyTheme(name) {
-  if (name && name !== "kdx") document.documentElement.dataset.theme = name;
+  if (name && name !== "cdx") document.documentElement.dataset.theme = name;
   else delete document.documentElement.dataset.theme;
 }
 applyTheme(params.get("th"))
@@ -58,8 +58,8 @@ async function call(cmd, args) {
 }
 
 // ---------------------------------------------------------------- window chrome
-// The frame (title bar, buttons, grip, active / shaded / theme events) is kdx-frame.js, shared by the whole KDX suite; it talks to
-// the application through kdx-bridge.js (the "tauri" transport: win_drag, win_shade, win_zoom, win_close, win_ready).
+// The frame (title bar, buttons, grip, active / shaded / theme events) is cdx-frame.js, shared by the whole CDX suite; it talks to
+// the application through cdx-bridge.js (the "tauri" transport: win_drag, win_shade, win_zoom, win_close, win_ready).
 
 // The hatched button of the title bar: the commands of the window.
 function windowMenu(btn) {
@@ -67,11 +67,11 @@ function windowMenu(btn) {
   const items = [["Enrouler la fenêtre", () => invoke("win_shade")]];
   if (document.querySelector(".log")) items.push(["Effacer le texte", () => document.querySelectorAll(".log").forEach(l => { l.textContent = ""; })]);
   items.push(null, ["Fermer", () => invoke("win_close")]);
-  KdxFrame.menu(items, r.left, r.bottom + 2, btn.closest(".tb").querySelector(".tb-title").textContent);
+  CdxFrame.menu(items, r.left, r.bottom + 2, btn.closest(".tb").querySelector(".tb-title").textContent);
 }
 function initChrome() {
-  document.addEventListener("kdx:menu", e => windowMenu(e.target.closest(".tb-btn")));
-  KdxFrame.init();   // also tells the application that the window is ready (win_ready)
+  document.addEventListener("cdx:menu", e => windowMenu(e.target.closest(".tb-btn")));
+  CdxFrame.init();   // also tells the application that the window is ready (win_ready)
   listen("settings", e => applySettings(e.payload));
 }
 initChrome();
@@ -101,7 +101,7 @@ function initTabs() {
       b.addEventListener("auxclick", ev => { if (ev.button === 1) invoke("tab_close", { label: t.label }); });
       b.addEventListener("contextmenu", ev => {
         ev.preventDefault();
-        KdxFrame.menu([
+        CdxFrame.menu([
           ["Détacher l'onglet", () => invoke("tab_detach", { label: t.label })],
           ["Fermer l'onglet", () => invoke("tab_close", { label: t.label })],
         ], ev.clientX, ev.clientY, t.title);
@@ -653,7 +653,7 @@ function initLauncher() {
       row.addEventListener("keydown", e => { if (e.key === "Enter") open(); });
       row.addEventListener("contextmenu", e => {
         e.preventDefault();
-        KdxFrame.menu([
+        CdxFrame.menu([
           ["Ouvrir", open],
           isHidden ? ["Réafficher dans la liste", () => setHidden(c, false)] : ["Masquer de la liste", () => setHidden(c, true)],
         ], e.clientX, e.clientY, c);
@@ -743,7 +743,7 @@ function initLauncher() {
 
 // ================================================================ address book
 function initServers() {
-  KdxSplit.init({ pane: $(".book .side"), side: "left", key: "carnet", min: 140, max: 360, minOther: 260 });   // la barre entre les serveurs et leur détail
+  CdxSplit.init({ pane: $(".book .side"), side: "left", key: "carnet", min: 140, max: 360, minOther: 260 });   // la barre entre les serveurs et leur détail
   let ov = null, selected = "", fresh = false;
   const f = id => $("#" + id);
   const stateOf = id => (ov && ov.states[id]) || { status: "disconnected" };
@@ -1047,7 +1047,7 @@ const RANKS = "~&@%+";
 const SYMBOL_NAMES = { "~": "propriétaire", "&": "administrateur", "@": "opérateur", "%": "demi-opérateur", "+": "voix" };
 
 function initChat() {
-  KdxSplit.init({ pane: $("#membersBox"), side: "right", key: "membres", min: 110, max: 420, minOther: 220 });   // la barre entre la conversation et les membres
+  CdxSplit.init({ pane: $("#membersBox"), side: "right", key: "membres", min: 110, max: 420, minOther: 220 });   // la barre entre la conversation et les membres
   const isChannel = /^[#&+!]/.test(BUFFER);
   const log = new Log($("#log"), 1000, $("#newMsg"));
   let myNick = "", buffer = BUFFER;
@@ -1163,7 +1163,7 @@ function initChat() {
     if (caps.moderation) items.push(null,
       ["Expulser", () => say("/kick " + nick)],
       ["Bannir", () => say("/ban " + nick)]);
-    KdxFrame.menu(items, e.clientX, e.clientY, nick);
+    CdxFrame.menu(items, e.clientX, e.clientY, nick);
   });
 
   // ---- topic
@@ -1393,7 +1393,7 @@ function initList() {
     st.classList.toggle("busy", page.loading); st.classList.toggle("on", !page.loading && page.total > 0);
     f("lStatusText").textContent = page.loading ? "Réception de la liste…" : `${page.matched} salon${page.matched > 1 ? "s" : ""} sur ${page.total}`;
   }
-  KdxColumns.init({ head: f("lHead"), cols: [181, 85, "1fr"], key: "salons" });   // colonnes redimensionnables
+  CdxColumns.init({ head: f("lHead"), cols: [181, 85, "1fr"], key: "salons" });   // colonnes redimensionnables
   const later = () => { clearTimeout(timer); timer = setTimeout(() => load(false), 200); };
   f("lFilter").addEventListener("input", later);
   f("lMin").addEventListener("input", later);

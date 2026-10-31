@@ -1,7 +1,7 @@
 [package]
 name = "kirc"
 version = "0.4.0"
-description = "KIRC - client IRC au style KDX"
+description = "KIRC - client IRC au style CDX"
 authors = ["Valentin Large"]
 license = "MIT"
 edition = "2021"

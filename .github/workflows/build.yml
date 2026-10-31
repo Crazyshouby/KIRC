@@ -39,16 +39,16 @@ jobs:
             if ($base -ne $v) { throw "Le tag $env:GITHUB_REF_NAME ne correspond pas à la version de Cargo.toml ($v)" }
           }
 
-      # The KDX-UI charter (ui/kdx, src-tauri/src/kdx_bus.rs) is copied from the kdx-ui repository (node tools/charte-sync.mjs --write kirc there):
+      # The CDX-UI charter (ui/cdx, src-tauri/src/cdx_bus.rs) is copied from the cdx-ui repository (node tools/charte-sync.mjs --write kirc there):
       # a copy edited by hand or left stale by a local generator fails here.
       - name: Charter copies are untouched
         shell: pwsh
-        run: node tools/kdx-verify.mjs ui/kdx/kdx-sync.json
+        run: node tools/cdx-verify.mjs ui/cdx/cdx-sync.json
 
       # The pages follow the charter rules (CHARTE.md section 8); the exceptions are justified one by one in charte-lint.allow.
       - name: Pages follow the charter
         shell: pwsh
-        run: node tools/charte-lint.mjs ui --manifest ui/kdx/kdx-sync.json --allow charte-lint.allow
+        run: node tools/charte-lint.mjs ui --manifest ui/cdx/cdx-sync.json --allow charte-lint.allow
 
       # Generated files are committed: regenerating them must change nothing.
       - name: Generated notices are up to date

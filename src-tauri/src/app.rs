@@ -1,5 +1,5 @@
 //! The application: shared state, server connections, and the borderless
-//! windows (one per function, like KDX) with their remembered geometry.
+//! windows (one per function, like CDX) with their remembered geometry.
 
 use crate::config::{self, Config, Geometry};
 use crate::chat::event::{ConnState, Event, Line, LineKind};
@@ -297,7 +297,7 @@ fn notify(app: &AppHandle, buffer: &str, nick: &str, body: &str) {
     let title = if buffer.is_empty() { "KIRC".to_string() } else { text::truncate(buffer, 60) };
     let body = text::strip_formatting(body);
     let body = if nick.is_empty() { body } else { format!("{nick} : {body}") };
-    crate::suite::notify_shell(&title, &body, "info"); // et dans le centre rapide du shell KDX, s'il tourne
+    crate::suite::notify_shell(&title, &body, "info"); // et dans le centre rapide du shell CDX, s'il tourne
     let _ = app.notification().builder().title(title).body(text::truncate(&body, 200)).show();
 }
 
@@ -576,7 +576,7 @@ pub fn open(app: &AppHandle, kind: Kind, focus: bool) -> Result<(), String> {
         .visible(false)
         .background_color(FRAME_BG)
         // Wry's default arguments, plus no LCD text: ClearType puts coloured fringes on the pixel font, whose
-        // letters must be exactly white on the panel, as in KDX.
+        // letters must be exactly white on the panel, as in CDX.
         .additional_browser_args("--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --disable-lcd-text")
         .on_navigation(|url| url.scheme() == "tauri" || url.host_str() == Some("tauri.localhost"));
     if matches!(kind, Kind::Launcher) {

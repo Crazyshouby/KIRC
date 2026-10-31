@@ -1,4 +1,4 @@
-//! The KDX window frame, drawn pixel by pixel (the same measures as kdx-ui/kdx-ui.css: `.win`, `.tb`, `.tb-btn`).
+//! The CDX window frame, drawn pixel by pixel (the same measures as cdx-ui/cdx-ui.css: `.win`, `.tb`, `.tb-btn`).
 //!
 //! Everything here is plain arithmetic on a buffer of 0xAARRGGBB pixels, so it can be tested and previewed without a
 //! window. A transparent pixel (alpha 0) lets the mouse and the eye through to the window underneath.
@@ -30,7 +30,7 @@ pub struct Layout {
     /// Size of the whole overlay.
     pub w: i32,
     pub h: i32,
-    /// Height of the native title bar that the frame covers, in screen pixels (at least the KDX title bar).
+    /// Height of the native title bar that the frame covers, in screen pixels (at least the CDX title bar).
     pub caption: i32,
 }
 
@@ -113,7 +113,7 @@ impl Layout {
 
 // ------------------------------------------------------------------ colours
 
-/// The colours of a frame, active (accent) or not (grey), as in kdx-ui.css.
+/// The colours of a frame, active (accent) or not (grey), as in cdx-ui.css.
 #[derive(Clone, Debug)]
 pub struct Palette {
     /// Rings, top-left side: outer, middle, inner; bottom-right side: inner, middle, outer.
@@ -132,7 +132,7 @@ pub const PANEL: Color = rgb(0x33, 0x33, 0x33);
 
 pub fn palette(active: bool) -> Palette {
     if active {
-        // the KDX red ramp (--a-edge #cc0000, --a-mid #880000, --a-dark #440000, title #320000 -> #c30000)
+        // the CDX red ramp (--a-edge #cc0000, --a-mid #880000, --a-dark #440000, title #320000 -> #c30000)
         let (edge, mid, dark) = (rgb(0xcc, 0, 0), rgb(0x88, 0, 0), rgb(0x44, 0, 0));
         Palette {
             ring_tl: [edge, mid, dark],

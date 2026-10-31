@@ -1,11 +1,11 @@
-//! kdx_bus : le client Rust des réglages communs et du bus de la suite KDX (voir docs/SUITE.md). Un seul fichier, à copier tel quel
+//! cdx_bus : le client Rust des réglages communs et du bus de la suite CDX (voir docs/SUITE.md). Un seul fichier, à copier tel quel
 //! dans une application (`node tools/charte-sync.mjs --write <application>`) ; il n'a besoin que de `serde_json`.
 //!
-//! * [`read_accent`], [`Watcher`] : l'accent de `%APPDATA%\KDX\suite.json`, relu à chaud (sondage : on appelle [`Watcher::changed`] toutes les 250 ms) ;
-//! * [`send`] : un message « tire et oublie » vers le tube `\\.\pipe\kdx.<app>` ;
+//! * [`read_accent`], [`Watcher`] : l'accent de `%APPDATA%\CDX\suite.json`, relu à chaud (sondage : on appelle [`Watcher::changed`] toutes les 250 ms) ;
+//! * [`send`] : un message « tire et oublie » vers le tube `\\.\pipe\cdx.<app>` ;
 //! * [`compose`] : la ligne JSON d'un message.
 //!
-//! Les variables d'environnement `KDX_SUITE_DIR` et `KDX_PIPE_PREFIX` ne servent qu'aux essais : elles évitent de toucher aux vrais réglages et au vrai bus.
+//! Les variables d'environnement `CDX_SUITE_DIR` et `CDX_PIPE_PREFIX` ne servent qu'aux essais : elles évitent de toucher aux vrais réglages et au vrai bus.
 
 use serde_json::{json, Value};
 use std::io::{self, Write};
@@ -29,12 +29,12 @@ pub fn is_app(s: &str) -> bool {
     APPS.contains(&s)
 }
 
-/// Le dossier des réglages : `KDX_SUITE_DIR` (essais), sinon `%APPDATA%\KDX`.
+/// Le dossier des réglages : `CDX_SUITE_DIR` (essais), sinon `%APPDATA%\CDX`.
 pub fn suite_dir() -> Option<PathBuf> {
-    if let Some(d) = std::env::var_os("KDX_SUITE_DIR").filter(|d| !d.is_empty()) {
+    if let Some(d) = std::env::var_os("CDX_SUITE_DIR").filter(|d| !d.is_empty()) {
         return Some(PathBuf::from(d));
     }
-    std::env::var_os("APPDATA").map(|a| PathBuf::from(a).join("KDX"))
+    std::env::var_os("APPDATA").map(|a| PathBuf::from(a).join("CDX"))
 }
 
 pub fn suite_path() -> Option<PathBuf> {
@@ -122,7 +122,7 @@ pub fn compose(typ: &str, from: &str, data: &Value) -> String {
 }
 
 fn pipe_path(app: &str) -> String {
-    let prefix = std::env::var("KDX_PIPE_PREFIX").ok().filter(|p| !p.is_empty()).unwrap_or_else(|| "kdx.".to_string());
+    let prefix = std::env::var("CDX_PIPE_PREFIX").ok().filter(|p| !p.is_empty()).unwrap_or_else(|| "cdx.".to_string());
     format!(r"\\.\pipe\{prefix}{app}")
 }
 
@@ -187,9 +187,9 @@ mod tests {
     #[test]
     fn app_path_reads_apps_json() {
         let _g = ENV.lock().unwrap_or_else(|e| e.into_inner());
-        let dir = std::env::temp_dir().join(format!("kdx-bus-apps-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("cdx-bus-apps-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
-        std::env::set_var("KDX_SUITE_DIR", &dir);
+        std::env::set_var("CDX_SUITE_DIR", &dir);
         assert_eq!(app_path("browser"), None, "fichier absent");
         let exe = std::env::current_exe().unwrap();
         let text = json!({ "browser": exe, "explorer": "C:\\n\\existe\\pas.exe", "evil": exe }).to_string();
@@ -198,7 +198,7 @@ mod tests {
         assert_eq!(app_path("explorer"), None, "exécutable disparu");
         assert_eq!(app_path("evil"), None, "nom hors liste");
         let _ = std::fs::remove_dir_all(&dir);
-        std::env::remove_var("KDX_SUITE_DIR");
+        std::env::remove_var("CDX_SUITE_DIR");
     }
 
     #[test]
@@ -211,9 +211,9 @@ mod tests {
     #[test]
     fn watcher_follows_the_file() {
         let _g = ENV.lock().unwrap_or_else(|e| e.into_inner());
-        let dir = std::env::temp_dir().join(format!("kdx-bus-rs-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("cdx-bus-rs-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
-        std::env::set_var("KDX_SUITE_DIR", &dir);
+        std::env::set_var("CDX_SUITE_DIR", &dir);
         assert_eq!(read_accent("sarcelle"), "sarcelle", "fichier absent");
         let mut w = Watcher::new("rouge");
         assert_eq!(w.changed(), None);
@@ -229,17 +229,17 @@ mod tests {
         std::fs::write(suite_path().unwrap(), r#"{"version":1,"accent":"ambre"}"#).unwrap();
         assert_eq!(w.changed().as_deref(), Some("ambre"));
         let _ = std::fs::remove_dir_all(&dir);
-        std::env::remove_var("KDX_SUITE_DIR");
+        std::env::remove_var("CDX_SUITE_DIR");
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn send_reaches_a_listening_pipe() {
         use tokio::io::AsyncReadExt;
         use tokio::net::windows::named_pipe::ServerOptions;
-        let prefix = format!("kdxtest{}.", std::process::id());
+        let prefix = format!("cdxtest{}.", std::process::id());
         {
             let _g = ENV.lock().unwrap_or_else(|e| e.into_inner());
-            std::env::set_var("KDX_PIPE_PREFIX", &prefix);
+            std::env::set_var("CDX_PIPE_PREFIX", &prefix);
         }
         assert!(send("browser", "open-url", &json!({}), "kirc").is_err(), "personne n'écoute");
         assert!(send("nimporte", "x", &json!({}), "kirc").is_err(), "nom inconnu");
@@ -257,6 +257,6 @@ mod tests {
         assert_eq!((v["type"].as_str(), v["from"].as_str(), v["data"]["url"].as_str()), (Some("open-url"), Some("kirc"), Some("https://example.org/")));
         let huge = json!({ "u": "x".repeat(MAX_LINE) });
         assert!(send("browser", "open-url", &huge, "kirc").is_err(), "plus de 64 Ko");
-        std::env::remove_var("KDX_PIPE_PREFIX");
+        std::env::remove_var("CDX_PIPE_PREFIX");
     }
 }

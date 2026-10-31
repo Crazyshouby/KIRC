@@ -1,6 +1,6 @@
 # KIRC
 
-Un client IRC pour Windows, dans le style de **KDX** (Haxial) : chaque fonction est sa propre fenêtre sans bordure, avec le cadre gris et rouge, les boutons biseautés, les champs noirs à texte vert et les pictogrammes en pixels de l'original. Même univers visuel qu'[AudioLinker](https://github.com/Crazyshouby/AudioLinker).
+Un client IRC pour Windows, dans le style de **CDX** (Haxial) : chaque fonction est sa propre fenêtre sans bordure, avec le cadre gris et rouge, les boutons biseautés, les champs noirs à texte vert et les pictogrammes en pixels de l'original. Même univers visuel qu'[AudioLinker](https://github.com/Crazyshouby/AudioLinker).
 
 Écrit avec [Tauri 2](https://tauri.app) (Rust + WebView2). Interface en français.
 
@@ -16,7 +16,7 @@ Un client IRC pour Windows, dans le style de **KDX** (Haxial) : chaque fonction 
 - **Notifications** de bureau pour les messages privés et les mentions, désactivables ; compteurs de lignes non lues dans le menu principal et la barre de titre.
 - **Journaux** de conversation sur disque, avec les dernières lignes rappelées à l'ouverture d'une fenêtre ; **liste des salons** du serveur avec recherche ; **ignorer** des pseudos ou masques, **mots d'alerte** ; fiche d'informations `/whois` ; confirmation avant de coller plusieurs lignes.
 - **Aller à… (Ctrl+K)** : un sélecteur rapide de salons, conversations et actions ; **réponses** à un message (IRCv3, avec repli lisible sur les autres serveurs).
-- **Thèmes** : sept teintes d'accent reprises des apparences KDX (rouge par défaut, bleu, vert, violet, ambre, sarcelle, charbon), à changer dans les réglages.
+- **Thèmes** : sept teintes d'accent reprises des apparences CDX (rouge par défaut, bleu, vert, violet, ambre, sarcelle, charbon), à changer dans les réglages.
 - **Mise à jour automatique** depuis les releases GitHub : l'installateur téléchargé est vérifié avec une signature avant d'être lancé (réglable : les réglages permettent de ne plus rien contacter).
 - **Reconnexion automatique** avec délai croissant ; les salons sont rejoints de nouveau.
 - **Mémoire des fenêtres** : position et taille de chacune, retrouvées au démarrage.
@@ -54,7 +54,7 @@ npm run build               # installateur NSIS dans src-tauri/target/release/bu
 cd src-tauri && cargo test  # tests unitaires + 4 tests réseau
 cd src-tauri && cargo build --features whatsapp   # avec WhatsApp (Rust 1.94 ou plus)
 node tests/e2e.mjs          # test de bout en bout de la vraie application (voir ci-dessous)
-node tools/kdx-verify.mjs ui/kdx/kdx-sync.json   # les copies de la charte (ui/kdx) sont intactes (elles viennent du dépôt kdx-ui)
+node tools/cdx-verify.mjs ui/cdx/cdx-sync.json   # les copies de la charte (ui/cdx) sont intactes (elles viennent du dépôt cdx-ui)
 ```
 
 `tests/e2e.mjs` démarre `tools/fake_ircd.py` (un petit serveur IRC scripté, avec TLS) puis l'application avec un dossier de données jetable, la pilote par le port de débogage de WebView2 et enregistre une capture de chaque fenêtre dans `tests/shots/`. Il écrit brièvement dans le coffre Windows (puis le vide) pour vérifier SASL.

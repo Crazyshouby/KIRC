@@ -260,8 +260,8 @@ pub fn open_url(app: AppHandle, url: String) -> R<()> {
     if !text::is_web_url(&url) {
         return Err("Seuls les liens http et https peuvent être ouverts".into());
     }
-    // Dans le navigateur KDX s'il est là (lancé ou installé), sinon dans celui du système.
-    if crate::suite::open_in_kdx_browser(&url) {
+    // Dans le navigateur CDX s'il est là (lancé ou installé), sinon dans celui du système.
+    if crate::suite::open_in_cdx_browser(&url) {
         return Ok(());
     }
     tauri_plugin_opener::OpenerExt::opener(&app).open_url(url, None::<&str>).map_err(|e| e.to_string())
