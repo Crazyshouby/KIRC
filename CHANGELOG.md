@@ -1,6 +1,6 @@
 # Journal des modifications
 
-## 0.4.0 — à publier
+## 0.4.0 — 2026-10-31
 
 - **Synergies avec la suite CDX** : un lien cliqué dans KIRC s'ouvre dans le navigateur CDX s'il tourne ou s'il est installé (sinon, comme avant, dans le navigateur de Windows) ; les messages privés et les mentions arrivent aussi dans le centre rapide du shell CDX (en plus de la notification de Windows). Tout passe par le bus de la suite (`cdx_bus.rs`), sans rien changer si les autres applications CDX sont absentes.
 - **Cadre de fenêtre commun** : la barre de titre, ses boutons, la poignée et les événements `active` / `shade` / `theme` viennent de `cdx-frame.js` et `cdx-bridge.js` (copies de la charte, `ui/cdx/`) au lieu d'un code propre à KIRC ; comportement inchangé (e2e : 101 vérifications).
