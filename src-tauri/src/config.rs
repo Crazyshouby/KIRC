@@ -325,6 +325,21 @@ pub fn load(dir: &Path) -> Config {
     load_checked(dir).0
 }
 
+/// Un compte enregistré avant que KIRC distingue les protocoles (0.4.0) n'a pas de champ `protocol` : il est lu comme IRC. Un compte WhatsApp de cette
+/// époque se reconnaît à son adresse vide et à sa session `<data>/whatsapp/<id>.db` : il reprend son protocole — sinon KIRC tenterait de joindre un serveur IRC
+/// à l'adresse vide, c'est-à-dire la machine elle-même, port 6697, et afficherait « connexion refusée » (os error 10061) à chaque démarrage.
+#[cfg(feature = "whatsapp")]
+fn migrate_protocols(dir: &Path, c: &mut Config) {
+    for s in &mut c.servers {
+        if s.host.trim().is_empty() && (s.protocol.is_empty() || s.protocol == "irc") && dir.join("whatsapp").join(format!("{}.db", s.id)).is_file() {
+            log::info!("compte « {} » : compte WhatsApp d'avant les protocoles, protocole retrouvé", s.name);
+            s.protocol = "whatsapp".into();
+        }
+    }
+}
+#[cfg(not(feature = "whatsapp"))]
+fn migrate_protocols(_dir: &Path, _c: &mut Config) {}
+
 /// The configuration, and whether it may be written back. A file that exists but could not be read
 /// (locked by an antivirus, no rights) leaves the defaults in memory: writing them over the real
 /// address book would destroy it, so in that case nothing is saved this session.
@@ -336,6 +351,7 @@ pub fn load_checked(dir: &Path) -> (Config, bool) {
             Ok(mut c) => {
                 c.version = 1;
                 if c.settings.theme == "kdx" { c.settings.theme = "cdx".into(); }   // le look par défaut s'appelait « kdx » (suite KDX, jusqu'au 31/10/2026)
+                migrate_protocols(dir, &mut c);
                 (c, true)
             }
             Err(e) => {
@@ -382,6 +398,22 @@ mod tests {
         assert!(old.validate().is_ok());
         let blank = ServerEntry { protocol: String::new(), ..old };
         assert!(blank.validate().is_ok(), "an empty protocol means IRC");
+    }
+
+    #[test]
+    #[cfg(feature = "whatsapp")]
+    fn an_old_whatsapp_account_without_protocol_gets_it_back() {
+        let d = std::env::temp_dir().join(format!("kirc-test-migrate-wa-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&d);
+        std::fs::create_dir_all(d.join("whatsapp")).unwrap();
+        std::fs::write(d.join("whatsapp").join("sabc.db"), "x").unwrap();
+        std::fs::write(d.join("config.json"), r#"{"version":1,"servers":[{"id":"sabc","name":"WhatsApp","host":"","port":6697,"autoconnect":true},{"id":"sirc","name":"Libera","host":"irc.libera.chat","port":6697},{"id":"snew","name":"Neuf","host":"","port":6697}]}"#).unwrap();
+        let (c, ok) = load_checked(&d);
+        assert!(ok);
+        assert_eq!(c.servers.iter().find(|s| s.id == "sabc").unwrap().protocol, "whatsapp", "an old WhatsApp account (empty host, session file) gets its protocol back");
+        assert_eq!(c.servers.iter().find(|s| s.id == "sirc").unwrap().protocol, "irc");
+        assert_eq!(c.servers.iter().find(|s| s.id == "snew").unwrap().protocol, "irc", "an empty host without a session file stays as it is");
+        let _ = std::fs::remove_dir_all(&d);
     }
 
     #[test]
