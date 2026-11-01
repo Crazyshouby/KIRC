@@ -2,6 +2,7 @@
 
 ## Prochaine version — à publier
 
+- **Aimantation sans écart** : une fenêtre qui se colle à une autre fenêtre de KIRC est désormais bord à bord (il restait 2 pixels entre les deux) ; la charte CDX 2.0.2 fixe `snap_gap` à 0.
 - **Quatre présentations pour les conversations WhatsApp** (Réglages > Affichage > « Conversations WhatsApp », à effet immédiat dans les fenêtres ouvertes) : **Blocs par auteur** (par défaut : un en-tête avec le nom et l'heure, puis les messages à la suite sous une barre de la couleur de la personne), **Texte aéré** (le nom à gauche une fois par série, le texte en retrait, l'heure à droite), **Bulles** (les autres à gauche, vous à droite sur l'accent) et **Cartes** (une plaque par série, en-tête à tuile colorée). Un message de la même personne dans les 5 minutes suit le précédent sans répéter le nom ; un titre « Aujourd'hui », « Hier » ou « Jeudi 29 octobre » sépare les jours ; arrivées, départs et actions sont des lignes centrées. « Classique » rend le fil d'IRC. Les salons IRC ne changent pas.
 - **Taille du texte** (Réglages > Affichage, toutes les fenêtres) : petite (actuelle), moyenne (la police de l'interface, aux lettres plus grandes) ou grande (la police du fil doublée). Les polices pixel ne restent nettes qu'à ces tailles ; en présentation enrichie l'interligne gagne 4 px.
 - Le protocole d'un compte déclare s'il a ce fil enrichi (`rich_feed` dans ses capacités).

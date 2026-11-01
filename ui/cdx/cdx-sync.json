@@ -1,5 +1,5 @@
 {
-  "cdxUi": "2.0.1",
+  "cdxUi": "2.0.2",
   "files": {
     "ui/cdx/cdx-ui.css": {
       "from": "cdx-ui.css",
@@ -11,11 +11,11 @@
     },
     "ui/cdx/fonts.css": {
       "from": "fonts.css",
-      "sha256": "42e6d1d1f8f7268a15631b5d982fc41a9080665140bfc3d844f88480ecdca0c7"
+      "sha256": "757ace72c3088ac73ec54a42c91410fadccf0cf9021a5a0457eec1fee5202959"
     },
     "ui/cdx/icons.js": {
       "from": "icons.js",
-      "sha256": "3e225987c4d5e6526cc42e42c94e1e716ff53b003bc23de80b1617295ad788b5"
+      "sha256": "205579bd836708d9f9c848bd0a6dead7b6e733c66b6498fa084373bd267713f3"
     },
     "src-tauri/src/cdx_bus.rs": {
       "from": "cdx_bus.rs",
@@ -27,7 +27,7 @@
     },
     "ui/cdx/cdx-bridge.js": {
       "from": "cdx-bridge.js",
-      "sha256": "9066861fa5c108b69ee1f46acec158a742baebc030b489fdd97430bc61783ebf"
+      "sha256": "471c46183fff3529301e0509addbb9cc303ad259e43acd6138d24c6da2f912a6"
     },
     "ui/cdx/cdx-frame.js": {
       "from": "cdx-frame.js",
@@ -39,7 +39,7 @@
     },
     "ui/cdx/tokens.json": {
       "from": "tokens.json",
-      "sha256": "a9be8971fe2fc8fc5052ba8495a5882dd6f5075c8b840dfff8cf4db1dc68feb3"
+      "sha256": "1ba2ba2b857f151e07b995077aa7060b704a40641b59737be61033ab15ffbba2"
     },
     "tools/charte-lint.mjs": {
       "from": "charte-lint.mjs",

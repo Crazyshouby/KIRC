@@ -757,8 +757,9 @@ fn restore_min_size(app: &AppHandle, label: &str, win: &tauri::WebviewWindow) {
 
 /// A window being dragged clings to the edges of the others (and of its screen) when it comes this close, in
 /// logical pixels; two windows that cling are left `SNAP_GAP` logical pixels apart, a window and the screen edge none.
+/// `SNAP_GAP` is 0 since cdx-ui 2.0.2 (`snap_gap` in tokens.json): windows cling edge to edge; the parameter stays so the rule is testable.
 const SNAP_DIST: f64 = 10.0;
-const SNAP_GAP: f64 = 2.0;
+const SNAP_GAP: f64 = 0.0;
 
 /// Where a window of size (w, h) dragged to (x, y) lands once it clings to the other windows (x, y, w, h) and to the
 /// edges of the screen's work area, within `dist` pixels; windows are left `gap` pixels apart, the screen edge none.
@@ -941,6 +942,16 @@ mod tests {
 
     // A 300 x 200 window "B" sits at (500, 100); windows are 200 x 100.
     const B: (i32, i32, i32, i32) = (500, 100, 300, 200);
+
+    #[test]
+    fn clings_to_the_side_of_another_window_edge_to_edge_with_the_real_gap() {
+        assert_eq!(super::SNAP_GAP, 0.0);
+        // our right edge (x + 200) is 6 px short of B's left edge: it lands against it
+        assert_eq!(snap_rect(294, 120, 200, 100, &[B], None, 10, 0), (300, 120));
+        assert_eq!(snap_rect(805, 120, 200, 100, &[B], None, 10, 0), (800, 120));
+        assert_eq!(snap_rect(520, 304, 200, 100, &[B], None, 10, 0), (520, 300));
+        assert_eq!(snap_size(100, 120, 396, 100, &[B], None, 10, 0), (400, 100));
+    }
 
     #[test]
     fn clings_to_the_side_of_another_window_leaving_the_gap() {
