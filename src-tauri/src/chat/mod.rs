@@ -120,6 +120,9 @@ pub struct Caps {
     pub images: bool,
     /// Voice and video calls.
     pub calls: bool,
+    /// The conversations are chats rather than IRC transcripts: the pages may lay them out by author, with days
+    /// and bubbles (the setting `feed_style`).
+    pub rich_feed: bool,
 }
 
 impl Protocol {
@@ -168,8 +171,8 @@ impl Protocol {
 
     pub fn caps(self) -> Caps {
         match self {
-            Protocol::Irc => Caps { ranks: true, whois: true, moderation: true, channel_list: true, topic: true, images: false, calls: false },
-            Protocol::WhatsApp => Caps { ranks: false, whois: false, moderation: false, channel_list: false, topic: false, images: true, calls: cfg!(feature = "whatsapp") },
+            Protocol::Irc => Caps { ranks: true, whois: true, moderation: true, channel_list: true, topic: true, images: false, calls: false, rich_feed: false },
+            Protocol::WhatsApp => Caps { ranks: false, whois: false, moderation: false, channel_list: false, topic: false, images: true, calls: cfg!(feature = "whatsapp"), rich_feed: true },
         }
     }
 }

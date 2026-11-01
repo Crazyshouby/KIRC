@@ -16,6 +16,7 @@ Un client IRC pour Windows, dans le style de **CDX** (Haxial) : chaque fonction 
 - **Notifications** de bureau pour les messages privés et les mentions, désactivables ; compteurs de lignes non lues dans le menu principal et la barre de titre.
 - **Journaux** de conversation sur disque, avec les dernières lignes rappelées à l'ouverture d'une fenêtre ; **liste des salons** du serveur avec recherche ; **ignorer** des pseudos ou masques, **mots d'alerte** ; fiche d'informations `/whois` ; confirmation avant de coller plusieurs lignes.
 - **Aller à… (Ctrl+K)** : un sélecteur rapide de salons, conversations et actions ; **réponses** à un message (IRCv3, avec repli lisible sur les autres serveurs).
+- **Présentation des conversations WhatsApp** au choix (blocs par auteur, texte aéré, bulles, cartes ou classique) et **taille du texte** réglable, dans les réglages d'affichage.
 - **Thèmes** : sept teintes d'accent reprises des apparences CDX (rouge par défaut, bleu, vert, violet, ambre, sarcelle, charbon), à changer dans les réglages.
 - **Mise à jour automatique** depuis les releases GitHub : l'installateur téléchargé est vérifié avec une signature avant d'être lancé (réglable : les réglages permettent de ne plus rien contacter).
 - **Reconnexion automatique** avec délai croissant ; les salons sont rejoints de nouveau.

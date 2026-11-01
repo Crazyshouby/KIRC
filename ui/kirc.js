@@ -239,6 +239,7 @@ function renderLine(line, replyable) {
     rp.type = "button"; rp.className = "rp"; rp.textContent = "↩ Répondre"; rp.title = "Répondre à ce message";
     div.appendChild(rp);
   }
+  if (line.kind === "msg") div.style.setProperty("--nc", nickColor(line.nick));
   const ts = document.createElement("span");
   ts.className = "ts";
   ts.textContent = stamp(line.time);
@@ -250,7 +251,10 @@ function renderLine(line, replyable) {
       const nk = document.createElement("span");
       nk.className = "nk";
       nk.style.setProperty("--nc", nickColor(line.nick));
-      nk.textContent = "<" + line.nick + ">";
+      nk.dataset.av = Array.from(line.nick.replace(/^[^\p{L}\p{N}]+/u, ""))[0]?.toUpperCase() || "?";
+      // the brackets are spans of their own so that a presentation without them (see feed-* in kirc.css) can hide them
+      const br = c => { const b = document.createElement("span"); b.className = "br"; b.textContent = c; return b; };
+      nk.append(br("<"), line.nick, br(">"));
       div.appendChild(nk);
       renderIrc(tx, line.text);
       break;
@@ -494,12 +498,32 @@ async function openImage(msgid) {
   else viewer.hidden = true;
 }
 
+const GROUP_MS = 5 * 60 * 1000;
+const dayKey = ms => { const d = new Date(ms); return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate(); };
+// "Aujourd'hui", "Hier", otherwise "Jeudi 29 octobre" (with the year when it is not this one).
+function dayTitle(ms) {
+  const el = document.createElement("div");
+  el.className = "day";
+  const now = new Date(), d = new Date(ms), key = dayKey(ms);
+  const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+  let t;
+  if (key === dayKey(now.getTime())) t = "Aujourd'hui";
+  else if (key === dayKey(yesterday.getTime())) t = "Hier";
+  else {
+    t = d.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", ...(d.getFullYear() !== now.getFullYear() ? { year: "numeric" } : {}) });
+    t = t.charAt(0).toUpperCase() + t.slice(1);
+  }
+  el.textContent = t;
+  return el;
+}
+
 // A scrolling log that follows the end unless the reader scrolled up.
 class Log {
   constructor(el, limit, newBtn) {
     this.el = el; this.limit = limit; this.newBtn = newBtn;
     this.stick = true;
     this.replyable = false;
+    this.prev = null; // the last line added: who, when, to tell what continues it
     el.addEventListener("scroll", () => {
       this.stick = el.scrollTop + el.clientHeight >= el.scrollHeight - 6;
       if (this.stick && this.newBtn) this.newBtn.hidden = true;
@@ -508,18 +532,52 @@ class Log {
   }
   toEnd() { this.el.scrollTop = this.el.scrollHeight; this.stick = true; if (this.newBtn) this.newBtn.hidden = true; }
   add(line) { this.addAll([line]); }
+  // What follows a line of the same author within GROUP_MS is its continuation: the presentations of a chat show the
+  // name once, then the messages. A change of day puts a title above. (The classic transcript ignores both.)
   addAll(lines) {
     const frag = document.createDocumentFragment();
-    for (const l of lines) { rememberMsg(l); frag.appendChild(renderLine(l, this.replyable)); }
+    for (const l of lines) {
+      rememberMsg(l);
+      const el = renderLine(l, this.replyable);
+      const day = dayKey(l.time), p = this.prev;
+      if (!p || p.day !== day) frag.appendChild(dayTitle(l.time));
+      if (l.kind === "msg") {
+        const cont = !!p && p.msg && p.nick === l.nick && p.day === day && l.time - p.time < GROUP_MS;
+        el.classList.add(cont ? "cont" : "first", "last", "msg");
+        if (cont) p.el.classList.remove("last");
+      }
+      this.prev = { el, day, msg: l.kind === "msg", nick: l.nick, time: l.time };
+      frag.appendChild(el);
+    }
     this.el.appendChild(frag);
     while (this.el.childElementCount > this.limit) this.el.firstElementChild.remove();
+    // the first line left may have been the continuation of one that is gone: it shows its name now
+    const top = this.el.firstElementChild;
+    if (top && top.classList.contains("cont")) top.classList.replace("cont", "first");
     if (this.stick) this.el.scrollTop = this.el.scrollHeight;
     else if (this.newBtn) this.newBtn.hidden = false;
   }
-  clear() { this.el.textContent = ""; this.stick = true; if (this.newBtn) this.newBtn.hidden = true; }
+  // Something that is not a line (a title) was put in the log: the next message begins a group.
+  breakGroup() { if (this.prev) this.prev.msg = false; }
+  clear() { this.el.textContent = ""; this.prev = null; this.stick = true; if (this.newBtn) this.newBtn.hidden = true; }
 }
 
+// Does the conversation of this window belong to a chat protocol (told by the account's capabilities)? Then the
+// presentation chosen in the settings applies to it; IRC keeps the transcript.
+let RICH_FEED = false;
+const FEED_STYLES = ["classique", "aere", "blocs", "bulles", "cartes"];
+const TEXT_SIZES = ["petite", "moyenne", "grande"];
+const OWN_SIDES = ["auto", "gauche", "droite"];
+let LAST_SETTINGS = null;
 function applySettings(s) {
+  LAST_SETTINGS = s;
+  const feed = FEED_STYLES.includes(s.feed_style) ? s.feed_style : "blocs";
+  const size = TEXT_SIZES.includes(s.text_size) ? s.text_size : "petite";
+  for (const f of FEED_STYLES) document.body.classList.toggle("feed-" + f, RICH_FEED && f === feed);
+  document.body.classList.toggle("rich-on", RICH_FEED && feed !== "classique");
+  const side = OWN_SIDES.includes(s.own_side) ? s.own_side : "auto";
+  document.body.classList.toggle("own-right", RICH_FEED && (side === "droite" || (side === "auto" && feed === "bulles")));
+  for (const z of TEXT_SIZES) document.body.classList.toggle("sz-" + z, z === size);
   document.body.classList.toggle("nojoins", !s.show_joins);
   document.body.classList.toggle("nots", !s.show_timestamps);
   document.body.classList.toggle("smallmem", !!s.small_member_icons);
@@ -913,6 +971,7 @@ function initSettings() {
     const s = ov.settings;
     f("sNick").value = s.nick; f("sAlt").value = s.alt_nick; f("sUser").value = s.username; f("sReal").value = s.realname;
     f("sQuit").value = s.quit_message; f("sPart").value = s.part_message;
+    f("sFeed").value = s.feed_style; f("sSize").value = s.text_size; f("sSide").value = s.own_side;
     f("sStamps").checked = s.show_timestamps; f("sSmall").checked = s.small_member_icons; f("sColors").checked = s.colored_chat; f("sJoins").checked = s.show_joins; f("sScroll").value = s.scrollback;
     f("sNotif").checked = s.notifications; f("sQueries").checked = s.open_queries; f("sConsole").checked = s.open_console;
     f("sTheme").value = s.theme;
@@ -924,6 +983,7 @@ function initSettings() {
     const s = {
       nick: f("sNick").value.trim(), alt_nick: f("sAlt").value.trim(), username: f("sUser").value.trim(), realname: f("sReal").value,
       quit_message: f("sQuit").value, part_message: f("sPart").value,
+      feed_style: f("sFeed").value, text_size: f("sSize").value, own_side: f("sSide").value,
       show_timestamps: f("sStamps").checked, small_member_icons: f("sSmall").checked, colored_chat: f("sColors").checked, show_joins: f("sJoins").checked, scrollback: +f("sScroll").value || 0,
       notifications: f("sNotif").checked, open_queries: f("sQueries").checked, open_console: f("sConsole").checked,
       theme: f("sTheme").value,
@@ -1052,7 +1112,7 @@ function initChat() {
   const log = new Log($("#log"), 1000, $("#newMsg"));
   let myNick = "", buffer = BUFFER;
   // What the protocol of this server can do (told by the snapshot): the menu and the topic bar follow it.
-  let caps = { ranks: true, whois: true, moderation: true, channel_list: true, topic: true, images: false, calls: false };
+  let caps = { ranks: true, whois: true, moderation: true, channel_list: true, topic: true, images: false, calls: false, rich_feed: false };
   const calls = initCalls(() => buffer, () => caps);
   const users = new Map();
   const input = $("#msgInput");
@@ -1281,8 +1341,9 @@ function initChat() {
   (async () => {
     const snap = await call("buffer_snapshot", { server: SERVER, buffer: BUFFER });
     if (!snap) return;
-    applySettings(snap.settings);
     caps = snap.caps || caps;
+    RICH_FEED = !!caps.rich_feed;
+    applySettings(snap.settings);
     if (!caps.topic) $("#topicBar").hidden = true;
     $("#btnImage").hidden = !caps.images;
     calls.show();
@@ -1303,6 +1364,7 @@ function initChat() {
       sep.className = "ln sep";
       sep.textContent = "— historique enregistré —";
       log.el.appendChild(sep);
+      log.breakGroup();
     }
     log.addAll(snap.buffer.lines);
     log.toEnd();

@@ -214,6 +214,18 @@ pub fn sweep(root: &Path, days: u32) -> usize {
     removed
 }
 
+/// A log keeps the name of who spoke, not whether it was us: the lines read back from it are ours when their author is
+/// the nick of the account (the presentations of a chat put our messages on a side of their own).
+pub fn mark_own(lines: &mut [Line], me: &str) {
+    let me = fold(me);
+    if me.is_empty() {
+        return;
+    }
+    for l in lines.iter_mut().filter(|l| matches!(l.kind, LineKind::Msg | LineKind::Action)) {
+        l.own = fold(&l.nick) == me;
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -226,6 +238,16 @@ mod tests {
         let d = std::env::temp_dir().join(format!("kirc-logs-{name}-{}", std::process::id()));
         let _ = fs::remove_dir_all(&d);
         d
+    }
+
+    #[test]
+    fn what_we_said_is_ours_when_read_back() {
+        let mut lines = vec![line(LineKind::Msg, "Valentin", "salut", 1), line(LineKind::Msg, "François", "coucou", 2), line(LineKind::Join, "Valentin", "est arrivé", 3), line(LineKind::Action, "valentin", "rit", 4)];
+        mark_own(&mut lines, "Valentin");
+        let own: Vec<bool> = lines.iter().map(|l| l.own).collect();
+        assert_eq!(own, vec![true, false, false, true], "an arrival is not a message, the case does not matter");
+        mark_own(&mut lines, "");
+        assert_eq!(lines.iter().filter(|l| l.own).count(), 2, "no nick known: nothing changes");
     }
 
     #[test]

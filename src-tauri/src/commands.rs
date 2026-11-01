@@ -455,7 +455,10 @@ pub async fn read_backlog(state: State<'_, App>, server: String, buffer: String,
     };
     let Some(name) = name.filter(|_| enabled && !buffer.is_empty()) else { return Ok(Vec::new()) };
     state.logger.flush();
-    Ok(crate::logs::tail(&state.logs_dir(), &name, &buffer, before, 100))
+    let mut lines = crate::logs::tail(&state.logs_dir(), &name, &buffer, before, 100);
+    let me = state.states.lock().unwrap().get(&server).map(|s| s.summary().nick).unwrap_or_default();
+    crate::logs::mark_own(&mut lines, &me);
+    Ok(lines)
 }
 
 #[tauri::command]
