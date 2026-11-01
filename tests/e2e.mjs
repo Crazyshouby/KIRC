@@ -316,7 +316,7 @@ async function main() {
   const mid = page => page.eval("getComputedStyle(document.documentElement).getPropertyValue('--a-mid').trim()");
   check((await mid(chat)) === "#880000", "the default theme is the CDX red");
   const seen = new Set(["#880000"]);
-  for (const th of ["bleu", "vert", "violet", "ambre", "sarcelle", "charbon"]) {
+  for (const th of ["jean", "reve-vert", "reve-violet", "ambre", "sarcelle", "techno"]) {
     const r = await inv("save_settings", { settings: { ...ovNow.settings, theme: th } });
     check(r.ok === true, "theme " + th + " saved");
     await until(async () => (await chat.eval("document.documentElement.dataset.theme")) === th && (await launcher.eval("document.documentElement.dataset.theme")) === th, "open windows follow the theme " + th, 5000);
@@ -326,9 +326,10 @@ async function main() {
     await chat.shot("20-theme-" + th);
   }
   check((await inv("save_settings", { settings: { ...ovNow.settings, theme: "../evil" } })).err !== undefined, "an unknown theme is refused");
+  check((await inv("save_settings", { settings: { ...ovNow.settings, theme: "charbon" } })).err !== undefined, "a theme name of cdx-ui 1.x is only migrated from an old config.json, not accepted when saving");
   await inv("open_window", { kind: "about" });
   const aboutT = await page(win("about"), 10000);
-  check((await aboutT.eval("document.documentElement.dataset.theme")) === "charbon", "a window opened later has the current theme at once");
+  check((await aboutT.eval("document.documentElement.dataset.theme")) === "techno", "a window opened later has the current theme at once");
   await aboutT.fire("window.__TAURI__.core.invoke('win_close')");
   await inv("save_settings", { settings: { ...ovNow.settings, theme: "cdx" } });
   await until(async () => (await mid(chat)) === "#880000", "back to the default theme", 5000);

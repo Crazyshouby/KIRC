@@ -19,7 +19,7 @@
     },
     "src-tauri/src/cdx_bus.rs": {
       "from": "cdx_bus.rs",
-      "sha256": "a26241c529d477b28e318e4e3add0efdb562daa5c55e6275da166d5f8106d241"
+      "sha256": "a08acea8020e5226fe78d7d46888fd791ba8977e7a498cfba1454ccfb2546db8"
     },
     "tools/cdx-verify.mjs": {
       "from": "cdx-verify.mjs",

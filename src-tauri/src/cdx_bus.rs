@@ -181,12 +181,15 @@ mod tests {
 
     #[test]
     fn parse_accent_cases() {
-        assert_eq!(parse_accent(r#"{"version":1,"accent":"bleu"}"#, "rouge"), "bleu");
-        assert_eq!(parse_accent(r#"{"accent":"vert"}"#, "rouge"), "vert");
-        assert_eq!(parse_accent(r#"{"version":2,"accent":"bleu"}"#, "ambre"), "ambre");
-        assert_eq!(parse_accent(r#"{"version":"1","accent":"bleu"}"#, "ambre"), "ambre");
-        assert_eq!(parse_accent(r#"{"version":1,"accent":"../x"}"#, "violet"), "violet");
-        assert_eq!(parse_accent("{{{ pas du json", "charbon"), "charbon");
+        assert_eq!(parse_accent(r#"{"version":1,"accent":"jean"}"#, "rouge"), "jean");
+        assert_eq!(parse_accent(r#"{"accent":"reve-vert"}"#, "rouge"), "reve-vert");
+        // les anciens noms (charte < 2.0.0) sont lus sous leur nom canonique
+        assert_eq!(parse_accent(r#"{"version":1,"accent":"bleu"}"#, "rouge"), "jean");
+        assert_eq!(parse_accent(r#"{"accent":"charbon"}"#, "rouge"), "techno");
+        assert_eq!(parse_accent(r#"{"version":2,"accent":"jean"}"#, "ambre"), "ambre");
+        assert_eq!(parse_accent(r#"{"version":"1","accent":"jean"}"#, "ambre"), "ambre");
+        assert_eq!(parse_accent(r#"{"version":1,"accent":"../x"}"#, "lavande"), "lavande");
+        assert_eq!(parse_accent("{{{ pas du json", "techno"), "techno");
         assert_eq!(parse_accent("[1,2]", "rouge"), "rouge");
         assert_eq!(parse_accent("", "rouge"), "rouge");
     }
@@ -225,14 +228,14 @@ mod tests {
         let mut w = Watcher::new("rouge");
         assert_eq!(w.changed(), None);
         std::fs::write(suite_path().unwrap(), r#"{"version":1,"accent":"bleu"}"#).unwrap();
-        assert_eq!(w.changed().as_deref(), Some("bleu"));
+        assert_eq!(w.changed().as_deref(), Some("jean"), "l'ancien nom « bleu » est signalé sous son nom canonique");
         assert_eq!(w.changed(), None, "pas de second signal");
         std::thread::sleep(Duration::from_millis(30));
-        std::fs::write(suite_path().unwrap(), r#"{"version":1,"accent":"bleu"}"#).unwrap();
-        assert_eq!(w.changed(), None, "réécrit à l'identique");
+        std::fs::write(suite_path().unwrap(), r#"{"version":1,"accent":"jean"}"#).unwrap();
+        assert_eq!(w.changed(), None, "réécrit sous l'autre nom du même accent : rien ne change");
         std::fs::write(suite_path().unwrap(), "n'importe quoi").unwrap();
         assert_eq!(w.changed(), None, "fichier abîmé : l'accent précédent est gardé");
-        assert_eq!(w.current(), "bleu");
+        assert_eq!(w.current(), "jean");
         std::fs::write(suite_path().unwrap(), r#"{"version":1,"accent":"ambre"}"#).unwrap();
         assert_eq!(w.changed().as_deref(), Some("ambre"));
         let _ = std::fs::remove_dir_all(&dir);
