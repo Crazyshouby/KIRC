@@ -64,7 +64,8 @@ const win = (w, extra = {}) => p => p.get("w") === w && Object.entries(extra).ev
 // ---- processes
 const children = [];
 function start(cmd, args, opts = {}) { const c = spawn(cmd, args, { stdio: "ignore", windowsHide: true, ...opts }); children.push(c); return c; }
-function cleanup() { for (const c of children) { try { c.kill(); } catch { /* gone */ } } try { execFileSync("taskkill", ["/F", "/IM", "kirc.exe"], { stdio: "ignore" }); } catch { /* none */ } try { rmSync(data, { recursive: true, force: true }); } catch { /* busy */ } }
+// Only the processes started here are stopped (by pid, with their children): never every kirc.exe of the machine, which would close the user's own.
+function cleanup() { for (const c of children) { try { execFileSync("taskkill", ["/F", "/T", "/PID", String(c.pid)], { stdio: "ignore" }); } catch { /* gone */ } try { c.kill(); } catch { /* gone */ } } try { rmSync(data, { recursive: true, force: true }); } catch { /* busy */ } }
 process.on("exit", cleanup);
 
 // A raw client to drive the fake server (XSAY & co.) on behalf of the app's connection is not
@@ -456,6 +457,9 @@ async function main() {
   check(await chat.eval("[...document.querySelectorAll('.ln .thumb')][1].querySelector('img') === null"), "a preview that is not base64 is not shown");
   check(await chat.eval("document.querySelectorAll('#log [onerror]').length === 0 && [...document.querySelectorAll('#log img')].every(i => i.closest('.thumb'))"), "nothing from outside became markup");
   check(await chat.eval("document.querySelector('#btnImage').hidden"), "an IRC window offers no image button");
+  check(await chat.eval("(() => { const b = document.querySelector('#btnCall'); b.hidden = false; const h = b.getBoundingClientRect().height; b.hidden = true; return h <= 22 && document.querySelector('#msgInput').getBoundingClientRect().height <= 24; })()"), "the input bar is one line high: the buttons at the charter height, the text box on one line");
+  const grown = await chat.eval("(() => { const i = document.querySelector('#msgInput'); i.value = 'a\\nb\\nc\\nd\\ne\\nf\\ng\\nh'; i.dispatchEvent(new Event('input', { bubbles: true })); const h = i.getBoundingClientRect().height; i.value = ''; i.dispatchEvent(new Event('input', { bubbles: true })); return h + ',' + i.getBoundingClientRect().height; })()");
+  check(/^\d+,\d+$/.test(grown) && +grown.split(",")[0] > 60 && +grown.split(",")[0] <= 80 && +grown.split(",")[1] <= 24, `the text box grows with the message, five lines at most, and shrinks back (${grown})`);
   await chat.eval("document.querySelector('.ln .thumb').click()");
   await sleep(500);
   check(await chat.eval("document.querySelector('#viewer').hidden"), "an image that cannot be fetched leaves the viewer closed");

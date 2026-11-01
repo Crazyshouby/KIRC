@@ -155,8 +155,10 @@ body.nots .ln .ts { display: none; }
 .mem.r0 { border-left-color: #ff5cf0; } .mem.r1 { border-left-color: #ff8a3c; } .mem.r2 { border-left-color: #ff3030; }
 .mem.r3 { border-left-color: #faa320; } .mem.r4 { border-left-color: #2a5ae0; }
 
-.inputbar { display: flex; gap: 6px; align-items: stretch; flex: none; }
-.inputbar .text-input { padding: 4px 7px; height: 56px; resize: none; line-height: 1.4; }
+/* The input bar is one line high: the buttons at the charter height (20 px), the text box on one line, growing with the message (kirc.js: fitInput) up to five. */
+.inputbar { display: flex; gap: 6px; align-items: flex-end; flex: none; }
+.inputbar .text-input { padding: 3px 7px; height: 21px; min-height: 21px; resize: none; overflow-y: auto; }
+.inputbar .ghost-btn { flex: none; }
 /* Under it: the "Topic:" button, the topic, and our own nick at the end. */
 .topicrow { display: flex; align-items: center; gap: 8px; flex: none; min-height: 22px; cursor: default; }
 .topicrow[hidden] { display: none; }
@@ -317,7 +319,6 @@ body.droptarget .win::after { content: ""; position: absolute; inset: 0; z-index
 .viewer[hidden] { display: none; }
 .viewer img { max-width: calc(100% - 16px); max-height: calc(100% - 16px); object-fit: contain; border: 1px solid var(--line); }
 .viewer .vmsg { color: var(--text); }
-.inputbar #btnImage { align-self: flex-end; }
 
 /* ---------- Pairing: the code to scan with the phone, in the window of the server's messages ---------- */
 .pairing { flex: none; display: flex; align-items: center; gap: 12px; padding: 6px; background: var(--ink); border: 1px solid; border-color: var(--sunken-border); box-shadow: var(--sunken-shadow); }

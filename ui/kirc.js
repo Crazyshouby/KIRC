@@ -1116,6 +1116,12 @@ function initChat() {
   const calls = initCalls(() => buffer, () => caps);
   const users = new Map();
   const input = $("#msgInput");
+  // The text box is one line high (the height of the buttons) and grows with the message, up to five lines; then it scrolls.
+  const fitInput = () => { input.style.height = "0"; const lh = parseFloat(getComputedStyle(input).lineHeight) || 13; input.style.height = Math.min(input.scrollHeight + 2, 5 * lh + 8) + "px"; };
+  input.addEventListener("input", fitInput);
+  $("#inputForm").addEventListener("submit", () => setTimeout(fitInput, 0));
+  new MutationObserver(fitInput).observe(document.body, { attributes: true, attributeFilter: ["class"] });   // the text size (Réglages > Affichage) changes the height of a line
+  fitInput();
   // Answering a message: the bar above the input line shows what is answered (Esc cancels).
   let replying = null;
   const setReply = r => {
