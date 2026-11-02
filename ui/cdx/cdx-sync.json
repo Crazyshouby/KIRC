@@ -1,5 +1,5 @@
 {
-  "cdxUi": "2.2.0",
+  "cdxUi": "2.3.0",
   "files": {
     "ui/cdx/cdx-ui.css": {
       "from": "cdx-ui.css",
@@ -15,7 +15,7 @@
     },
     "ui/cdx/icons.js": {
       "from": "icons.js",
-      "sha256": "6a8d0bb931f49c74fffecf0f995e38ac3531f43327e9f11ed16c5047124f7b0b"
+      "sha256": "05608ca62f1d45a7a262eaabc7a5613a89a02240ad334afda89fa38d8a9b3516"
     },
     "src-tauri/src/cdx_bus.rs": {
       "from": "cdx_bus.rs",
@@ -27,7 +27,7 @@
     },
     "ui/cdx/cdx-bridge.js": {
       "from": "cdx-bridge.js",
-      "sha256": "c2bc0dcfcc40054fc4ae7879203de6ffae1d2bf1b01f53da0914a7dcb4a91d79"
+      "sha256": "a873832739a1040504e08447d7ec39d0767951660c7f2585a0f684ce5ae8b0dc"
     },
     "ui/cdx/cdx-frame.js": {
       "from": "cdx-frame.js",
