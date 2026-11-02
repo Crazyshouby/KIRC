@@ -56,7 +56,7 @@ impl Ctx {
                     // a group call, or a call while we are in one: not taken
                     let _ = client.voip().reject(c).await;
                     if chat.ends_with("@g.us") {
-                        self.line("", LineKind::Info, "Un appel de groupe a été refusé : KIRC ne les prend pas en charge.");
+                        self.line("", LineKind::Info, "Un appel de groupe a été refusé : Messages ne les prend pas en charge.");
                     }
                     return;
                 }

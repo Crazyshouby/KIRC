@@ -2,7 +2,7 @@
    Le HTML attendu est celui de la charte :
      <div class="win active"><div class="tb"><button class="tb-btn tb-l" data-act="close"></button> ... <span class="tb-title">Titre</span> ...</div><div class="cb">...</div><i class="grip-rz"></i></div>
    data-act d'un .tb-btn : close | min | max (ou zoom) | shade | menu (émet l'événement « cdx:menu » sur le bouton) ; data-glyph : x | minus | plus (déduit de data-act par défaut).
-   data-dblclick d'un .tb : "shade" (défaut, comme KIRC et AudioLinker) ou "max" (Explorateur, Navigateur).
+   data-dblclick d'un .tb : "shade" (défaut, comme Messages et AudioLinker) ou "max" (Explorateur, Navigateur).
    Usage :  CdxFrame.init();  CdxFrame.edges();  CdxFrame.title("Documents");  await CdxFrame.dialog({ title, text, icon, yes, no });  CdxFrame.menu(items, x, y, title) */
 (() => {
   "use strict";
@@ -17,7 +17,7 @@
   // Déplacement : la page annonce l'appui, le mouvement (au plus un par image) et le relâchement ; l'hôte lit le curseur. Deux appuis en moins de 400 ms :
   // enrouler (ou agrandir). Le transport « webview2 » n'a besoin que de « start » (boucle de déplacement native de Windows).
   function titleBar(tb) {
-    let lastDown = -Infinity, dragging = false, queued = false;   // -Infinity : un premier appui juste après le chargement ne doit pas compter comme double (défaut de KIRC et d'AudioLinker)
+    let lastDown = -Infinity, dragging = false, queued = false;   // -Infinity : un premier appui juste après le chargement ne doit pas compter comme double (défaut de Messages et d'AudioLinker)
     const dbl = () => (tb.dataset.dblclick === "max" ? cdx.win.max() : cdx.win.shade());
     tb.addEventListener("pointerdown", ev => {
       if (ev.button !== 0 || ev.target.closest(".tb-btn")) return;

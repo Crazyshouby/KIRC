@@ -84,11 +84,11 @@ pub fn run() {
             let handle = app.handle().clone();
             suite::start(handle.clone()); // recolore les fenêtres quand l'accent de la suite change
 
-            let show = MenuItem::with_id(app, "show", "Afficher KIRC", true, None::<&str>)?;
+            let show = MenuItem::with_id(app, "show", "Afficher Messages", true, None::<&str>)?;
             let quit = MenuItem::with_id(app, "quit", "Quitter", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&show, &quit])?;
             let mut tray = TrayIconBuilder::new()
-                .tooltip("KIRC")
+                .tooltip("Messages")
                 .menu(&menu)
                 .show_menu_on_left_click(false)
                 .on_menu_event(|app, ev| match ev.id().as_ref() {
@@ -124,7 +124,7 @@ pub fn run() {
             Ok(())
         })
         .build(tauri::generate_context!())
-        .expect("KIRC n'a pas pu démarrer");
+        .expect("Messages n'a pas pu démarrer");
 
     built.run(|app, event| match event {
         // The launcher is hidden, never closed: the app stays alive in the tray.

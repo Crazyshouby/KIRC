@@ -2,7 +2,7 @@
 //!
 //! Every tab stays a window of its own, with its page, its history and its counters; a group of tabs simply shows
 //! one of them at a time, the others being hidden, and the tab that is shown takes the place and the size of the one
-//! it replaces. Each window of a group draws the same strip of tabs under its title bar (see `initTabs` in kirc.js),
+//! it replaces. Each window of a group draws the same strip of tabs under its title bar (see `initTabs` in messages.js),
 //! fed by the "tabs" events published here. Dragging a window by its title bar onto the title bar of another one
 //! merges them (the target lights up while the cursor is over it).
 //!

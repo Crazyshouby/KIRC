@@ -1,4 +1,4 @@
-//! Settings, address book and window memory, kept in %APPDATA%\KIRC\config.json.
+//! Settings, address book and window memory, kept in %APPDATA%\CDX\Messages\config.json.
 //! Passwords never go in this file: they live in the Windows credential manager.
 
 use serde::{Deserialize, Serialize};
@@ -104,7 +104,7 @@ pub const THEMES: [&str; 16] = ["cdx", "marine", "ambre", "jean", "tramway", "sa
 pub const THEME_ALIASES: [(&str, &str); 4] = [("bleu", "jean"), ("vert", "reve-vert"), ("violet", "reve-violet"), ("charbon", "techno")];
 
 /// The presentations of a conversation of a messaging protocol (WhatsApp): "classique" is the IRC transcript, the
-/// others are described in ui/kirc.css.
+/// others are described in ui/messages.css.
 pub const FEED_STYLES: [&str; 5] = ["classique", "aere", "blocs", "bulles", "cartes"];
 
 /// Where our own messages stand in a chat presentation: "auto" (to the right in "bulles", to the left in the others).
@@ -155,7 +155,7 @@ pub struct Settings {
     pub ignores: Vec<String>,
     /// Words that count as a mention besides one's own nick.
     pub alert_words: Vec<String>,
-    /// Write conversations to %APPDATA%\KIRC\logs and show the end of them when a window opens.
+    /// Write conversations to %APPDATA%\CDX\Messages\logs and show the end of them when a window opens.
     pub log_enabled: bool,
     /// Log files older than this many days are deleted at start (0 = keep everything).
     pub log_days: u32,
@@ -166,11 +166,11 @@ impl Default for Settings {
         let user = std::env::var("USERNAME").unwrap_or_default();
         let nick: String = user.chars().filter(|c| c.is_ascii_alphanumeric() || *c == '_').take(16).collect();
         Settings {
-            nick: if nick.is_empty() || nick.starts_with(|c: char| c.is_ascii_digit()) { "kirc_user".into() } else { nick },
+            nick: if nick.is_empty() || nick.starts_with(|c: char| c.is_ascii_digit()) { "cdx_user".into() } else { nick },
             alt_nick: String::new(),
             username: String::new(),
-            realname: "KIRC".into(),
-            quit_message: "KIRC".into(),
+            realname: "Messages".into(),
+            quit_message: "Messages".into(),
             part_message: String::new(),
             notifications: true,
             open_queries: true,
@@ -344,20 +344,30 @@ fn new_id(existing: &[ServerEntry]) -> String {
     }
 }
 
-/// %APPDATA%\KIRC (or $KIRC_DATA_DIR, for tests).
+/// %APPDATA%\CDX\Messages (or $CDX_MESSAGES_DATA_DIR, for tests). The folder of the former name, %APPDATA%\KIRC, is moved
+/// there the first time it is found (config, logs, WhatsApp sessions: nothing to redo).
 pub fn data_dir() -> PathBuf {
-    if let Some(d) = std::env::var_os("KIRC_DATA_DIR") {
+    if let Some(d) = std::env::var_os("CDX_MESSAGES_DATA_DIR") {
         return PathBuf::from(d);
     }
-    std::env::var_os("APPDATA").map(PathBuf::from).unwrap_or_else(std::env::temp_dir).join("KIRC")
+    let appdata = std::env::var_os("APPDATA").map(PathBuf::from).unwrap_or_else(std::env::temp_dir);
+    let dir = appdata.join("CDX").join("Messages");
+    let legacy = appdata.join("KIRC");
+    if !dir.exists() && legacy.is_dir() {
+        let _ = std::fs::create_dir_all(appdata.join("CDX"));
+        if let Err(e) = std::fs::rename(&legacy, &dir) {
+            log::warn!("reprise du dossier de données de KIRC ({}) : {e}", legacy.display());
+        }
+    }
+    dir
 }
 
 pub fn load(dir: &Path) -> Config {
     load_checked(dir).0
 }
 
-/// Un compte enregistré avant que KIRC distingue les protocoles (0.4.0) n'a pas de champ `protocol` : il est lu comme IRC. Un compte WhatsApp de cette
-/// époque se reconnaît à son adresse vide et à sa session `<data>/whatsapp/<id>.db` : il reprend son protocole — sinon KIRC tenterait de joindre un serveur IRC
+/// Un compte enregistré avant que Messages distingue les protocoles (0.4.0) n'a pas de champ `protocol` : il est lu comme IRC. Un compte WhatsApp de cette
+/// époque se reconnaît à son adresse vide et à sa session `<data>/whatsapp/<id>.db` : il reprend son protocole — sinon Messages tenterait de joindre un serveur IRC
 /// à l'adresse vide, c'est-à-dire la machine elle-même, port 6697, et afficherait « connexion refusée » (os error 10061) à chaque démarrage.
 #[cfg(feature = "whatsapp")]
 fn migrate_protocols(dir: &Path, c: &mut Config) {
@@ -418,7 +428,7 @@ mod tests {
     }
 
     fn tmp(name: &str) -> PathBuf {
-        let d = std::env::temp_dir().join(format!("kirc-test-{name}-{}", std::process::id()));
+        let d = std::env::temp_dir().join(format!("messages-test-{name}-{}", std::process::id()));
         let _ = fs::remove_dir_all(&d);
         d
     }
@@ -435,7 +445,7 @@ mod tests {
     #[test]
     #[cfg(feature = "whatsapp")]
     fn an_old_whatsapp_account_without_protocol_gets_it_back() {
-        let d = std::env::temp_dir().join(format!("kirc-test-migrate-wa-{}", std::process::id()));
+        let d = std::env::temp_dir().join(format!("messages-test-migrate-wa-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&d);
         std::fs::create_dir_all(d.join("whatsapp")).unwrap();
         std::fs::write(d.join("whatsapp").join("sabc.db"), "x").unwrap();

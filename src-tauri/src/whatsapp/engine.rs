@@ -203,7 +203,7 @@ impl Ctx {
             Event::IncomingCall(c) => self.on_incoming_call(client, c).await,
             Event::MissedCall(m) => self.end_incoming(&m.call_id, "Appel manqué"),
             Event::CallEndedElsewhere(e) => self.end_incoming(&e.call_id, "Appel pris sur un autre appareil"),
-            Event::ClientOutdated(_) => self.line("", LineKind::Error, "WhatsApp refuse cette version de la bibliothèque : mettez KIRC à jour."),
+            Event::ClientOutdated(_) => self.line("", LineKind::Error, "WhatsApp refuse cette version de la bibliothèque : mettez Messages à jour."),
             Event::TemporaryBan(_) => self.line("", LineKind::Error, "WhatsApp a suspendu temporairement ce compte."),
             Event::PushNameUpdate(u) => self.registry.lock().unwrap().set_name(&u.jid.to_string(), &u.new_push_name),
             // the names saved in the phone's address book
@@ -537,7 +537,7 @@ impl Ctx {
     /// The whole image of a message received (or sent) in this session.
     async fn fetch_image(&self, client: &Arc<Client>, msgid: &str) -> Result<Vec<u8>, String> {
         let msg = self.images.lock().unwrap().iter().find(|(i, _)| i == msgid).map(|(_, m)| m.clone());
-        let msg = msg.ok_or("Image introuvable : elle date d'avant cette session de KIRC")?;
+        let msg = msg.ok_or("Image introuvable : elle date d'avant cette session de Messages")?;
         let img = msg.image_message.as_option().ok_or("Ce message n'est pas une image")?;
         if usize::try_from(img.file_length.unwrap_or(0)).unwrap_or(usize::MAX) > MAX_IMAGE_BYTES {
             return Err("Image trop grosse (10 Mo au plus)".into());

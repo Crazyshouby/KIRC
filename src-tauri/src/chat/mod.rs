@@ -88,7 +88,7 @@ pub fn sniff_image(bytes: &[u8]) -> Option<&'static str> {
     }
 }
 
-/// The protocols KIRC speaks. The id is what the address book stores.
+/// The protocols Messages speaks. The id is what the address book stores.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Protocol {
     Irc,

@@ -1,5 +1,5 @@
 "use strict";
-// KIRC pages. One page (index.html), opened as ?w=<kind>[&s=<server>&b=<buffer>&t=<title>] by the
+// Messages pages. One page (index.html), opened as ?w=<kind>[&s=<server>&b=<buffer>&t=<title>] by the
 // application: launcher, servers (address book), settings, about, join, console, chat.
 // Everything that comes from the network is put on the page with textContent / text nodes, never
 // as HTML: a message can not inject markup.
@@ -16,7 +16,7 @@ const PANEL = params.get("w") || "all";
 const SERVER = params.get("s") || "";
 const BUFFER = params.get("b") || "";
 document.documentElement.dataset.panel = PANEL;
-document.title = params.get("t") || "KIRC";
+document.title = params.get("t") || "Messages";
 for (const el of document.querySelectorAll("[data-title]")) el.textContent = document.title;
 
 // Theme: an accent ramp chosen in the settings (see themes.css). The window is opened with its
@@ -252,7 +252,7 @@ function renderLine(line, replyable) {
       nk.className = "nk";
       nk.style.setProperty("--nc", nickColor(line.nick));
       nk.dataset.av = Array.from(line.nick.replace(/^[^\p{L}\p{N}]+/u, ""))[0]?.toUpperCase() || "?";
-      // the brackets are spans of their own so that a presentation without them (see feed-* in kirc.css) can hide them
+      // the brackets are spans of their own so that a presentation without them (see feed-* in messages.css) can hide them
       const br = c => { const b = document.createElement("span"); b.className = "br"; b.textContent = c; return b; };
       nk.append(br("<"), line.nick, br(">"));
       div.appendChild(nk);
@@ -643,7 +643,7 @@ function initLauncher() {
   const current = () => sel.value;
 
   function render() {
-    const keep = sel.value || localStorage.getItem("kirc.server") || "";
+    const keep = sel.value || localStorage.getItem("messages.server") || "";
     sel.textContent = "";
     for (const s of ov.servers) {
       const o = document.createElement("option");
@@ -721,7 +721,7 @@ function initLauncher() {
     for (const it of shown) addRow(it, false);
     if (hiddenItems.length) {
       let open = false;
-      try { open = localStorage.getItem("kirc.hiddenOpen") === "1"; } catch { /* no storage: closed */ }
+      try { open = localStorage.getItem("messages.hiddenOpen") === "1"; } catch { /* no storage: closed */ }
       const head = document.createElement("div");
       head.className = "row-item hidhead" + (hiddenItems.some(([c]) => act.has(fold(c))) ? " unread" : "");
       head.tabIndex = 0;
@@ -729,7 +729,7 @@ function initLauncher() {
       label.className = "grow";
       label.textContent = `${open ? "▼" : "▶"} Masquées (${hiddenItems.length})`;
       head.appendChild(label);
-      const toggle = () => { try { localStorage.setItem("kirc.hiddenOpen", open ? "0" : "1"); } catch { /* ignore */ } render(); };
+      const toggle = () => { try { localStorage.setItem("messages.hiddenOpen", open ? "0" : "1"); } catch { /* ignore */ } render(); };
       head.addEventListener("click", toggle);
       head.addEventListener("keydown", e => { if (e.key === "Enter") toggle(); });
       list.appendChild(head);
@@ -750,7 +750,7 @@ function initLauncher() {
     const o = await call("get_overview");
     if (o) { ov = o; render(); }
   }
-  sel.addEventListener("change", () => { localStorage.setItem("kirc.server", sel.value); render(); });
+  sel.addEventListener("change", () => { localStorage.setItem("messages.server", sel.value); render(); });
   $("#connectBtn").addEventListener("click", async () => {
     const st = stateOf(current()).status;
     if (st === "disconnected") await call("connect_server", { id: current() });
@@ -791,7 +791,7 @@ function initLauncher() {
     const p = e.payload;
     if (p.kind === "available") showUpdate(p.info);
     else if (p.kind === "progress") { bar.hidden = false; btn.hidden = true; $("#updateText").textContent = p.total ? `Téléchargement ${Math.floor(p.done * 100 / p.total)} %` : "Téléchargement…"; }
-    else if (p.kind === "installing") { btn.hidden = true; $("#updateText").textContent = "Installation : KIRC va redémarrer"; }
+    else if (p.kind === "installing") { btn.hidden = true; $("#updateText").textContent = "Installation : Messages va redémarrer"; }
     else if (p.kind === "error") { toast(p.message); call("update_info").then(showUpdate); }
   });
   call("update_info").then(showUpdate);
@@ -1031,7 +1031,7 @@ function initJoin() {
       o.value = s.id; o.textContent = s.name + (st === "connected" ? "" : " (non connecté)");
       sel.appendChild(o);
     }
-    const last = localStorage.getItem("kirc.server");
+    const last = localStorage.getItem("messages.server");
     const online = ov.servers.find(s => (ov.states[s.id] || {}).status === "connected");
     if (last && ov.servers.some(s => s.id === last)) sel.value = last; else if (online) sel.value = online.id;
     $("#jChannel").focus();
@@ -1509,7 +1509,7 @@ function initSwitcher() {
     { icon: "info", label: "À propos", run: () => invoke("open_window", { kind: "about" }) },
     { icon: "salon", label: "Rejoindre un salon…", run: () => invoke("open_window", { kind: "join" }) },
     { icon: "deconnecter", label: "Masquer dans la zone de notification", run: () => invoke("hide_all") },
-    { icon: "quitter", label: "Quitter KIRC", run: () => invoke("quit_app") },
+    { icon: "quitter", label: "Quitter Messages", run: () => invoke("quit_app") },
   ].map(a => ({ ...a, kind: "action", key: plain(a.label) }));
 
   // Every word typed must be found, in the name or in the server's: a word at the start of a name

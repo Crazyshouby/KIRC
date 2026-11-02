@@ -360,7 +360,7 @@ async fn link(
                     }
                     if idle > PING_AFTER && !pinged {
                         pinged = true;
-                        if let Err(e) = write_line(&mut wr, "PING :kirc").await {
+                        if let Err(e) = write_line(&mut wr, "PING :cdx").await {
                             break 'main End::Lost(e);
                         }
                     }

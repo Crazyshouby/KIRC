@@ -1,9 +1,9 @@
 {
-  "cdxUi": "2.0.2",
+  "cdxUi": "2.1.0",
   "files": {
     "ui/cdx/cdx-ui.css": {
       "from": "cdx-ui.css",
-      "sha256": "d40121fa7b74d04188b1c8b113b8f455420736c194e12f051af8149ec0a463c8"
+      "sha256": "03848b11a5c7c932349a2274c2dcc7e7ececce6414a5086661f16d0a8111078e"
     },
     "ui/cdx/themes.css": {
       "from": "themes.css",
@@ -11,15 +11,15 @@
     },
     "ui/cdx/fonts.css": {
       "from": "fonts.css",
-      "sha256": "757ace72c3088ac73ec54a42c91410fadccf0cf9021a5a0457eec1fee5202959"
+      "sha256": "667df1729ecd40167562b01deaf3002b5e2250044cc720e006074b81ba86f71c"
     },
     "ui/cdx/icons.js": {
       "from": "icons.js",
-      "sha256": "205579bd836708d9f9c848bd0a6dead7b6e733c66b6498fa084373bd267713f3"
+      "sha256": "c9b559516e1deaab5e095be385ab49056858f77f584543ff928da0f016c39371"
     },
     "src-tauri/src/cdx_bus.rs": {
       "from": "cdx_bus.rs",
-      "sha256": "a08acea8020e5226fe78d7d46888fd791ba8977e7a498cfba1454ccfb2546db8"
+      "sha256": "9b1bafb9e5552cb4ac9024e5fddfec7e438c5fa0aa32f1fc3991795b6f90d8eb"
     },
     "tools/cdx-verify.mjs": {
       "from": "cdx-verify.mjs",
@@ -27,15 +27,15 @@
     },
     "ui/cdx/cdx-bridge.js": {
       "from": "cdx-bridge.js",
-      "sha256": "471c46183fff3529301e0509addbb9cc303ad259e43acd6138d24c6da2f912a6"
+      "sha256": "1a61fb573c23562427321170e3e8c462536470c77884b246823b091c6bc2aa7f"
     },
     "ui/cdx/cdx-frame.js": {
       "from": "cdx-frame.js",
-      "sha256": "77c9cb34656eaf90d7781a181ab436bf70b153334aeb33a0c32adc6b8e7c5d7e"
+      "sha256": "ca0c321f87b783e9e139664d89ee0e9957f158e2a1f864f0fa013a5655c5eb5b"
     },
     "ui/cdx/cdx-frame.css": {
       "from": "cdx-frame.css",
-      "sha256": "6282dd7d848a1688736723ed2037a6162593143d578c6130c5a0c3517121eb98"
+      "sha256": "370abe1609e5f6d1e79aaf2fdb32c4778de29162df193665d4719548c640cb8c"
     },
     "ui/cdx/tokens.json": {
       "from": "tokens.json",

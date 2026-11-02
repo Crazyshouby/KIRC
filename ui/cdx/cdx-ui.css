@@ -1,6 +1,6 @@
 /* CDX-UI -- la charte graphique KDX (Haxial) en une feuille de style, prête à reprendre dans un autre projet.
 
-   Extraite de KIRC (ui/theme.css + ui/kirc.css) avec les valeurs FINALES : plus aucune couche qui en recouvre une autre.
+   Extraite de Messages, ex-KIRC (ui/theme.css + ui/kirc.css de l'époque) avec les valeurs FINALES : plus aucune couche qui en recouvre une autre.
    Pas de mise en page d'application ici, seulement : jetons (couleurs, polices), fenêtre et barre de titre, boutons,
    champs, cases, listes, onglets, barres de défilement, groupes, menus, infobulles, console.
    Voir CHARTE.md pour les règles, exemple.html pour tout voir assemblé.
@@ -46,9 +46,9 @@
   /* tokens:end */
 
   /* Polices (voir fonts.css). Un pixel de la police = un pixel CSS à 14 px. */
-  --font: "KIRC Pixel", "Segoe UI Symbol", "Segoe UI", sans-serif;
-  --font-log: "KIRC Pixel Log", "Segoe UI Symbol", "Segoe UI", sans-serif;               /* console, 13 px d'interligne */
-  --font-log-italic: "KIRC Pixel Log Italic", "Segoe UI Symbol", "Segoe UI", sans-serif;
+  --font: "CDX Pixel", "Segoe UI Symbol", "Segoe UI", sans-serif;
+  --font-log: "CDX Pixel Log", "Segoe UI Symbol", "Segoe UI", sans-serif;               /* console, 13 px d'interligne */
+  --font-log-italic: "CDX Pixel Log Italic", "Segoe UI Symbol", "Segoe UI", sans-serif;
 
   /* Dérivés : composés de jetons du thème, jamais d'une couleur écrite ici. */
   --muted: var(--text); --accent-2: var(--a-spark);                  /* noms de cdx-ui 1.x */

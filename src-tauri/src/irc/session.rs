@@ -804,7 +804,7 @@ impl Session {
             "VERSION" => format!("VERSION {}", self.cfg.version),
             "PING" => format!("PING {args}"),
             "TIME" => "TIME (non communiquée)".to_string(),
-            "SOURCE" => "SOURCE https://github.com/Crazyshouby/KIRC".to_string(),
+            "SOURCE" => "SOURCE https://github.com/Crazyshouby/cdx-messages".to_string(),
             _ => return,
         };
         // At most one reply per second: a flood of CTCP requests is a classic annoyance.
@@ -1447,10 +1447,10 @@ mod tests {
         SessionConfig {
             nick: "kirc".into(),
             user: "kirc".into(),
-            realname: "KIRC test".into(),
+            realname: "Messages test".into(),
             quit_message: "Au revoir".into(),
             part_message: "".into(),
-            version: "KIRC 0.1".into(),
+            version: "Messages 0.1".into(),
             ..Default::default()
         }
     }
@@ -1508,7 +1508,7 @@ mod tests {
         assert!(!mentions("kircher est là", "kirc"));
         assert!(!mentions("le_kirc_bot", "kirc"));
         assert!(!mentions("rien", ""));
-        assert!(!mentions("x kirc-", "kirc"), "'-' is a nick character");
+        assert!(!mentions("x messages-", "kirc"), "'-' is a nick character");
     }
 
     #[test]
@@ -1526,7 +1526,7 @@ mod tests {
         assert_eq!(out[0], "CAP LS 302");
         assert_eq!(out[1], "PASS secret");
         assert_eq!(out[2], "NICK kirc");
-        assert_eq!(out[3], "USER kirc 0 * :KIRC test");
+        assert_eq!(out[3], "USER kirc 0 * :Messages test");
         // The server offers nothing we want: CAP END straight away.
         let out = sent(&feed(&mut s, ":srv CAP * LS :multi-prefix=x batch"));
         assert!(out.iter().any(|l| l.starts_with("CAP REQ :multi-prefix")));
@@ -1625,7 +1625,7 @@ mod tests {
         let out = sent(&feed(&mut s, ":srv 001 kirc :Welcome"));
         assert_eq!(out, vec!["PRIVMSG NickServ :IDENTIFY pw"]);
         assert!(s.tick(1_500).is_empty(), "not yet");
-        feed(&mut s, ":NickServ!NickServ@services NOTICE kirc :You are now identified for kirc.");
+        feed(&mut s, ":NickServ!NickServ@services NOTICE kirc :You are now identified for messages.");
         let out = sent(&s.tick(1_600));
         assert_eq!(out, vec!["JOIN #b clé", "JOIN #a"], "keyed channels first");
         assert!(s.tick(9_999).is_empty(), "only once");
@@ -1794,7 +1794,7 @@ mod tests {
         let l = lines(&feed(&mut s, ":plain!p@h PRIVMSG #a :\u{1}ACTION danse\u{1}"));
         assert_eq!((l[0].kind, l[0].text.as_str()), (LineKind::Action, "danse"));
         let out = s.handle(&Message::parse(":plain!p@h PRIVMSG kirc :\u{1}VERSION\u{1}").unwrap(), 5_000);
-        assert_eq!(sent(&out), vec!["NOTICE plain :\u{1}VERSION KIRC 0.1\u{1}"]);
+        assert_eq!(sent(&out), vec!["NOTICE plain :\u{1}VERSION Messages 0.1\u{1}"]);
         // Rate limit: a second request within a second is ignored.
         let out = s.handle(&Message::parse(":plain!p@h PRIVMSG kirc :\u{1}VERSION\u{1}").unwrap(), 5_500);
         assert!(sent(&out).is_empty());
@@ -2179,6 +2179,6 @@ mod tests {
     fn username_with_spaces_is_sanitised() {
         let mut s = Session::new(SessionConfig { user: "a b@c".into(), ..cfg() });
         let out = sent(&s.start());
-        assert_eq!(out.last().unwrap(), "USER abc 0 * :KIRC test");
+        assert_eq!(out.last().unwrap(), "USER abc 0 * :Messages test");
     }
 }

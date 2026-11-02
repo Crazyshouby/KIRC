@@ -138,7 +138,7 @@ pub async fn install(app: AppHandle) -> Result<(), String> {
 
 /// Checks a few seconds after the start, then every six hours, as long as the setting is on.
 pub fn spawn_background(app: &AppHandle) {
-    if std::env::var_os("KIRC_NO_UPDATE_CHECK").is_some() || cfg!(debug_assertions) {
+    if std::env::var_os("CDX_MESSAGES_NO_UPDATE_CHECK").is_some() || cfg!(debug_assertions) {
         return;
     }
     let app = app.clone();

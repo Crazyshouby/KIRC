@@ -1,4 +1,4 @@
-"""A tiny scripted IRC server for testing KIRC by hand and in tests/e2e.mjs.
+"""A tiny scripted IRC server for testing Messages by hand and in tests/e2e.mjs.
 
     python tools/fake_ircd.py [--port 6667] [--tls-port 6697 --cert c.pem --key k.pem]
 
@@ -62,7 +62,7 @@ class Server:
         if key not in self.channels:
             self.channels[key] = {"name": name, "topic": "", "members": {}}
             if key == "#test":
-                self.channels[key]["topic"] = "Salon de test de KIRC"
+                self.channels[key]["topic"] = "Salon de test de Messages"
                 for n, m in self.virtual.items():
                     self.channels[key]["members"][n] = m
         return self.channels[key]

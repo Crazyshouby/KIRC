@@ -33,7 +33,7 @@ pub fn launch(start: Start) -> Task {
         autojoin: entry.autojoin_list(),
         quit_message: settings.quit_message.clone(),
         part_message: settings.part_message.clone(),
-        version: format!("KIRC {}", env!("CARGO_PKG_VERSION")),
+        version: format!("Messages {}", env!("CARGO_PKG_VERSION")),
         ignores: settings.ignores.clone(),
         alert_words: settings.alert_words.clone(),
     };

@@ -2,21 +2,21 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<title>KIRC</title>
+<title>Messages</title>
 <link rel="stylesheet" href="cdx/fonts.css">
 <link rel="stylesheet" href="cdx/cdx-ui.css">
 <link rel="stylesheet" href="cdx/themes.css">
 <link rel="stylesheet" href="cdx/cdx-frame.css">
-<link rel="stylesheet" href="kirc.css">
+<link rel="stylesheet" href="messages.css">
 </head>
 <body>
 <div id="app">
 
   <!-- The launcher: the main window, a column of buttons like CDX's. -->
   <section class="win" id="launcherWin">
-    <div class="tb"><span class="tb-title"><span class="pix" data-ic="kirc" data-size="14" style="vertical-align:-2px;margin-right:6px"></span>KIRC</span><button class="tb-btn tb-r" data-act="close" data-glyph="minus" title="Réduire dans la zone de notification" aria-label="Réduire dans la zone de notification"></button></div>
+    <div class="tb"><span class="tb-title"><span class="pix" data-ic="messages" data-size="14" style="vertical-align:-2px;margin-right:6px"></span>Messages</span><button class="tb-btn tb-r" data-act="close" data-glyph="minus" title="Réduire dans la zone de notification" aria-label="Réduire dans la zone de notification"></button></div>
     <div class="cb launcher">
-      <div class="logo-art" aria-hidden="true"><span>KIRC</span></div>
+      <div class="logo-art" aria-hidden="true"><span>Messages</span></div>
       <div class="status" id="statusPill"><span class="dot"></span><span id="statusText">Aucune connexion</span></div>
       <div class="banner" id="updateBar" hidden><span class="orb amber"></span><span class="t" id="updateText"></span><button class="ghost-btn" id="updateBtn">Installer</button></div>
       <select id="serverSelect" class="lsel" title="Serveur du carnet d'adresses" aria-label="Serveur"></select>
@@ -31,7 +31,7 @@
       <div class="lbtns">
         <button class="lbtn" id="btnSettings"><span class="pix" data-ic="reglages"></span>Réglages</button>
         <button class="lbtn" id="btnAbout"><span class="pix" data-ic="info"></span>À propos</button>
-        <button class="lbtn" id="btnQuit" title="Quitte tous les serveurs et ferme KIRC"><span class="pix" data-ic="quitter"></span>Quitter</button>
+        <button class="lbtn" id="btnQuit" title="Quitte tous les serveurs et ferme Messages"><span class="pix" data-ic="quitter"></span>Quitter</button>
       </div>
       <div class="counters"><span class="cnt" title="Serveurs connectés"><span class="pix" data-ic="connecter"></span><span id="cntServers">0</span></span><span class="cnt" title="Salons rejoints"><span class="pix" data-ic="salon"></span><span id="cntChannels">0</span></span></div>
     </div>
@@ -61,8 +61,8 @@
             </select>
             <fieldset class="grp" data-proto="whatsapp" hidden><legend>WhatsApp</legend>
             <label for="fWaName">Nom</label><input class="text-input" id="fWaName" maxlength="60" placeholder="WhatsApp">
-            <div class="hint">Client non officiel : WhatsApp n'autorise pas les clients tiers, et un compte qui en utilise un peut être suspendu. KIRC se lie à votre compte comme un appareil de plus (WhatsApp, Réglages, Appareils connectés). Après « Connecter », un code s'affiche dans la fenêtre des messages : scannez-le avec le téléphone.</div>
-            <div class="hint">Pour délier l'appareil : tapez /logout dans la fenêtre des messages, ou retirez-le depuis le téléphone. Supprimer ce compte efface la session de KIRC mais ne délie pas l'appareil.</div>
+            <div class="hint">Client non officiel : WhatsApp n'autorise pas les clients tiers, et un compte qui en utilise un peut être suspendu. Messages se lie à votre compte comme un appareil de plus (WhatsApp, Réglages, Appareils connectés). Après « Connecter », un code s'affiche dans la fenêtre des messages : scannez-le avec le téléphone.</div>
+            <div class="hint">Pour délier l'appareil : tapez /logout dans la fenêtre des messages, ou retirez-le depuis le téléphone. Supprimer ce compte efface la session de Messages mais ne délie pas l'appareil.</div>
             </fieldset>
             <fieldset class="grp" data-proto="irc"><legend>Serveur</legend>
             <label for="fName">Nom</label><input class="text-input" id="fName" maxlength="60">
@@ -97,7 +97,7 @@
             </fieldset>
           <fieldset class="grp"><legend>Connexion</legend>
             <span class="lbl"></span>
-            <label class="chk-row"><span class="switch"><input type="checkbox" id="fAuto"><span class="track"></span></span>Se connecter au démarrage de KIRC</label>
+            <label class="chk-row"><span class="switch"><input type="checkbox" id="fAuto"><span class="track"></span></span>Se connecter au démarrage de Messages</label>
             <label for="fJoin" data-proto="irc">Salons</label><textarea class="text-input" id="fJoin" rows="3" placeholder="#salon, #autre clé" data-proto="irc"></textarea>
           </fieldset>
           </form>
@@ -210,10 +210,10 @@
 
   <!-- About -->
   <section class="win" id="aboutWin">
-    <div class="tb"><button class="tb-btn tb-l" data-act="close" data-glyph="x" title="Fermer" aria-label="Fermer"></button><span class="tb-title">À propos de KIRC</span><button class="tb-btn tb-r" data-act="shade" data-glyph="minus" title="Enrouler" aria-label="Enrouler"></button></div>
+    <div class="tb"><button class="tb-btn tb-l" data-act="close" data-glyph="x" title="Fermer" aria-label="Fermer"></button><span class="tb-title">À propos de Messages</span><button class="tb-btn tb-r" data-act="shade" data-glyph="minus" title="Enrouler" aria-label="Enrouler"></button></div>
     <div class="cb about">
-      <span class="pix" data-ic="kirc" data-size="48"></span>
-      <div class="big">KIRC</div>
+      <span class="pix" data-ic="messages" data-size="48"></span>
+      <div class="big">Messages</div>
       <div class="ver mono" id="aboutVersion"></div>
       <p>Client IRC pour Windows, dans le style de KDX (Haxial).<br>Licence MIT — © Valentin Large.<br>Polices reconstituées d'après celles de KDX (Haxial).</p>
       <div class="inline"><button class="ghost-btn" id="checkUpdate">Rechercher une mise à jour</button></div>
@@ -338,6 +338,6 @@
 <script src="cdx/cdx-frame.js"></script>
 <script src="cdx/cdx-columns.js"></script>
 <script src="cdx/cdx-split.js"></script>
-<script src="kirc.js"></script>
+<script src="messages.js"></script>
 </body>
 </html>

@@ -15,16 +15,16 @@ root = Path(__file__).resolve().parent.parent
 HEAD = """MENTIONS LÉGALES ET LICENCES DES COMPOSANTS TIERS
 =================================================
 
-KIRC inclut ou utilise les composants suivants.
+Messages inclut ou utilise les composants suivants.
 
 L'interface reprend l'apparence du logiciel KDX (Haxial). Aucune ressource de KDX (image, police,
-fichier d'apparence) n'est reprise : tout est redessiné. KDX est une marque de Haxial ; KIRC n'est
+fichier d'apparence) n'est reprise : tout est redessiné. KDX est une marque de Haxial ; Messages n'est
 lié à Haxial d'aucune façon.
 
 ------------------------------------------------------------------------------
-KIRC
+Messages
 ------------------------------------------------------------------------------
-KIRC est distribué sous licence MIT (fichier LICENSE).
+Messages est distribué sous licence MIT (fichier LICENSE).
 
 """
 
@@ -38,7 +38,7 @@ def crates():
     reachable = {n["id"] for n in meta["resolve"]["nodes"]}
     rows = []
     for p in meta["packages"]:
-        if p["id"] not in reachable or p["name"] == "kirc":
+        if p["id"] not in reachable or p["name"] == "cdx-messages":
             continue
         rows.append((p["name"], p["version"], p.get("license") or "(voir le dépôt)", p.get("repository") or p.get("homepage") or ""))
     return sorted(set(rows))
@@ -49,10 +49,10 @@ def main():
     parts.append("------------------------------------------------------------------------------\n"
                  "Police\n"
                  "------------------------------------------------------------------------------\n"
-                 "KIRC Pixel et KIRC Pixel Log (tools/gen_font.py) reproduisent, pixel par pixel, les deux polices bitmap de\n"
+                 "CDX Pixel et CDX Pixel Log (tools/gen_font.py) reproduisent, pixel par pixel, les deux polices bitmap de\n"
                  "l'interface de KDX (Haxial Software), relevées sur des captures d'écran de KDX 1.6 ; les glyphes que ces\n"
-                 "captures ne montrent pas ont été dessinés pour KIRC. Les formes des lettres restent l'oeuvre de Haxial :\n"
-                 "leur redistribution relève de la décision de l'auteur de KIRC. Aucune police tierce n'est embarquée.\n\n")
+                 "captures ne montrent pas ont été dessinés pour Messages. Les formes des lettres restent l'oeuvre de Haxial :\n"
+                 "leur redistribution relève de la décision de l'auteur de Messages. Aucune police tierce n'est embarquée.\n\n")
     rows = crates()
     parts.append("------------------------------------------------------------------------------\n"
                  f"Bibliothèques Rust ({len(rows)}) liées à la version Windows\n"

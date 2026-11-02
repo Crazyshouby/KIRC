@@ -294,7 +294,7 @@ fn notify(app: &AppHandle, buffer: &str, nick: &str, body: &str) {
         }
         *last = Some(Instant::now());
     }
-    let title = if buffer.is_empty() { "KIRC".to_string() } else { text::truncate(buffer, 60) };
+    let title = if buffer.is_empty() { "Messages".to_string() } else { text::truncate(buffer, 60) };
     let body = text::strip_formatting(body);
     let body = if nick.is_empty() { body } else { format!("{nick} : {body}") };
     crate::suite::notify_shell(&title, &body, "info"); // et dans le centre rapide du shell CDX, s'il tourne
@@ -458,10 +458,10 @@ impl Kind {
             c.server(id).map_or_else(|| id.to_string(), |s| s.name.clone())
         };
         match self {
-            Kind::Launcher => "KIRC".into(),
+            Kind::Launcher => "Messages".into(),
             Kind::Servers => "Carnet d'adresses".into(),
             Kind::Settings => "Réglages".into(),
-            Kind::About => "À propos de KIRC".into(),
+            Kind::About => "À propos de Messages".into(),
             Kind::Join => "Rejoindre un salon".into(),
             Kind::Console(s) => format!("Messages — {}", server_name(s)),
             Kind::Whois(s, n) => format!("{n} — {}", server_name(s)),

@@ -3,6 +3,5 @@ src-tauri/target/
 src-tauri/gen/
 *.log
 tests/shots/
-tools/kirc-pixel*.ttf
+tools/cdx-pixel*.ttf
 __pycache__/
-cdx-frames/target/

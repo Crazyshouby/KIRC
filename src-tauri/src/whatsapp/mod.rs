@@ -20,7 +20,7 @@ pub fn launch(start: Start) -> Result<Task, String> {
     #[cfg(not(feature = "whatsapp"))]
     {
         let _ = start;
-        Err("WhatsApp n'est pas inclus dans cette version de KIRC".into())
+        Err("WhatsApp n'est pas inclus dans cette version de Messages".into())
     }
 }
 
@@ -61,7 +61,7 @@ mod tests {
 
     #[test]
     fn forgetting_an_account_removes_its_files() {
-        let dir = std::env::temp_dir().join(format!("kirc-wa-forget-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("messages-wa-forget-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(dir.join("whatsapp")).unwrap();
         for f in files(&dir, "s9") {

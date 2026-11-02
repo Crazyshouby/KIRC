@@ -1,5 +1,5 @@
 //! What the protocol layer tells the rest of the application. These types are
-//! serialised as they are to the pages (see ui/kirc.js).
+//! serialised as they are to the pages (see ui/messages.js).
 
 use serde::Serialize;
 

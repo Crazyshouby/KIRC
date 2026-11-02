@@ -39,7 +39,7 @@ jobs:
             if ($base -ne $v) { throw "Le tag $env:GITHUB_REF_NAME ne correspond pas à la version de Cargo.toml ($v)" }
           }
 
-      # The CDX-UI charter (ui/cdx, src-tauri/src/cdx_bus.rs) is copied from the cdx-ui repository (node tools/charte-sync.mjs --write kirc there):
+      # The CDX-UI charter (ui/cdx, src-tauri/src/cdx_bus.rs) is copied from the cdx-ui repository (node tools/charte-sync.mjs --write messages there):
       # a copy edited by hand or left stale by a local generator fails here.
       - name: Charter copies are untouched
         shell: pwsh
@@ -99,7 +99,7 @@ jobs:
         shell: pwsh
         run: |
           $env:PATH = "C:\Program Files\Git\usr\bin;$env:PATH"
-          node tests/e2e.mjs src-tauri/target/release/kirc.exe
+          node tests/e2e.mjs src-tauri/target/release/cdx-messages.exe
 
       - name: Checksum
         shell: pwsh
@@ -110,7 +110,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: KIRC-installer
+          name: Messages-installer
           path: |
             src-tauri/target/release/bundle/nsis/*-setup.exe
             src-tauri/target/release/bundle/nsis/*-setup.exe.sha256
@@ -131,7 +131,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
-          name: KIRC-installer
+          name: Messages-installer
           path: dist
       - name: Verify checksum
         run: cd dist && sha256sum -c *.sha256
@@ -147,4 +147,4 @@ jobs:
           flags=""
           case "$GITHUB_REF_NAME" in *-*) flags="--prerelease";; esac
           files=$(ls dist/*)
-          gh release create "$GITHUB_REF_NAME" $files --title "KIRC ${GITHUB_REF_NAME#v}" --notes "$notes" $flags
+          gh release create "$GITHUB_REF_NAME" $files --title "Messages ${GITHUB_REF_NAME#v}" --notes "$notes" $flags

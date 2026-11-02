@@ -323,7 +323,7 @@ mod tests {
 
     #[test]
     fn the_registry_survives_a_restart() {
-        let dir = std::env::temp_dir().join(format!("kirc-wa-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("messages-wa-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join("chats.json");

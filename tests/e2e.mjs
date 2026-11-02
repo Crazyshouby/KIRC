@@ -1,10 +1,10 @@
-// End-to-end test of the real application (node >= 22): starts tools/fake_ircd.py and KIRC with its
+// End-to-end test of the real application (node >= 22): starts tools/fake_ircd.py and Messages with its
 // own data directory, drives the pages through the WebView2 debugging port, checks what they show
 // and saves a screenshot of each window in tests/shots/.
 //
-//   node tests/e2e.mjs [path-to-kirc.exe]
+//   node tests/e2e.mjs [path-to-cdx-messages.exe]
 //
-// Nothing here touches the user's real configuration (KIRC_DATA_DIR) or credentials.
+// Nothing here touches the user's real configuration (CDX_MESSAGES_DATA_DIR) or credentials.
 import { spawn, execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, writeFileSync, rmSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -13,10 +13,10 @@ import { fileURLToPath } from "node:url";
 import net from "node:net";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const exe = process.argv[2] || join(root, "src-tauri", "target", "debug", "kirc.exe");
+const exe = process.argv[2] || join(root, "src-tauri", "target", "debug", "cdx-messages.exe");
 const shots = join(root, "tests", "shots");
 mkdirSync(shots, { recursive: true });
-const data = mkdtempSync(join(tmpdir(), "kirc-e2e-"));
+const data = mkdtempSync(join(tmpdir(), "messages-e2e-"));
 const DEBUG_PORT = 9333, IRC_PORT = 16667, TLS_PORT = 16697;
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -64,7 +64,7 @@ const win = (w, extra = {}) => p => p.get("w") === w && Object.entries(extra).ev
 // ---- processes
 const children = [];
 function start(cmd, args, opts = {}) { const c = spawn(cmd, args, { stdio: "ignore", windowsHide: true, ...opts }); children.push(c); return c; }
-// Only the processes started here are stopped (by pid, with their children): never every kirc.exe of the machine, which would close the user's own.
+// Only the processes started here are stopped (by pid, with their children): never every cdx-messages.exe of the machine, which would close the user's own.
 function cleanup() { for (const c of children) { try { execFileSync("taskkill", ["/F", "/T", "/PID", String(c.pid)], { stdio: "ignore" }); } catch { /* gone */ } try { c.kill(); } catch { /* gone */ } } try { rmSync(data, { recursive: true, force: true }); } catch { /* busy */ } }
 process.on("exit", cleanup);
 
@@ -75,7 +75,7 @@ async function main() {
   if (!existsSync(exe)) throw new Error("no exe: " + exe);
   writeFileSync(join(data, "config.json"), JSON.stringify({
     version: 1,
-    settings: { nick: "kirc", realname: "KIRC e2e", quit_message: "Au revoir", notifications: false },
+    settings: { nick: "kirc", realname: "Messages e2e", quit_message: "Au revoir", notifications: false },
     windows: { launcher: { x: 333, y: 222, w: 330, h: 600 } },
     servers: [{ id: "s1", name: "Serveur de test", host: "127.0.0.1", port: IRC_PORT, tls: false, autoconnect: false, autojoin: "#test", auth: "none" }],
   }));
@@ -84,13 +84,13 @@ async function main() {
   start("python", [join(root, "tools", "fake_ircd.py"), "--port", String(IRC_PORT), "--tls-port", String(TLS_PORT), "--cert", cert, "--key", key]);
   await until(() => new Promise(r => { const s = net.connect(IRC_PORT, "127.0.0.1", () => { s.destroy(); r(true); }); s.on("error", () => r(false)); }), "fake ircd");
 
-  const appEnv = { ...process.env, KIRC_NO_UPDATE_CHECK: "1", KIRC_DATA_DIR: data, WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: `--remote-debugging-port=${DEBUG_PORT}` };
+  const appEnv = { ...process.env, CDX_MESSAGES_NO_UPDATE_CHECK: "1", CDX_MESSAGES_DATA_DIR: data, WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: `--remote-debugging-port=${DEBUG_PORT}` };
   start(exe, [], { env: appEnv });
 
   console.log("launcher");
   const launcher = await page(win("launcher"), 30000);
   await until(() => launcher.eval("document.querySelectorAll('#serverSelect option').length === 1"), "server in the launcher");
-  check(await launcher.eval("document.title") === "KIRC", "launcher title");
+  check(await launcher.eval("document.title") === "Messages", "launcher title");
   check(await launcher.eval("document.querySelector('#statusText').textContent") === "Aucune connexion", "status: aucune connexion");
   check(await launcher.eval("document.querySelector('#connectBtn').textContent") === "Connecter", "connect button label");
   await launcher.shot("01-launcher");
@@ -99,7 +99,7 @@ async function main() {
   await launcher.eval("document.querySelector('#connectBtn').click()");
   const chat = await page(win("chat", { b: "#test" }), 15000);
   await until(() => chat.eval("document.querySelectorAll('#memberList .mem').length === 4"), "4 members (3 virtual + us)");
-  // La barre entre la conversation et les membres (cdx-split.js). La webview partage son stockage avec le vrai KIRC : on repart des largeurs d'origine et on n'y laisse rien.
+  // La barre entre la conversation et les membres (cdx-split.js). La webview partage son stockage avec le vrai Messages : on repart des largeurs d'origine et on n'y laisse rien.
   await chat.eval("document.querySelector('#membersBox').previousElementSibling.firstElementChild.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }))");   // largeur d'origine, même si une largeur était gardée
   check(await chat.eval("document.querySelector('#membersBox').previousElementSibling.classList.contains('cdx-split')"), "the members pane has a drag bar");
   const mw = () => chat.eval("Math.round(document.querySelector('#membersBox').getBoundingClientRect().width)");
@@ -112,7 +112,7 @@ async function main() {
   check(members.join(" ") === "@alice +bob carol kirc", "member list sorted by rank: " + members.join(" "));
   const first = members[0];
   check(first === "@alice" || first === "@kirc", "operators first: " + first);
-  check((await chat.eval("document.querySelector('#topicText').textContent")) === "Salon de test de KIRC", "topic shown");
+  check((await chat.eval("document.querySelector('#topicText').textContent")) === "Salon de test de Messages", "topic shown");
   check((await chat.eval("document.querySelector('#myNick').textContent")) === "kirc", "own nick shown");
   await chat.shot("02-chat-joined");
   await until(() => launcher.eval("document.querySelector('#statusText').textContent.includes('1 serveur')"), "launcher says 1 connected");
@@ -300,7 +300,7 @@ async function main() {
   await lst.eval("(() => { const i = document.querySelector('#lFilter'); i.value = ''; i.dispatchEvent(new Event('input')); })()");
   await until(() => lst.eval("document.querySelectorAll('#chanList .chan-row').length === 200"), "filter cleared");
   check(await lst.eval("document.querySelectorAll('#lHead .cdx-colrz').length === 2"), "the list header has a handle on each column but the last");
-  // La webview partage son stockage avec le vrai KIRC : on part des largeurs d'origine (double-clic sur une poignée) et on ne laisse rien derrière soi.
+  // La webview partage son stockage avec le vrai Messages : on part des largeurs d'origine (double-clic sur une poignée) et on ne laisse rien derrière soi.
   await lst.eval("document.querySelector('#lHead .cdx-colrz').dispatchEvent(new MouseEvent('dblclick', { bubbles: true }))");
   const colW = () => lst.eval("JSON.stringify([...document.querySelectorAll('#lHead > .lh')].map(b => Math.round(b.getBoundingClientRect().width)))");
   const w0 = JSON.parse(await colW());
@@ -486,7 +486,7 @@ async function main() {
   console.log("hiding a chat from the list of the main menu");
   const menuRows = (sel = "") => launcher.eval(`[...document.querySelectorAll('#openList .row-item${sel}')].map(e => e.textContent)`);
   const refreshLauncher = () => launcher.eval("window.dispatchEvent(new Event('focus'))");
-  await launcher.eval("localStorage.removeItem('kirc.hiddenOpen')");
+  await launcher.eval("localStorage.removeItem('messages.hiddenOpen')");
   check((await inv("set_hidden", { server: known.id, buffer: "#TEST", hidden: true })).err === undefined, "a chat is hidden (the case does not matter)");
   await refreshLauncher();
   await until(async () => (await menuRows(".hidhead")).some(t => t.includes("Masquées (1)")), "the hidden chat goes under a heading", 8000);

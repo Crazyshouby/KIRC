@@ -1,8 +1,8 @@
 //! The network layer against a scripted server on the loopback interface.
 
-use kirc_lib::irc::event::{ConnState, Event, LineKind};
-use kirc_lib::irc::net::{self, Command, ConnectionConfig, Sink};
-use kirc_lib::irc::session::{Session, SessionConfig};
+use cdx_messages_lib::irc::event::{ConnState, Event, LineKind};
+use cdx_messages_lib::irc::net::{self, Command, ConnectionConfig, Sink};
+use cdx_messages_lib::irc::session::{Session, SessionConfig};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
@@ -43,7 +43,7 @@ fn session() -> Session {
         realname: "Test".into(),
         autojoin: vec!["#test".into()],
         quit_message: "Au revoir".into(),
-        version: "KIRC test".into(),
+        version: "Messages test".into(),
         ..Default::default()
     })
 }

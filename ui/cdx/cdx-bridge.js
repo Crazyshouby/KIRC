@@ -1,6 +1,6 @@
 /* cdx-bridge.js -- le pont entre une page CDX et son application hôte.
    Un seul contrat de fenêtre (docs/CONTRAT-FENETRE.md), trois transports :
-     tauri     KIRC : window.__TAURI__ (commandes win_ready / win_close / win_shade / win_zoom / win_drag, événements active / shade / theme)
+     tauri     Messages : window.__TAURI__ (commandes win_ready / win_close / win_shade / win_zoom / win_drag, événements active / shade / theme)
      strings   AudioLinker : chaînes « cmd|arg|arg » par chrome.webview.postMessage (dragstart, dragmove, dragend, resizewin, shade, closepanel)
      webview2  les applications C# (shell, Explorateur, Navigateur) : objets JSON { cmd: "win.drag", ... } et messages { type, value }
    Le transport est détecté ; <html data-cdx-host="strings"> force AudioLinker (impossible à distinguer d'un hôte JSON par détection).
@@ -19,7 +19,7 @@
   if (host === "tauri") {
     const invoke = ts.core.invoke;
     send = (cmd, args) => invoke(cmd, args);
-    // Écoute limitée à cette fenêtre : un écouteur de toute l'application recevrait aussi ce qui est envoyé aux autres fenêtres (KIRC en ouvre plusieurs).
+    // Écoute limitée à cette fenêtre : un écouteur de toute l'application recevrait aussi ce qui est envoyé aux autres fenêtres (Messages en ouvre plusieurs).
     const here = ts.webviewWindow && ts.webviewWindow.getCurrentWebviewWindow ? ts.webviewWindow.getCurrentWebviewWindow() : ts.event;
     listen = type => here.listen(type, e => emit(type, e.payload, e));
     Object.assign(win, {
@@ -60,7 +60,7 @@
 
   window.cdx = {
     host, win, send,
-    version: "2.0.2",
+    version: "2.1.0",
     on(type, fn) { if (!listeners[type]) { listeners[type] = []; listen(type); } listeners[type].push(fn); return () => this.off(type, fn); },
     off(type, fn) { listeners[type] = (listeners[type] || []).filter(f => f !== fn); },
     emit,   // pour les tests : simule un événement venu de l'hôte

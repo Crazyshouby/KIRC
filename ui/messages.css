@@ -1,4 +1,4 @@
-/* Layouts of the KIRC windows. Each window of the application is the same page
+/* Layouts of the Messages windows. Each window of the application is the same page
    (index.html) opened with ?w=<kind>; html[data-panel] picks the one that shows.
    Colours and controls come from cdx/cdx-ui.css (the CDX look) : no colour is written here, every rule reads a token of the theme,
    which can be light (Lavande, Lagon…) as well as dark. The only literal colours left are data : IRC rank bars, the banner artwork. */
@@ -8,7 +8,7 @@ select.text-input option { background: var(--card-2); color: var(--btn-text); }
 /* ---------- Which window this page shows ---------- */
 .win { display: none; }
 html[data-panel]:not([data-panel="all"]) .win { position: fixed; inset: 0; }
-.cb { gap: 0; } /* the charter spaces the children of a window by 5 px; the KIRC pages space them with their own margins */
+.cb { gap: 0; } /* the charter spaces the children of a window by 5 px; the Messages pages space them with their own margins */
 html[data-panel="launcher"] #launcherWin,
 html[data-panel="servers"] #serversWin,
 html[data-panel="settings"] #settingsWin,
@@ -155,7 +155,7 @@ body.nots .ln .ts { display: none; }
 .mem.r0 { border-left-color: #ff5cf0; } .mem.r1 { border-left-color: #ff8a3c; } .mem.r2 { border-left-color: #ff3030; }
 .mem.r3 { border-left-color: #faa320; } .mem.r4 { border-left-color: #2a5ae0; }
 
-/* The input bar is one line high: the buttons at the charter height (20 px), the text box on one line, growing with the message (kirc.js: fitInput) up to five. */
+/* The input bar is one line high: the buttons at the charter height (20 px), the text box on one line, growing with the message (messages.js: fitInput) up to five. */
 .inputbar { display: flex; gap: 6px; align-items: flex-end; flex: none; }
 .inputbar .text-input { padding: 3px 7px; height: 21px; min-height: 21px; resize: none; overflow-y: auto; }
 .inputbar .ghost-btn { flex: none; }

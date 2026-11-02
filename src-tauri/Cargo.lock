@@ -718,6 +718,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "cdx-messages"
+version = "0.5.0"
+dependencies = [
+ "base64 0.22.1",
+ "chrono",
+ "keyring",
+ "log",
+ "native-tls",
+ "qrcode",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-notification",
+ "tauri-plugin-opener",
+ "tauri-plugin-single-instance",
+ "tauri-plugin-updater",
+ "tokio",
+ "tokio-native-tls",
+ "whatsapp-rust",
+]
+
+[[package]]
 name = "cesu8"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2824,29 +2847,6 @@ dependencies = [
  "log",
  "windows-sys 0.60.2",
  "zeroize",
-]
-
-[[package]]
-name = "kirc"
-version = "0.4.0"
-dependencies = [
- "base64 0.22.1",
- "chrono",
- "keyring",
- "log",
- "native-tls",
- "qrcode",
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tauri-plugin-notification",
- "tauri-plugin-opener",
- "tauri-plugin-single-instance",
- "tauri-plugin-updater",
- "tokio",
- "tokio-native-tls",
- "whatsapp-rust",
 ]
 
 [[package]]

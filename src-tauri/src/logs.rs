@@ -1,5 +1,5 @@
 //! Conversation logs: one text file per channel or private conversation, in
-//! %APPDATA%\KIRC\logs\<server>\<buffer>.log, one line per message:
+//! %APPDATA%\CDX\Messages\logs\<server>\<buffer>.log, one line per message:
 //!
 //!   2026-10-28 21:41:03 <nick> text          message
 //!   2026-10-28 21:41:09 * nick text          action
@@ -38,7 +38,7 @@ impl Logger {
     pub fn new(root: PathBuf) -> Logger {
         let (tx, rx) = mpsc::channel::<Msg>();
         std::thread::Builder::new()
-            .name("kirc-logs".into())
+            .name("messages-logs".into())
             .spawn(move || {
                 let mut files: HashMap<PathBuf, File> = HashMap::new();
                 for msg in rx {
@@ -235,7 +235,7 @@ mod tests {
     }
 
     fn tmp(name: &str) -> PathBuf {
-        let d = std::env::temp_dir().join(format!("kirc-logs-{name}-{}", std::process::id()));
+        let d = std::env::temp_dir().join(format!("messages-logs-{name}-{}", std::process::id()));
         let _ = fs::remove_dir_all(&d);
         d
     }

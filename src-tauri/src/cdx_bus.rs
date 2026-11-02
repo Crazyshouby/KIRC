@@ -26,7 +26,7 @@ pub fn canonical_accent(s: &str) -> Option<&'static str> {
 }
 
 /// Les applications qui peuvent recevoir (un tube chacune).
-pub const APPS: [&str; 5] = ["shell", "explorer", "browser", "audiolinker", "kirc"];
+pub const APPS: [&str; 5] = ["shell", "explorer", "browser", "audiolinker", "messages"];
 
 pub fn is_accent(s: &str) -> bool {
     canonical_accent(s).is_some()
@@ -171,10 +171,10 @@ mod tests {
 
     #[test]
     fn compose_builds_the_envelope() {
-        let l = compose("open-url", "kirc", &json!({ "url": "https://example.org/" }));
+        let l = compose("open-url", "messages", &json!({ "url": "https://example.org/" }));
         let v: Value = serde_json::from_str(&l).unwrap();
         assert_eq!(v["type"], "open-url");
-        assert_eq!(v["from"], "kirc");
+        assert_eq!(v["from"], "messages");
         assert_eq!(v["data"]["url"], "https://example.org/");
         assert!(!l.contains('\n'));
     }
@@ -251,8 +251,8 @@ mod tests {
             let _g = ENV.lock().unwrap_or_else(|e| e.into_inner());
             std::env::set_var("CDX_PIPE_PREFIX", &prefix);
         }
-        assert!(send("browser", "open-url", &json!({}), "kirc").is_err(), "personne n'écoute");
-        assert!(send("nimporte", "x", &json!({}), "kirc").is_err(), "nom inconnu");
+        assert!(send("browser", "open-url", &json!({}), "messages").is_err(), "personne n'écoute");
+        assert!(send("nimporte", "x", &json!({}), "messages").is_err(), "nom inconnu");
         let mut server = ServerOptions::new().first_pipe_instance(true).access_outbound(false).create(format!(r"\\.\pipe\{prefix}browser")).unwrap();
         let reader = tokio::spawn(async move {
             server.connect().await.unwrap();
@@ -260,13 +260,13 @@ mod tests {
             server.read_to_string(&mut got).await.unwrap();
             got
         });
-        tokio::task::spawn_blocking(|| send("browser", "open-url", &json!({ "url": "https://example.org/" }), "kirc").unwrap()).await.unwrap();
+        tokio::task::spawn_blocking(|| send("browser", "open-url", &json!({ "url": "https://example.org/" }), "messages").unwrap()).await.unwrap();
         let got = reader.await.unwrap();
         assert!(got.ends_with('\n') && got.matches('\n').count() == 1, "une seule ligne");
         let v: Value = serde_json::from_str(got.trim_end()).unwrap();
-        assert_eq!((v["type"].as_str(), v["from"].as_str(), v["data"]["url"].as_str()), (Some("open-url"), Some("kirc"), Some("https://example.org/")));
+        assert_eq!((v["type"].as_str(), v["from"].as_str(), v["data"]["url"].as_str()), (Some("open-url"), Some("messages"), Some("https://example.org/")));
         let huge = json!({ "u": "x".repeat(MAX_LINE) });
-        assert!(send("browser", "open-url", &huge, "kirc").is_err(), "plus de 64 Ko");
+        assert!(send("browser", "open-url", &huge, "messages").is_err(), "plus de 64 Ko");
         std::env::remove_var("CDX_PIPE_PREFIX");
     }
 }

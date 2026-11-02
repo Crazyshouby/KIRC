@@ -1,6 +1,6 @@
-# KIRC
+# Messages
 
-Un client IRC pour Windows, dans le style de **CDX** (Haxial) : chaque fonction est sa propre fenêtre sans bordure, avec le cadre gris et rouge, les boutons biseautés, les champs noirs à texte vert et les pictogrammes en pixels de l'original. Même univers visuel qu'[AudioLinker](https://github.com/Crazyshouby/AudioLinker).
+La messagerie de la suite CDX pour Windows (IRC et WhatsApp ; anciennement **KIRC**, renommée le 02/11/2026), dans le style de **CDX** (Haxial) : chaque fonction est sa propre fenêtre sans bordure, avec le cadre gris et rouge, les boutons biseautés, les champs noirs à texte vert et les pictogrammes en pixels de l'original. Même univers visuel qu'[AudioLinker](https://github.com/Crazyshouby/AudioLinker).
 
 Écrit avec [Tauri 2](https://tauri.app) (Rust + WebView2). Interface en français.
 
@@ -23,13 +23,13 @@ Un client IRC pour Windows, dans le style de **CDX** (Haxial) : chaque fonction 
 - **Mémoire des fenêtres** : position et taille de chacune, retrouvées au démarrage.
 - **Masquer** un salon ou une conversation de la liste du menu principal (clic droit) ; les lignes masquées sont sous un titre « Masquées » qui s'ouvre et se ferme.
 - Zone de notification : le bouton « − » du menu principal range tout, un clic sur l'icône ramène tout.
-- **WhatsApp (facultatif, version compilée avec la fonction `whatsapp`)** : KIRC se lie à votre compte comme un appareil de plus (code à scanner dans la fenêtre des messages) ; les groupes sont dans le menu principal, les conversations s'ouvrent à l'arrivée d'un message ou par `/query numéro`. **Client non officiel** : WhatsApp n'autorise pas les clients tiers, le compte peut être suspendu. Texte et images (aperçu, puis image entière au clic ; envoi par le bouton « Image… » ou le collage) ; les vidéos, messages vocaux et fichiers apparaissent comme `[vidéo]`, etc. ; appels audio et vidéo en 1:1 (essai) ; pas d'appel de groupe.
+- **WhatsApp (facultatif, version compilée avec la fonction `whatsapp`)** : Messages se lie à votre compte comme un appareil de plus (code à scanner dans la fenêtre des messages) ; les groupes sont dans le menu principal, les conversations s'ouvrent à l'arrivée d'un message ou par `/query numéro`. **Client non officiel** : WhatsApp n'autorise pas les clients tiers, le compte peut être suspendu. Texte et images (aperçu, puis image entière au clic ; envoi par le bouton « Image… » ou le collage) ; les vidéos, messages vocaux et fichiers apparaissent comme `[vidéo]`, etc. ; appels audio et vidéo en 1:1 (essai) ; pas d'appel de groupe.
 
 Fermer la fenêtre d'un **salon** le quitte (comme dans la plupart des clients) ; fermer celle d'une conversation privée ne fait que la fermer.
 
 ## Installer
 
-Télécharger `KIRC_<version>_x64-setup.exe` depuis les [releases](https://github.com/Crazyshouby/KIRC/releases), puis le lancer : installation par utilisateur, sans droits d'administrateur. WebView2 est installé s'il manque (Windows 11 l'a déjà).
+Télécharger `Messages_<version>_x64-setup.exe` depuis les [releases](https://github.com/Crazyshouby/cdx-messages/releases), puis le lancer : installation par utilisateur, sans droits d'administrateur. WebView2 est installé s'il manque (Windows 11 l'a déjà).
 
 L'exécutable n'est pas signé par une autorité de certification : SmartScreen peut demander une confirmation (« Informations complémentaires », puis « Exécuter quand même »).
 
@@ -37,10 +37,10 @@ L'exécutable n'est pas signé par une autorité de certification : SmartScreen 
 
 | Quoi | Où |
 |---|---|
-| Carnet d'adresses, réglages, positions des fenêtres | `%APPDATA%\KIRC\config.json` |
-| Journaux de conversation | `%APPDATA%\KIRC\logs\<serveur>\<salon>.log` |
-| Mots de passe | Gestionnaire d'identifiants Windows (`KIRC`) |
-| Cache de la vue web | `%LOCALAPPDATA%\fr.valentinlarge.kirc` |
+| Carnet d'adresses, réglages, positions des fenêtres | `%APPDATA%\CDX\Messages\config.json` (l'ancien dossier `%APPDATA%\KIRC` est déplacé là au premier lancement) |
+| Journaux de conversation | `%APPDATA%\CDX\Messages\logs\<serveur>\<salon>.log` |
+| Mots de passe | Gestionnaire d'identifiants Windows (`CDX Messages` ; les entrées `KIRC` d'avant sont reprises à la première lecture) |
+| Cache de la vue web | `%LOCALAPPDATA%\fr.valentinlarge.cdx.messages` |
 
 Chaque fenêtre garde en mémoire 1000 lignes par défaut (réglable). Les conversations sont aussi écrites dans les journaux (réglages : désactivation, durée de conservation) ; les messages privés y sont donc enregistrés tant que l'option est active.
 
@@ -86,4 +86,4 @@ tools/                         générateur de pictogrammes, serveur IRC factice
 
 ## Licence
 
-MIT — voir [LICENSE](LICENSE). Les deux polices de l'interface sont reconstituées (`tools/gen_font.py`) d'après celles de KDX : voir `THIRD-PARTY-NOTICES.txt`. KDX est une marque de Haxial ; KIRC n'en reprend que l'apparence et n'est lié à Haxial d'aucune façon.
+MIT — voir [LICENSE](LICENSE). Les deux polices de l'interface sont reconstituées (`tools/gen_font.py`) d'après celles de KDX : voir `THIRD-PARTY-NOTICES.txt`. KDX est une marque de Haxial ; Messages n'en reprend que l'apparence et n'est lié à Haxial d'aucune façon.
