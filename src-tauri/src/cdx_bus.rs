@@ -26,7 +26,7 @@ pub fn canonical_accent(s: &str) -> Option<&'static str> {
 }
 
 /// Les applications qui peuvent recevoir (un tube chacune).
-pub const APPS: [&str; 5] = ["shell", "explorer", "browser", "audiolinker", "messages"];
+pub const APPS: [&str; 5] = ["shell", "explorer", "browser", "audio_linker", "messages"];
 
 pub fn is_accent(s: &str) -> bool {
     canonical_accent(s).is_some()
@@ -213,7 +213,7 @@ mod tests {
 
     #[test]
     fn app_names_are_a_whitelist() {
-        assert!(is_app("browser") && is_app("audiolinker"));
+        assert!(is_app("browser") && is_app("audio_linker"));
         assert!(!is_app("..\\evil") && !is_app("") && !is_app("Browser"));
         assert!(is_accent("sarcelle") && !is_accent("rose"));
     }

@@ -1,5 +1,5 @@
 {
-  "cdxUi": "2.3.0",
+  "cdxUi": "2.3.1",
   "files": {
     "ui/cdx/cdx-ui.css": {
       "from": "cdx-ui.css",
@@ -19,7 +19,7 @@
     },
     "src-tauri/src/cdx_bus.rs": {
       "from": "cdx_bus.rs",
-      "sha256": "9b1bafb9e5552cb4ac9024e5fddfec7e438c5fa0aa32f1fc3991795b6f90d8eb"
+      "sha256": "15561d35da4071858d058be282dc6d15ebe26931e04a0f47af77a15b5aecadf9"
     },
     "tools/cdx-verify.mjs": {
       "from": "cdx-verify.mjs",
@@ -27,15 +27,15 @@
     },
     "ui/cdx/cdx-bridge.js": {
       "from": "cdx-bridge.js",
-      "sha256": "a873832739a1040504e08447d7ec39d0767951660c7f2585a0f684ce5ae8b0dc"
+      "sha256": "3e1500c773012f4e37b4948919dace309acfb5712bc93703f35e70d33f26ae72"
     },
     "ui/cdx/cdx-frame.js": {
       "from": "cdx-frame.js",
-      "sha256": "ca0c321f87b783e9e139664d89ee0e9957f158e2a1f864f0fa013a5655c5eb5b"
+      "sha256": "f16698986b72b7dc374246353675d0c1dc2f789109477cc319c9b4c5e5ce4e97"
     },
     "ui/cdx/cdx-frame.css": {
       "from": "cdx-frame.css",
-      "sha256": "370abe1609e5f6d1e79aaf2fdb32c4778de29162df193665d4719548c640cb8c"
+      "sha256": "2f1a7698193b728609f6a340e4036c104a2e6a4fcf0e272e4c0d2464f1092ac7"
     },
     "ui/cdx/tokens.json": {
       "from": "tokens.json",

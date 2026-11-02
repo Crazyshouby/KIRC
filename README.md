@@ -1,6 +1,6 @@
 # Messages
 
-La messagerie de la suite CDX pour Windows (IRC et WhatsApp ; anciennement **KIRC**, renommée le 02/11/2026), dans le style de **CDX** (Haxial) : chaque fonction est sa propre fenêtre sans bordure, avec le cadre gris et rouge, les boutons biseautés, les champs noirs à texte vert et les pictogrammes en pixels de l'original. Même univers visuel qu'[AudioLinker](https://github.com/Crazyshouby/AudioLinker).
+La messagerie de la suite CDX pour Windows (IRC et WhatsApp ; anciennement **KIRC**, renommée le 02/11/2026), dans le style de **CDX** (Haxial) : chaque fonction est sa propre fenêtre sans bordure, avec le cadre gris et rouge, les boutons biseautés, les champs noirs à texte vert et les pictogrammes en pixels de l'original. Même univers visuel qu'[Audio Linker](https://github.com/Crazyshouby/cdx-windows/tree/main/src/cdx-audio_linker).
 
 Écrit avec [Tauri 2](https://tauri.app) (Rust + WebView2). Interface en français.
 

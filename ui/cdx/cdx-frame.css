@@ -2,7 +2,7 @@
 
 /* Une fenêtre inactive posée dans une fenêtre active (aperçu, carte d'Alt+Tab, boîte de dialogue) ne doit pas hériter des jetons de titre de l'accent :
    ces jetons (« t- ») sont hérités par le CSS. Le correctif redonne les jetons du cadre inactif du thème aux fenêtres non actives : celles d'une page dont le corps
-   n'est pas actif, et celles posées dans une autre fenêtre. (Dans Messages et AudioLinker la fenêtre active est body.active : une fenêtre de premier niveau n'est
+   n'est pas actif, et celles posées dans une autre fenêtre. (Dans Messages et Audio Linker la fenêtre active est body.active : une fenêtre de premier niveau n'est
    jamais forcée au gris tant que le corps est actif.) */
 body:not(.active) .win:not(.active), .win .win:not(.active) {
   --t-edge: var(--tb-edge); --t-low: var(--tb-low); --t-grad: linear-gradient(var(--tb-from), var(--tb-grad-mid) 47%, var(--tb-to));

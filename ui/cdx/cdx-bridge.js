@@ -1,9 +1,9 @@
 /* cdx-bridge.js -- le pont entre une page CDX et son application hôte.
    Un seul contrat de fenêtre (docs/CONTRAT-FENETRE.md), trois transports :
      tauri     Messages : window.__TAURI__ (commandes win_ready / win_close / win_shade / win_zoom / win_drag, événements active / shade / theme)
-     strings   AudioLinker : chaînes « cmd|arg|arg » par chrome.webview.postMessage (dragstart, dragmove, dragend, resizewin, shade, closepanel)
+     strings   Audio Linker : chaînes « cmd|arg|arg » par chrome.webview.postMessage (dragstart, dragmove, dragend, resizewin, shade, closepanel)
      webview2  les applications C# (shell, Explorateur, Navigateur) : objets JSON { cmd: "win.drag", ... } et messages { type, value }
-   Le transport est détecté ; <html data-cdx-host="strings"> force AudioLinker (impossible à distinguer d'un hôte JSON par détection).
+   Le transport est détecté ; <html data-cdx-host="strings"> force Audio Linker (impossible à distinguer d'un hôte JSON par détection).
    Usage :  cdx.win.drag("start") · cdx.win.resize("start", 17) · cdx.win.close() · cdx.on("theme", name => ...) · cdx.send("ma-commande", { a: 1 }) */
 (() => {
   "use strict";
@@ -60,7 +60,7 @@
 
   window.cdx = {
     host, win, send,
-    version: "2.3.0",
+    version: "2.3.1",
     on(type, fn) { if (!listeners[type]) { listeners[type] = []; listen(type); } listeners[type].push(fn); return () => this.off(type, fn); },
     off(type, fn) { listeners[type] = (listeners[type] || []).filter(f => f !== fn); },
     emit,   // pour les tests : simule un événement venu de l'hôte

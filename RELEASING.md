@@ -8,7 +8,7 @@ La version vit à **un seul endroit** : `version` dans `src-tauri/Cargo.toml`. T
 4. Recette manuelle sur l'installateur de la CI : installation, connexion à un vrai serveur (Libera.Chat en TLS), `/join`, message privé, notification, déplacement/enroulement/fermeture des fenêtres, redémarrage (positions retrouvées), désinstallation. Écran à échelle d'affichage différente de 100 % et deux écrans.
 5. `git tag v0.1.0 && git push origin v0.1.0` : la CI publie la release (un tag contenant `-` est une préversion).
 
-L'exécutable n'est pas signé. La même démarche que pour AudioLinker (SignPath Foundation, projet MIT public) s'applique : voir `RELEASING.md` d'AudioLinker.
+L'exécutable n'est pas signé. La même démarche que pour Audio Linker (SignPath Foundation, projet MIT public) s'applique : voir `src/cdx-audio_linker/RELEASING.md` dans cdx-windows.
 
 ## Mises à jour automatiques et clé de signature
 
