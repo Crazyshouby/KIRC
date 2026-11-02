@@ -60,7 +60,7 @@
 
   window.cdx = {
     host, win, send,
-    version: "2.1.0",
+    version: "2.2.0",
     on(type, fn) { if (!listeners[type]) { listeners[type] = []; listen(type); } listeners[type].push(fn); return () => this.off(type, fn); },
     off(type, fn) { listeners[type] = (listeners[type] || []).filter(f => f !== fn); },
     emit,   // pour les tests : simule un événement venu de l'hôte
