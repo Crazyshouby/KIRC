@@ -64,22 +64,27 @@ pub async fn get_overview(state: State<'_, App>) -> R<Overview> {
         let c = state.config.lock().unwrap();
         (c.settings.clone(), c.servers.clone(), c.hidden.clone())
     };
-    // The credential manager is asked outside the lock: it can take a moment.
-    let servers = entries
-        .into_iter()
-        .map(|entry| {
-            let has_pass = secrets::get(&entry.id, "pass").is_some();
-            let has_auth = secrets::get(&entry.id, "auth").is_some();
-            let caps = caps_of(&entry);
-            ServerView { entry, has_pass, has_auth, caps }
-        })
-        .collect();
+    // The credential manager is asked outside the lock and off the async workers: it can take a moment (up to two reads per server).
+    let servers = tauri::async_runtime::spawn_blocking(move || {
+        entries
+            .into_iter()
+            .map(|entry| {
+                let has_pass = secrets::get(&entry.id, "pass").is_some();
+                let has_auth = secrets::get(&entry.id, "auth").is_some();
+                let caps = caps_of(&entry);
+                ServerView { entry, has_pass, has_auth, caps }
+            })
+            .collect::<Vec<_>>()
+    })
+    .await
+    .map_err(|e| e.to_string())?;
     let states = state.states.lock().unwrap().iter().map(|(k, v)| (k.clone(), v.summary())).collect();
     Ok(Overview { settings, servers, states, protocols: Protocol::available(), hidden })
 }
 
 /// Hides a chat from the list of the main menu (or shows it again).
-#[tauri::command]
+// Hors du fil principal (Tauri 2 : une commande synchrone y bloque toutes les fenêtres).
+#[tauri::command(async)]
 pub fn set_hidden(state: State<'_, App>, server: String, buffer: String, hidden: bool) -> R<bool> {
     if buffer.len() > 200 {
         return Err("Nom trop long".into());
@@ -202,7 +207,8 @@ fn push_filters(app: &AppHandle, state: &App, ignores: &[String], words: &[Strin
     }
 }
 
-#[tauri::command]
+// Hors du fil principal (Tauri 2 : une commande synchrone y bloque toutes les fenêtres).
+#[tauri::command(async)]
 pub fn buffer_snapshot(state: State<'_, App>, server: String, buffer: String) -> R<Snapshot> {
     let (settings, caps) = {
         let c = state.config.lock().unwrap();
@@ -256,12 +262,14 @@ pub async fn open_window(app: AppHandle, kind: String, server: Option<String>, b
 }
 
 #[tauri::command]
-pub fn open_url(app: AppHandle, url: String) -> R<()> {
+pub async fn open_url(app: AppHandle, url: String) -> R<()> {
     if !text::is_web_url(&url) {
         return Err("Seuls les liens http et https peuvent être ouverts".into());
     }
-    // Dans le navigateur CDX s'il est là (lancé ou installé), sinon dans celui du système.
-    if crate::suite::open_in_cdx_browser(&url) {
+    // Dans le navigateur CDX s'il est là (lancé ou installé), sinon dans celui du système. Le lancer peut prendre quelques secondes :
+    // jamais sur le fil principal ni sur un fil de tokio.
+    let u = url.clone();
+    if tauri::async_runtime::spawn_blocking(move || crate::suite::open_in_cdx_browser(&u)).await.unwrap_or(false) {
         return Ok(());
     }
     tauri_plugin_opener::OpenerExt::opener(&app).open_url(url, None::<&str>).map_err(|e| e.to_string())
@@ -352,7 +360,8 @@ pub fn get_states(state: State<'_, App>) -> HashMap<String, ServerSummary> {
     state.states.lock().unwrap().iter().map(|(k, v)| (k.clone(), v.summary())).collect()
 }
 
-#[tauri::command]
+// Hors du fil principal (Tauri 2 : une commande synchrone y bloque toutes les fenêtres).
+#[tauri::command(async)]
 pub fn get_channel_list(state: State<'_, App>, server: String, filter: String, min_users: u32, by_name: bool, offset: usize, limit: usize) -> R<ListPage> {
     let states = state.states.lock().unwrap();
     let s = states.get(&server).ok_or("Serveur inconnu")?;
@@ -431,7 +440,8 @@ pub fn call_mute(app: AppHandle, state: State<'_, App>, server: String, id: Stri
 }
 
 /// A frame of the microphone (`kind` "audio") or of the camera ("video"), in base64.
-#[tauri::command]
+// Hors du fil principal (Tauri 2 : une commande synchrone y bloque toutes les fenêtres).
+#[tauri::command(async)]
 pub fn call_media(app: AppHandle, state: State<'_, App>, server: String, id: String, kind: String, data: String) -> R<()> {
     use base64::Engine as _;
     if data.len() > 600_000 {
@@ -448,20 +458,27 @@ pub fn call_media(app: AppHandle, state: State<'_, App>, server: String, id: Str
 
 /// The end of the log of a conversation, older than `before` (ms), to show above the live lines.
 #[tauri::command]
-pub async fn read_backlog(state: State<'_, App>, server: String, buffer: String, before: i64) -> R<Vec<crate::chat::event::Line>> {
+pub async fn read_backlog(app: AppHandle, state: State<'_, App>, server: String, buffer: String, before: i64) -> R<Vec<crate::chat::event::Line>> {
     let (enabled, name) = {
         let c = state.config.lock().unwrap();
         (c.settings.log_enabled, c.server(&server).map(|e| e.name.clone()))
     };
     let Some(name) = name.filter(|_| enabled && !buffer.is_empty()) else { return Ok(Vec::new()) };
-    state.logger.flush();
-    let mut lines = crate::logs::tail(&state.logs_dir(), &name, &buffer, before, 100);
+    // Flushing the logger and reading the log file are blocking I/O: off the async workers.
+    let mut lines = tauri::async_runtime::spawn_blocking(move || {
+        let st = app.state::<App>();
+        st.logger.flush();
+        crate::logs::tail(&st.logs_dir(), &name, &buffer, before, 100)
+    })
+    .await
+    .map_err(|e| e.to_string())?;
     let me = state.states.lock().unwrap().get(&server).map(|s| s.summary().nick).unwrap_or_default();
     crate::logs::mark_own(&mut lines, &me);
     Ok(lines)
 }
 
-#[tauri::command]
+// Hors du fil principal (Tauri 2 : une commande synchrone y bloque toutes les fenêtres).
+#[tauri::command(async)]
 pub fn open_logs_folder(app: AppHandle, state: State<'_, App>) -> R<()> {
     let dir = state.logs_dir();
     std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;

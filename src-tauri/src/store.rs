@@ -197,9 +197,9 @@ impl ServerState {
             .filter(|e| e.users >= min_users && (f.is_empty() || e.name.to_lowercase().contains(&f) || e.topic.to_lowercase().contains(&f)))
             .collect();
         if by_name {
-            rows.sort_by_key(|e| fold(&e.name));
+            rows.sort_by_cached_key(|e| fold(&e.name));
         } else {
-            rows.sort_by(|a, b| b.users.cmp(&a.users).then_with(|| fold(&a.name).cmp(&fold(&b.name))));
+            rows.sort_by_cached_key(|e| (std::cmp::Reverse(e.users), fold(&e.name)));   // fold calculé une fois par salon, pas à chaque comparaison
         }
         ListPage {
             total: self.channel_list.len(),

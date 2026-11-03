@@ -287,7 +287,22 @@ fn handle_event(app: &AppHandle, server: &str, ev: Event) {
         _ => {}
     }
 
-    let _ = app.emit("chat", Payload { server, seq, event: &shown });
+    // Seulement aux fenêtres qui peuvent en avoir besoin : celles de ce serveur (discussions, console, WHOIS, liste des salons) et les fenêtres
+    // générales (lanceur, carnet, réglages, aller à…). Avant : chaque ligne de chaque serveur partait dans toutes les fenêtres ouvertes.
+    let _ = app.emit_filter("chat", Payload { server, seq, event: &shown }, |target| match target {
+        tauri::EventTarget::WebviewWindow { label } | tauri::EventTarget::Window { label } | tauri::EventTarget::Webview { label } => wants_server_events(label, server),
+        _ => true,
+    });
+}
+
+/// Does the window `label` need the events of `server` ? Its own windows (chat-<hex>-…, whois-<hex>-…, console-<hex>, list-<hex>), and
+/// the general ones, whose label has no dash (launcher, servers, settings, about, join, switcher).
+pub(crate) fn wants_server_events(label: &str, server: &str) -> bool {
+    if !label.contains('-') {
+        return true;
+    }
+    let hex = text::label_part(server);
+    label.starts_with(&format!("chat-{hex}-")) || label.starts_with(&format!("whois-{hex}-")) || label == format!("console-{hex}") || label == format!("list-{hex}")
 }
 
 fn notify(app: &AppHandle, buffer: &str, nick: &str, body: &str) {
@@ -944,6 +959,22 @@ pub fn status_of(app: &AppHandle, id: &str) -> ConnState {
 #[cfg(test)]
 mod tests {
     use super::{snap_rect, snap_size};
+    use super::{wants_server_events, Kind};
+
+    #[test]
+    fn chat_events_only_reach_the_windows_of_their_server() {
+        let a = Kind::Chat("srv-a".into(), "#salon".into()).label();
+        let b = Kind::Chat("srv-b".into(), "#salon".into()).label();
+        assert!(wants_server_events(&a, "srv-a"));
+        assert!(!wants_server_events(&b, "srv-a"));
+        assert!(wants_server_events(&Kind::Console("srv-a".into()).label(), "srv-a"));
+        assert!(!wants_server_events(&Kind::Console("srv-b".into()).label(), "srv-a"));
+        assert!(wants_server_events(&Kind::Whois("srv-a".into(), "bob".into()).label(), "srv-a"));
+        assert!(wants_server_events(&Kind::List("srv-a".into()).label(), "srv-a"));
+        for general in ["launcher", "servers", "settings", "about", "join", "switcher"] {
+            assert!(wants_server_events(general, "srv-a"));
+        }
+    }
 
     // A 300 x 200 window "B" sits at (500, 100); windows are 200 x 100.
     const B: (i32, i32, i32, i32) = (500, 100, 300, 200);
