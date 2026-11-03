@@ -84,6 +84,8 @@ pub fn run() {
         .setup(|app| {
             let handle = app.handle().clone();
             suite::start(handle.clone()); // recolore les fenêtres quand l'accent de la suite change
+            // inscrit Messages dans apps.json, comme les programmes de cdx-windows : la suite peut alors le lancer (hors du fil principal : un verrou)
+            std::thread::spawn(|| { if let Ok(exe) = std::env::current_exe() { if let Err(e) = cdx_bus::register_app("messages", &exe) { log::warn!("apps.json : {e}"); } } });
 
             let show = MenuItem::with_id(app, "show", "Afficher Messages", true, None::<&str>)?;
             let quit = MenuItem::with_id(app, "quit", "Quitter", true, None::<&str>)?;
