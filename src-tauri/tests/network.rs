@@ -139,7 +139,7 @@ async fn oversized_line_is_skipped_and_the_link_survives() {
     read_until(&mut rd, |l| l == "JOIN #test").await;
 
     let mut huge = b":srv NOTICE * :".to_vec();
-    huge.extend(std::iter::repeat(b'x').take(200_000));
+    huge.extend(std::iter::repeat_n(b'x', 200_000));
     huge.extend_from_slice(b"\r\nPING :still-alive\r\n");
     wr.write_all(&huge).await.unwrap();
     read_until(&mut rd, |l| l == "PONG still-alive").await;

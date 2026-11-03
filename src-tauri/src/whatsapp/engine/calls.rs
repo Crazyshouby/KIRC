@@ -85,7 +85,7 @@ impl Ctx {
         let Some(live) = live.as_ref() else { return };
         match cmd {
             CallCommand::Audio { id, pcm } if id == live.id && pcm.len() == MIC_FRAME_BYTES => {
-                let samples: Vec<i16> = pcm.chunks_exact(2).map(|b| i16::from_le_bytes([b[0], b[1]])).collect();
+                let samples: Vec<i16> = pcm.as_chunks::<2>().0.iter().map(|b| i16::from_le_bytes(*b)).collect();
                 let _ = live.mic.try_send(samples);
             }
             CallCommand::Video { id, au } if id == live.id && au.len() <= MAX_AU_BYTES => {

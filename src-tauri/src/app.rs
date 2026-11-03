@@ -783,6 +783,7 @@ const SNAP_GAP: f64 = 0.0;
 
 /// Where a window of size (w, h) dragged to (x, y) lands once it clings to the other windows (x, y, w, h) and to the
 /// edges of the screen's work area, within `dist` pixels; windows are left `gap` pixels apart, the screen edge none.
+#[allow(clippy::too_many_arguments)] // une géométrie : position, taille, voisines, zone, réglages de la charte
 pub fn snap_rect(x: i32, y: i32, w: i32, h: i32, others: &[(i32, i32, i32, i32)], area: Option<(i32, i32, i32, i32)>, dist: i32, gap: i32) -> (i32, i32) {
     // (distance, new coordinate) of the closest edge found on each axis
     let mut bx: Option<(i32, i32)> = None;
@@ -818,7 +819,10 @@ pub fn snap_rect(x: i32, y: i32, w: i32, h: i32, others: &[(i32, i32, i32, i32)]
 }
 
 /// Rectangles (x, y, w, h) of the other visible windows of the application, and of the work area of the screen.
-fn neighbours(app: &AppHandle, label: &str, win: &tauri::WebviewWindow) -> (Vec<(i32, i32, i32, i32)>, Option<(i32, i32, i32, i32)>) {
+/// Un rectangle (x, y, largeur, hauteur) en pixels physiques.
+type Rect = (i32, i32, i32, i32);
+
+fn neighbours(app: &AppHandle, label: &str, win: &tauri::WebviewWindow) -> (Vec<Rect>, Option<Rect>) {
     let others = app
         .webview_windows()
         .into_iter()
@@ -843,6 +847,7 @@ fn snap(app: &AppHandle, label: &str, win: &tauri::WebviewWindow, x: i32, y: i32
 
 /// The size a window at (x, y) takes when its right and bottom edges are dragged to (w, h) and cling to the edges
 /// of the other windows (leaving `gap`, or lining up with them) and of the screen, within `dist` pixels.
+#[allow(clippy::too_many_arguments)]
 pub fn snap_size(x: i32, y: i32, w: i32, h: i32, others: &[(i32, i32, i32, i32)], area: Option<(i32, i32, i32, i32)>, dist: i32, gap: i32) -> (i32, i32) {
     let mut br: Option<(i32, i32)> = None; // closest right edge: (distance, coordinate)
     let mut bb: Option<(i32, i32)> = None; // closest bottom edge

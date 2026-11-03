@@ -411,7 +411,7 @@ pub async fn send_image(app: AppHandle, state: State<'_, App>, server: String, b
 
 /// Sends something about a call to the connection of `server`; the protocol must have calls.
 fn call_command(app: &AppHandle, state: &App, server: &str, cmd: crate::chat::CallCommand) -> R<()> {
-    let can = state.config.lock().unwrap().server(server).map_or(false, |e| caps_of(e).calls);
+    let can = state.config.lock().unwrap().server(server).is_some_and(|e| caps_of(e).calls);
     if !can {
         return Err("Les appels ne sont pas pris en charge par ce serveur".into());
     }

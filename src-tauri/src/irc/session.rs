@@ -724,7 +724,7 @@ impl Session {
         let msgid = msg.tag("msgid").filter(|v| valid_msgid(v)).unwrap_or("").to_string();
         let reply_to = msg.tag("+draft/reply").or_else(|| msg.tag("+reply")).filter(|v| valid_msgid(v)).unwrap_or("").to_string();
         let src_nick = msg.source().map_or("", |s| s.nick).to_string();
-        let from_server = msg.source().map_or(true, |s| s.user.is_empty() && s.host.is_empty() && s.nick.contains('.'));
+        let from_server = msg.source().is_none_or(|s| s.user.is_empty() && s.host.is_empty() && s.nick.contains('.'));
         let target = msg.param(0).to_string();
         let text = msg.param(1).to_string();
 
