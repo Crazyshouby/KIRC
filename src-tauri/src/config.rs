@@ -410,13 +410,34 @@ pub fn load_checked(dir: &Path) -> (Config, bool) {
     }
 }
 
-/// Writes the file atomically: a crash in the middle never leaves it truncated.
+/// Writes the file atomically: a crash in the middle never leaves it truncated, and two callers
+/// never write the same temporary file at once (their bytes would mix).
 pub fn save(dir: &Path, cfg: &Config) -> io::Result<()> {
-    fs::create_dir_all(dir)?;
-    let tmp = dir.join("config.json.tmp");
+    static SAVING: std::sync::Mutex<()> = std::sync::Mutex::new(());
     let text = serde_json::to_string_pretty(cfg).map_err(io::Error::other)?;
-    fs::write(&tmp, text)?;
-    fs::rename(&tmp, dir.join("config.json"))
+    let _g = SAVING.lock().unwrap_or_else(|e| e.into_inner());
+    fs::create_dir_all(dir)?;
+    write_atomic(&dir.join("config.json"), text.as_bytes())
+}
+
+/// Temporary file next to `path`, flushed to the disk, then renamed over it; the temporary file
+/// is removed if anything fails. Callers serialize their own writes to the same path.
+pub fn write_atomic(path: &Path, bytes: &[u8]) -> io::Result<()> {
+    use std::io::Write;
+    let mut name = path.file_name().unwrap_or_default().to_os_string();
+    name.push(".tmp");
+    let tmp = path.with_file_name(name);
+    let res = (|| {
+        let mut f = fs::File::create(&tmp)?;
+        f.write_all(bytes)?;
+        f.sync_all()?;
+        drop(f);
+        fs::rename(&tmp, path)
+    })();
+    if res.is_err() {
+        let _ = fs::remove_file(&tmp);
+    }
+    res
 }
 
 #[cfg(test)]
@@ -618,6 +639,29 @@ mod tests {
         assert_eq!(back.settings.nick, "valentin");
         assert_eq!(back.server(&id).unwrap().host, "irc.libera.chat");
         assert_eq!(back.windows["launcher"], Geometry { x: 10, y: 20, w: 200, h: 400 });
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn concurrent_saves_never_mix_their_bytes() {
+        let dir = tmp("concurrent");
+        let names: Vec<String> = (0..8).map(|i| format!("pseudo{i}-{}", "x".repeat(4000))).collect();
+        std::thread::scope(|s| {
+            for n in &names {
+                let dir = &dir;
+                s.spawn(move || {
+                    let mut c = Config { version: 1, ..Default::default() };
+                    c.settings.nick = n.clone();
+                    for _ in 0..20 {
+                        save(dir, &c).unwrap();
+                    }
+                });
+            }
+        });
+        let text = fs::read_to_string(dir.join("config.json")).unwrap();
+        let back: Config = serde_json::from_str(&text).expect("config.json lisible après des écritures simultanées");
+        assert!(names.contains(&back.settings.nick));
+        assert!(!dir.join("config.json.tmp").exists());
         let _ = fs::remove_dir_all(&dir);
     }
 

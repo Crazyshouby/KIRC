@@ -95,8 +95,8 @@ impl Registry {
         let mut chats: Vec<Chat> = self.by_buffer.values().cloned().collect();
         chats.sort_by(|a, b| a.buffer.cmp(&b.buffer));
         let Ok(text) = serde_json::to_string(&Saved { chats, names: self.names.clone(), phones: self.phones.clone() }) else { return };
-        let tmp = path.with_extension("tmp");
-        if std::fs::write(&tmp, text).and_then(|()| std::fs::rename(&tmp, &path)).is_ok() {
+        // Always called under the registry lock: no concurrent writer of this file.
+        if crate::config::write_atomic(&path, text.as_bytes()).is_ok() {
             self.dirty = false;
         }
     }

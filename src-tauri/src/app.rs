@@ -39,6 +39,7 @@ pub struct App {
     pub updates: crate::update::Updates,
     dirty: AtomicBool,
     writable: AtomicBool,
+    save_lock: Mutex<()>,
     /// Per window, while its title bar is held: cursor and window position at the start.
     drags: Anchors<(i32, i32)>,
     /// Per window, while its grip is held: cursor and window size at the start.
@@ -66,6 +67,7 @@ impl App {
             servers: Mutex::new(HashMap::new()),
             dirty: AtomicBool::new(false),
             writable: AtomicBool::new(true),
+            save_lock: Mutex::new(()),
             drags: Mutex::new(HashMap::new()),
             resizes: Mutex::new(HashMap::new()),
             shaded: Mutex::new(HashMap::new()),
@@ -87,12 +89,15 @@ impl App {
         self.dirty.store(true, Ordering::Relaxed);
     }
 
-    /// Writes the configuration if it changed since the last time.
+    /// Writes the configuration if it changed since the last time. Called from several threads (the
+    /// 2 s loop, commands, exit): the lock covers the snapshot and the write, so an older snapshot
+    /// can never be renamed over a newer one.
     pub fn flush(&self) {
         if !self.writable.load(Ordering::Relaxed) {
             return;
         }
-        if self.dirty.swap(false, Ordering::Relaxed) {
+        let _g = self.save_lock.lock().unwrap_or_else(|e| e.into_inner());
+        if self.dirty.swap(false, Ordering::AcqRel) {
             let cfg = self.config.lock().unwrap().clone();
             if let Err(e) = config::save(&self.dir, &cfg) {
                 log::error!("config.json non enregistré : {e}");
