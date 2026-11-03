@@ -1,5 +1,5 @@
 {
-  "cdxUi": "2.3.1",
+  "cdxUi": "2.4.0",
   "files": {
     "ui/cdx/cdx-ui.css": {
       "from": "cdx-ui.css",
@@ -21,13 +21,17 @@
       "from": "cdx_bus.rs",
       "sha256": "15561d35da4071858d058be282dc6d15ebe26931e04a0f47af77a15b5aecadf9"
     },
+    "src-tauri/src/cdx_tokens.rs": {
+      "from": "tokens.rs",
+      "sha256": "cf4681462088de8d52329557d22ed9439cc9173d83827f6691e6e4c34f7e3966"
+    },
     "tools/cdx-verify.mjs": {
       "from": "cdx-verify.mjs",
       "sha256": "347fc3c292ee0b9ca2b3ae82b78e6c9abe62fdea38b529ebeb088b7623240982"
     },
     "ui/cdx/cdx-bridge.js": {
       "from": "cdx-bridge.js",
-      "sha256": "3e1500c773012f4e37b4948919dace309acfb5712bc93703f35e70d33f26ae72"
+      "sha256": "9a584fc4cb2f36e22a06694150996a7d289388d549d6e64287c4434319ee5e17"
     },
     "ui/cdx/cdx-frame.js": {
       "from": "cdx-frame.js",

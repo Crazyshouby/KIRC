@@ -778,8 +778,8 @@ fn restore_min_size(app: &AppHandle, label: &str, win: &tauri::WebviewWindow) {
 /// A window being dragged clings to the edges of the others (and of its screen) when it comes this close, in
 /// logical pixels; two windows that cling are left `SNAP_GAP` logical pixels apart, a window and the screen edge none.
 /// `SNAP_GAP` is 0 since cdx-ui 2.0.2 (`snap_gap` in tokens.json): windows cling edge to edge; the parameter stays so the rule is testable.
-const SNAP_DIST: f64 = 10.0;
-const SNAP_GAP: f64 = 0.0;
+const SNAP_DIST: f64 = crate::cdx_tokens::SNAP_DISTANCE as f64;   // tokens.json « snap_distance », par la copie de la charte
+const SNAP_GAP: f64 = crate::cdx_tokens::SNAP_GAP as f64;
 
 /// Where a window of size (w, h) dragged to (x, y) lands once it clings to the other windows (x, y, w, h) and to the
 /// edges of the screen's work area, within `dist` pixels; windows are left `gap` pixels apart, the screen edge none.

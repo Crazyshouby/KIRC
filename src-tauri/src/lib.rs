@@ -5,6 +5,7 @@ pub mod config;
 pub mod irc;
 #[allow(dead_code)]
 pub mod cdx_bus;
+pub mod cdx_tokens;   // copie de la charte (cdx-ui generated/tokens.rs, charte-sync)
 pub mod logs;
 pub mod secrets;
 pub mod store;
