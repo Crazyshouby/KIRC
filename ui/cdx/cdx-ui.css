@@ -1,0 +1,387 @@
+/* CDX-UI -- la charte graphique KDX (Haxial) en une feuille de style, prête à reprendre dans un autre projet.
+
+   Extraite de Messages, ex-KIRC (ui/theme.css + ui/kirc.css de l'époque) avec les valeurs FINALES : plus aucune couche qui en recouvre une autre.
+   Pas de mise en page d'application ici, seulement : jetons (couleurs, polices), fenêtre et barre de titre, boutons,
+   champs, cases, listes, onglets, barres de défilement, groupes, menus, infobulles, console.
+   Voir CHARTE.md pour les règles, exemple.html pour tout voir assemblé.
+
+   Ordre de chargement :  fonts.css, cdx-ui.css, puis themes.css.
+   Pour changer de thème : <html data-theme="jean"> (les seize apparences de KDX : rouge, couchant, ambre, jean, marine, tramway, sarcelle, chocolat,
+   lavande, oxygene, techno, reve-bleu, reve-vert, reve-violet, lagon, turquoise ; voir tokens.json).
+   Aucune couleur n'est écrite ici en dehors du bloc généré : tout composant lit les jetons du thème, qui peut être clair ou sombre. */
+
+/* ================================================================ Jetons */
+:root {
+  /* tokens:begin -- généré par gen/gen_tokens.py depuis tokens.json : ne pas modifier à la main */
+  /* Thème par défaut : « Clair-obscur rouge » (Evil Chiaroscuro), mesuré sur KDX 1.6. themes.css remplace toute cette palette pour les autres thèmes. */
+  /* Surfaces */
+  --frame: #222222; --panel: #333333; --btn: #333333; --btn-hover: #3c3c3c; --card-2: #2a2a2a; --ink: #000000;
+  --col-a: #333333; --col-b: #444444; --head: #333333; --sb-track: #2a2a2a; --sb-btn: #333333; --sb-thumb: #333333;
+  --hl: #880000;
+  /* Texte */
+  --text: #ffffff; --faint: #888888; --btn-text: #ffffff; --head-text: #ffffff; --list-text: #ffffff; --title-text: #ffffff;
+  --tb-text: #ffffff; --hl-text: #ffffff; --field-ink: #00ff00; --own-ink: #ffffff; --sb-arrow: #888888;
+  /* Contours et reliefs */
+  --outline: #000000; --outline-active: #000000; --btn-outline: #000000; --field-outline: #000000; --line: #555555; --hi: #666666;
+  --hi2: #444444; --lo: #111111; --lo2: #222222; --field-hi: #666666; --field-lo: #111111; --row-hover: #3c3c3c;
+  --row-sel: #404040; --row-sel-ring: #757575;
+  /* Cadre inactif */
+  --tb-edge: #555555; --tb-mid: #222222; --tb-low: #111111; --tb-from: #0c0c0c; --tb-grad-mid: #222222; --tb-to: #8f8f8f;
+  /* Cadre actif et accent */
+  --a-edge: #cc0000; --a-mid: #880000; --a-dark: #440000; --a-hover: #660000; --a-title-from: #320000; --a-title-mid: #880000;
+  --a-title-to: #c30000; --bar-top: #e83c3c; --bar-mid: #c01010; --bar-bot: #8a0202; --a-spark: #ff8a74; --accent: #d41818;
+  --accent-rgb: 212, 24, 24; --ic-accent: #e02020; --ic-accent-dark: #8a0202; --def-outline: #000000; --def-edge: #cc0000; --def-mid: #880000;
+  /* Sélection */
+  --sel-bg: #001177; --sel-fg: #ff00ff;
+  --scheme: dark;
+  /* Images : une image ne lit pas de jeton, ces flèches sont donc générées à la couleur du thème (texte des boutons, flèches de défilement). */
+  --sel-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='5'%3E%3Cpath d='M0 0h9L4.5 5z' fill='%23ffffff'/%3E%3C/svg%3E");
+  --sb-up: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='4'%3E%3Cpath d='M0 4h8L4 0z' fill='%23888888'/%3E%3C/svg%3E"); --sb-down: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='4'%3E%3Cpath d='M0 0h8L4 4z' fill='%23888888'/%3E%3C/svg%3E");
+  --sb-left: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='8'%3E%3Cpath d='M4 0v8L0 4z' fill='%23888888'/%3E%3C/svg%3E"); --sb-right: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='8'%3E%3Cpath d='M0 0v8l4-4z' fill='%23888888'/%3E%3C/svg%3E");
+
+  /* États : une couleur de statut ne signifie jamais autre chose que son état, et ne change pas avec le thème. */
+  --green: #00ff00;          /* ok, connecté */
+  --warn: #faa320;           /* attention, occupé */
+  --red: #ff5a4a;            /* problème */
+  /* tokens:end */
+
+  /* Polices (voir fonts.css). Un pixel de la police = un pixel CSS à 14 px. */
+  --font: "CDX Pixel", "Segoe UI Symbol", "Segoe UI", sans-serif;
+  --font-log: "CDX Pixel Log", "Segoe UI Symbol", "Segoe UI", sans-serif;               /* console, 13 px d'interligne */
+  --font-log-italic: "CDX Pixel Log Italic", "Segoe UI Symbol", "Segoe UI", sans-serif;
+
+  /* Dérivés : composés de jetons du thème, jamais d'une couleur écrite ici. */
+  --muted: var(--text); --accent-2: var(--a-spark);                  /* noms de cdx-ui 1.x */
+  --red-frame: var(--a-mid);                                         /* anneau d'accent d'un champ ou d'une liste qui a le focus */
+  --bar: linear-gradient(var(--bar-top), var(--bar-mid) 45%, var(--bar-bot));
+  --title-focus: linear-gradient(var(--a-title-from), var(--a-title-mid) 50%, var(--a-title-to));   /* le dégradé de KDX a un coude à mi-hauteur */
+  /* Relief : clair en haut à gauche, sombre en bas à droite (quatre couleurs mesurées sur les boutons de chaque apparence). */
+  --bevel: inset 1px 1px 0 var(--hi), inset 2px 2px 0 var(--hi2), inset -1px -1px 0 var(--lo), inset -2px -2px 0 var(--lo2);
+  --bevel-down: inset 1px 1px 0 var(--btn-outline), inset 2px 2px 0 var(--lo), inset -1px -1px 0 var(--hi2);
+  /* Creux (champs, listes) : sombre en haut à gauche, clair en bas à droite, contour à l'intérieur. */
+  --sunken-border: var(--field-lo) var(--field-hi) var(--field-hi) var(--field-lo);
+  --sunken-shadow: inset 0 0 0 1px var(--field-outline);         /* KDX : le contour fait le tour, à l'intérieur de l'arête */
+  /* Cadre de fenêtre : quatre lignes concentriques, la clarté à l'extérieur en haut et à gauche, et le contour intérieur. */
+  --ring: inset 1px 1px 0 var(--tb-edge), inset 3px 3px 0 var(--tb-mid), inset 4px 4px 0 var(--tb-low),
+          inset -1px -1px 0 var(--tb-low), inset -3px -3px 0 var(--tb-mid), inset -4px -4px 0 var(--tb-edge), inset 0 0 0 5px var(--outline);
+  --ring-focus: inset 1px 1px 0 var(--a-edge), inset 3px 3px 0 var(--a-mid), inset 4px 4px 0 var(--a-dark),
+          inset -1px -1px 0 var(--a-dark), inset -3px -3px 0 var(--a-mid), inset -4px -4px 0 var(--a-edge), inset 0 0 0 5px var(--outline-active);
+  --focus-ring: 2px solid var(--warn);
+
+  /* Barre de titre : les jetons « t- » valent ceux du cadre inactif ; body.active ou .win.active les passent au cadre actif (l'accent).
+     cdx-frame.css les redonne à une fenêtre inactive posée dans une fenêtre active. */
+  --t-edge: var(--tb-edge); --t-low: var(--tb-low); --t-grad: linear-gradient(var(--tb-from) 0.5px, var(--tb-grad-mid) 8.5px, var(--tb-to) 17.5px);   /* 18 lignes, le coude à la 9e : les arrêts sont au centre des pixels pour reproduire KDX ligne à ligne */
+  --t-fill: var(--tb-mid); --t-hi: var(--tb-edge); --t-lo: var(--tb-low); --t-text: var(--tb-text); --t-outline: var(--outline);
+  --tb-grad: var(--t-grad); --tbb-fill: var(--t-fill); --tbb-hi: var(--t-hi); --tbb-lo: var(--t-lo);   /* noms de cdx-ui 1.x */
+
+  /* Coins : CDX n'a aucun arrondi. Les boutons de dialogue perdent 3 pixels par coin (chanfrein). */
+  --chamfer2: polygon(2px 0, calc(100% - 2px) 0, calc(100% - 2px) 1px, calc(100% - 1px) 1px, calc(100% - 1px) 2px, 100% 2px, 100% calc(100% - 2px), calc(100% - 1px) calc(100% - 2px), calc(100% - 1px) calc(100% - 1px), calc(100% - 2px) calc(100% - 1px), calc(100% - 2px) 100%, 2px 100%, 2px calc(100% - 1px), 1px calc(100% - 1px), 1px calc(100% - 2px), 0 calc(100% - 2px), 0 2px, 1px 2px, 1px 1px, 2px 1px);
+  --chamfer1: polygon(1px 0, calc(100% - 1px) 0, calc(100% - 1px) 1px, 100% 1px, 100% calc(100% - 1px), calc(100% - 1px) calc(100% - 1px), calc(100% - 1px) 100%, 1px 100%, 1px calc(100% - 1px), 0 calc(100% - 1px), 0 1px, 1px 1px);
+
+  color-scheme: var(--scheme);
+}
+
+/* ================================================================ Base */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  background: var(--frame);
+  color: var(--text);
+  font: 14px/16px var(--font);   /* la seule taille de l'interface : 14 px, interligne 16 px */
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  overflow: hidden;
+}
+[hidden] { display: none !important; }
+.mono, kbd, pre { font-family: var(--font); font-weight: 600; }
+.row { display: flex; align-items: center; gap: 10px; }
+.faint { color: var(--faint); }
+.pix { display: inline-flex; flex: none; line-height: 0; }       /* icônes pixel : SVG inline, jamais lissées */
+.pix svg { display: block; }
+
+/* ================================================================ Fenêtre */
+/* .win = cadre en relief ; .tb = barre de titre (21 px) ; .cb = contenu, un panneau gris à 5 px du cadre.
+   La fenêtre active porte body.active (cadre et barre de titre à l'accent) ; repliée : body.shaded. */
+.win {
+  position: relative; background: var(--frame); border: 1px solid var(--outline); box-shadow: var(--ring);
+  display: flex; flex-direction: column; min-width: 0; padding: 0 5px 5px;
+}
+.tb {
+  /* 21 px : un filet clair, 18 px de dégradé, un filet sombre, le contour noir ; le panneau commence juste dessous. */
+  flex: none; height: 21px; margin: 0 -5px; display: flex; align-items: center; justify-content: center;
+  background: var(--t-grad) 0 1px / 100% calc(100% - 2px) no-repeat, var(--t-edge);
+  box-shadow: inset 1px 1px 0 var(--t-edge), inset -1px -1px 0 var(--t-low);   /* le dégradé va jusqu'au filet du cadre : KDX ne montre pas l'anneau sous la barre de titre */
+  border-bottom: 1px solid var(--t-outline); color: var(--t-text); position: relative;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 28px;   /* KDX n'ombre pas le titre */
+}
+.tb:has(.tb-m, .tb-r2) { padding: 0 62px; }
+.tb-title { pointer-events: none; overflow: hidden; text-overflow: ellipsis; }
+.tb-btn {
+  /* 14 x 14 : contour, arête claire en haut à gauche, remplissage du cadre (l'accent si la fenêtre est active), arête sombre en bas à droite ;
+     le glyphe prend la couleur du texte du titre (stroke="currentColor"). */
+  position: absolute; top: 3px; width: 14px; height: 14px; padding: 0; display: grid; place-items: center; cursor: pointer; color: var(--t-text);
+  background: var(--t-fill); border: 1px solid var(--t-outline); box-shadow: inset 1px 1px 0 var(--t-hi), inset -1px -1px 0 var(--t-lo);
+}
+.tb-btn:hover { filter: brightness(1.35); }
+.tb-btn:active { box-shadow: inset 1px 1px 0 var(--t-lo), inset -1px -1px 0 var(--t-hi); }
+.tb-btn svg { width: 8px; height: 8px; display: block; }
+.tb-l { left: 4px; }                    /* fermer */
+.tb-r { right: 4px; }                   /* enrouler */
+.tb-r2 { right: 22px; }                 /* agrandir */
+.tb-m { left: 26px; width: 32px; background: repeating-linear-gradient(135deg, var(--t-text) 0 2px, var(--t-fill) 2px 5px); } /* menu de fenêtre : hachuré */
+.cb { flex: 1; min-height: 0; padding: 5px; background: var(--panel); display: flex; flex-direction: column; gap: 5px; }
+/* Poignée de redimensionnement : un triangle de 12 px dans le coin bas droit, rayé le long de son grand côté. */
+.grip-rz {
+  position: absolute; right: 5px; bottom: 5px; width: 12px; height: 12px; cursor: nwse-resize; z-index: 5;
+  clip-path: polygon(100% 0, 100% 100%, 0 100%);
+  background: repeating-linear-gradient(135deg, var(--tb-mid) 0 2px, var(--tb-edge) 2px 3px);
+}
+body.active, .win.active { --t-edge: var(--a-edge); --t-low: var(--a-dark); --t-grad: linear-gradient(var(--a-title-from) 0.5px, var(--a-title-mid) 8.5px, var(--a-title-to) 17.5px);
+  --t-fill: var(--a-mid); --t-hi: var(--a-edge); --t-lo: var(--a-dark); --t-text: var(--title-text); --t-outline: var(--outline-active); }
+body.active .win, .win.active { background: var(--a-mid); border-color: var(--outline-active); box-shadow: var(--ring-focus); }
+body.active .grip-rz, .win.active .grip-rz { background: repeating-linear-gradient(135deg, var(--a-dark) 0 2px, var(--a-edge) 2px 3px); }
+body.shaded .cb, body.shaded .grip-rz, .win.shaded .cb, .win.shaded .grip-rz, body.shaded .tabs, .win.shaded .tabs { display: none !important; }   /* !important : les pages affichent la poignée fenêtre par fenêtre */
+/* Cible d'un dépôt (fusion en onglets) : le haut de la fenêtre s'entoure de blanc. */
+body.droptarget .win::after, .win.droptarget::after { content: ""; position: absolute; inset: 0; z-index: 9; pointer-events: none; box-shadow: inset 0 0 0 3px var(--title-text); }
+
+/* ================================================================ Boutons */
+/* Bouton biseauté : arête claire en haut à gauche, sombre en bas à droite, coins chanfreinés (jamais arrondis). */
+.btn, .ghost-btn, .bevel {
+  font: inherit; font-weight: 700; color: var(--btn-text); cursor: pointer;
+  background: var(--btn); border: 1px solid var(--btn-outline); border-radius: 0; box-shadow: var(--bevel); clip-path: var(--chamfer2);
+  padding: 2px 13px 0 15px; min-height: 20px; line-height: 14px;   /* 2 px en haut, 15/13 à gauche/droite : les capitales de la police pixel tombent au centre (mesuré) */
+}
+.btn:hover:not(:disabled), .ghost-btn:hover:not(:disabled) { background: var(--btn-hover); }
+.btn:active:not(:disabled), .ghost-btn:active:not(:disabled) { background: var(--card-2); box-shadow: var(--bevel-down); }
+/* Enclenché (un bouton à deux états qui est « sur ») : KDX le remplit de sa couleur de mise en évidence, en relief, pas enfoncé. */
+.btn.on, .ghost-btn.on, .stack > .sbtn.on { background: var(--hl); color: var(--hl-text); box-shadow: var(--bevel); }
+.btn:disabled, .ghost-btn:disabled { color: var(--faint); cursor: default; }
+.btn:focus-visible, .ghost-btn:focus-visible, .text-input:focus-visible { outline: var(--focus-ring); outline-offset: 1px; }
+
+/* Bouton par défaut d'un dialogue : un anneau de trois lignes autour du bouton (du bouton vers l'extérieur : milieu, bord, contour), aux coins chanfreinés
+   comme le bouton (mesuré sur KDX : ses couleurs sont celles du thème, pas toujours celles de la barre de titre). Un pseudo-élément transparent, débordant de
+   3 px, le dessine par trois ombres internes : le bouton reste visible au milieu. */
+.primary {
+  position: relative; font: inherit; font-weight: 700; color: var(--btn-text); cursor: pointer; height: 20px; padding: 2px 13px 0 15px; line-height: 14px;
+  background: var(--btn); border: 1px solid var(--btn-outline); border-radius: 0; margin: 0 3px; box-shadow: var(--bevel);
+}
+.primary::before { content: ""; position: absolute; inset: -4px; pointer-events: none; clip-path: var(--chamfer2);   /* -4 : l'inset part du bord intérieur de la bordure */
+  box-shadow: inset 0 0 0 1px var(--def-outline), inset 0 0 0 2px var(--def-edge), inset 0 0 0 3px var(--def-mid); }
+.primary:hover:not(:disabled) { background: var(--btn-hover); }
+.primary:active:not(:disabled) { background: var(--card-2); }
+.primary:disabled { cursor: default; color: var(--faint); }
+.primary:focus-visible { outline: var(--focus-ring); outline-offset: 4px; }
+.primary.quiet::before { display: none; }
+
+/* Pile de boutons de barre : carrés, bordure noire partagée (pas de 21 px). */
+.stack { display: flex; flex-direction: column; }
+.stack > .sbtn {
+  display: flex; align-items: center; gap: 8px; height: 22px; padding: 2px 6px 0; margin-top: -1px; text-align: left; position: relative;   /* 2 px en haut : capitales au centre (mesuré) */
+  font: inherit; font-weight: 700; color: var(--btn-text); cursor: pointer; white-space: nowrap;
+  background: var(--btn); border: 1px solid var(--btn-outline); border-radius: 0; box-shadow: var(--bevel);
+}
+.stack > .sbtn:first-child { margin-top: 0; }
+.stack > .sbtn:hover:not(:disabled) { background: var(--btn-hover); }
+.stack > .sbtn:active:not(:disabled) { background: var(--card-2); box-shadow: var(--bevel-down); }
+.stack > .sbtn:disabled { color: var(--faint); cursor: default; }
+.stack > .sbtn:focus-visible { outline: var(--focus-ring); outline-offset: 1px; }
+
+/* ================================================================ Champs */
+/* Creusés : sombres en haut et à gauche, clairs en bas et à droite ; texte vert sur noir ; anneau d'accent au focus. */
+.text-input {
+  flex: 1; min-width: 0; background: var(--ink); color: var(--field-ink); font: 14px/16px var(--font);
+  border: 1px solid; border-color: var(--sunken-border); box-shadow: var(--sunken-shadow);
+  padding: 3px 6px; outline: none; caret-color: var(--bar-top); user-select: text; border-radius: 0;
+}
+.text-input:focus { border-color: var(--red-frame); box-shadow: inset 0 0 0 1px var(--red-frame); }
+.text-input:focus-visible { outline: none; }  /* l'anneau d'accent est la marque du focus */
+.text-input:disabled { opacity: 0.45; }
+.text-input::placeholder { color: var(--faint); }
+textarea.text-input { resize: none; line-height: 13px; font-family: var(--font-log); }
+
+/* Menu déroulant : un bouton biseauté dont la case de flèche est séparée par un filet. */
+select.btn, select.ghost-btn, select.text-input, select.lsel {
+  -webkit-appearance: none; appearance: none; padding-right: 26px; padding-top: 2px; padding-bottom: 0;
+  background-color: var(--btn); color: var(--btn-text); font: inherit; font-weight: 700; line-height: 14px; user-select: none;   /* 2 px en haut, interligne 14 (après font: inherit) : capitales au centre sans changer la hauteur (mesuré) */
+  border: 1px solid var(--btn-outline); box-shadow: var(--bevel); border-radius: 0; clip-path: var(--chamfer1);
+  background-image: var(--sel-arrow), linear-gradient(var(--btn-outline), var(--btn-outline));   /* la flèche (image générée à la couleur du texte des boutons) et le filet de sa case */
+  background-repeat: no-repeat;
+  background-position: right 6px center, right 22px center;
+  background-size: 9px 5px, 1px calc(100% - 4px);
+}
+select.text-input:focus { border-color: var(--btn-outline); box-shadow: var(--bevel); }
+select option { background: var(--card-2); color: var(--btn-text); }
+
+/* Case à cocher : un plot biseauté ; cochée, il disparaît et ne reste qu'une coche blanche.
+   <label class="switch"><input type="checkbox"><span class="track"></span></label> */
+.switch, .row > label.switch { position: relative; width: 14px; height: 14px; flex: none; cursor: pointer; }
+.switch input { position: absolute; opacity: 0; inset: 0; cursor: pointer; }
+.track { position: absolute; inset: 0; background: var(--btn); border: 1px solid var(--btn-outline); border-radius: 0; clip-path: var(--chamfer2); box-shadow: inset 1px 1px 0 var(--hi), inset -1px -1px 0 var(--lo); pointer-events: none; }   /* relief d'un pixel (KDX) */
+.track::after { content: ""; position: absolute; left: 3px; top: -3px; width: 5px; height: 11px; border: solid var(--text); border-width: 0 3px 3px 0; transform: rotate(45deg) scale(0); }
+.switch input:checked + .track { background: transparent; border-color: transparent; box-shadow: none; }
+.switch input:checked + .track::after { transform: rotate(45deg) scale(1); }
+.switch input:focus-visible + .track { outline: var(--focus-ring); outline-offset: 1px; }
+.chk-row { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+
+/* Curseur : une rigole noire, une barre d'accent, une poignée biseautée. */
+input[type="range"] {
+  -webkit-appearance: none; flex: 1; height: 14px; outline: none; cursor: pointer;
+  background: var(--bar) 0 0 / 50% 100% no-repeat, var(--lo2); border: 1px solid var(--btn-outline); box-shadow: 0 1px 0 var(--hi2);
+}
+input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 20px; cursor: pointer; background: var(--btn); border: 1px solid var(--btn-outline); border-radius: 0; box-shadow: var(--bevel); }
+input[type="range"]:hover::-webkit-slider-thumb { background: var(--btn-hover); }
+input[type="range"]:focus-visible { outline: var(--focus-ring); outline-offset: 2px; }
+.val { width: 56px; flex: none; text-align: right; color: var(--field-ink); font-variant-numeric: tabular-nums; }
+
+/* ================================================================ Formulaires et groupes */
+.form { display: grid; grid-template-columns: 112px 1fr; gap: 6px 10px; align-items: center; }
+.form label[for]::after { content: ":"; }                       /* les libellés se terminent par « : » */
+.form .span2 { grid-column: 1 / -1; }
+.form .col2 { grid-column: 2; }
+.form .inline { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.form .hint { grid-column: 2; color: var(--faint); font-weight: 600; line-height: 1.4; margin-top: -3px; }
+/* Groupe : un cadre gravé dans le panneau, son titre posé sur l'arête haute. */
+.grp {
+  grid-column: 1 / -1; display: grid; grid-template-columns: 112px 1fr; gap: 6px 10px; align-items: center; min-width: 0;
+  border: 1px solid var(--field-lo); box-shadow: 1px 1px 0 var(--field-hi), inset 1px 1px 0 var(--field-hi); padding: 12px 10px 10px; margin-top: 6px;   /* gravé : les arêtes d'un creux (le filet des réglages de KDX) */
+}
+.grp > legend { padding: 0 6px; color: var(--text); }
+.btns { display: flex; gap: 8px; justify-content: flex-end; flex: none; margin-top: 6px; align-items: center; }
+.btns .push { margin-right: auto; }
+.scroll { flex: 1; min-height: 0; overflow-y: auto; padding-right: 6px; }
+
+/* ================================================================ Listes */
+/* Lignes à filet ; survol un peu plus clair ; sélection = plus clair encore, cernée d'un filet (jamais colorée) ; barre d'état à gauche.
+   KDX raye les listes PAR COLONNE (col-a, col-b en alternance, sur toute la hauteur) : cdx-columns.js pose --cdx-stripes (un dégradé par paliers aux
+   largeurs des colonnes) sur la liste ; une liste sans colonnes est unie (col-a). La liste qui a le focus porte l'anneau d'accent, comme un champ. */
+.list { flex: 1; min-height: 0; overflow-y: auto; color: var(--list-text); background-color: var(--col-a); background-image: var(--cdx-stripes, none);
+  border: 1px solid; border-color: var(--sunken-border); box-shadow: var(--sunken-shadow); }
+.list.dark { background-color: var(--ink); background-image: none; color: var(--field-ink); }
+.list:focus, .list:focus-within { outline: none; border-color: var(--red-frame); box-shadow: inset 0 0 0 1px var(--red-frame); }
+.row-item {
+  display: flex; align-items: center; gap: 8px; padding: 7px 8px 3px 6px; border-left: 6px solid transparent;   /* 7/3 : capitales au centre (mesuré) */
+  border-bottom: 1px solid var(--line); cursor: pointer; outline: none; min-width: 0;
+}
+.row-item:hover { background: var(--row-hover); }
+.row-item:focus-visible { outline: var(--focus-ring); outline-offset: -2px; }
+.row-item.sel { background: var(--row-sel); box-shadow: inset 0 0 0 1px var(--row-sel-ring); }
+.row-item .grow { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row-item .sub { display: block; color: var(--faint); }
+.row-item.unread .grow { font-weight: 800; color: var(--warn); }
+.row-item .count { flex: none; min-width: 18px; text-align: center; padding: 0 5px; background: #b05a00; color: #fff; border: 1px solid #000; }
+.row-item .count.hot { background: var(--hl); color: var(--hl-text); }   /* la mise en évidence du thème (le bord d'accent est blanc dans Lavande) */
+.empty { color: var(--faint); text-align: center; padding: 22px 12px; font-weight: 600; }
+/* En-tête de colonne : un bouton carré qui trie ; la colonne triée porte un petit triangle. */
+.lhead { display: grid; grid-template-columns: var(--cdx-cols, none); flex: none; padding-right: 15px; margin-bottom: 3px; }   /* --cdx-cols : cdx-columns.js */
+.lh {
+  white-space: nowrap; overflow: hidden; font: inherit; font-weight: 700; color: var(--head-text); text-align: left; padding: 0 8px; height: 22px; cursor: pointer;
+  background: var(--head); border: 1px solid var(--btn-outline); border-radius: 0; box-shadow: var(--bevel);
+}
+.lh:hover { background: var(--btn-hover); }
+.lh { position: relative; }
+/* poignées de colonne (cdx-columns.js) : une bande sur le bord droit de chaque en-tête, qui s'éclaire au survol et pendant qu'on la tire */
+.cdx-colrz { position: absolute; top: 0; right: 0; bottom: 0; width: 7px; cursor: col-resize; z-index: 2; touch-action: none; }
+.cdx-colrz:hover, .cdx-colrz.drag { box-shadow: inset -2px 0 0 var(--a-edge); }
+body.cdx-colsizing, body.cdx-colsizing * { cursor: col-resize !important; user-select: none; }
+/* barres entre volets (cdx-split.js) : un élément de largeur nulle posé dans l'espace du conteneur flex ; sa bande déborde de part et d'autre */
+.cdx-split { flex: none; width: 0; position: relative; z-index: 3; align-self: stretch; }
+.cdx-split[hidden] { display: none; }
+.cdx-split > i { position: absolute; top: 0; bottom: 0; cursor: col-resize; touch-action: none; }
+.cdx-split > i::after { content: ""; position: absolute; top: 0; bottom: 0; left: 50%; width: 2px; margin-left: -1px; background: var(--a-edge); opacity: 0; }
+.cdx-split > i:hover::after, .cdx-split.drag > i::after { opacity: 1; }
+.lh.on::after { content: ""; display: inline-block; margin-left: 7px; vertical-align: middle; border: 4px solid transparent; border-top: 5px solid var(--head-text); border-bottom: 0; }
+
+/* ================================================================ Onglets */
+.tabs { flex: none; display: flex; padding: 4px 5px 0; background: var(--panel); }
+.tab {
+  flex: 0 1 auto; min-width: 0; max-width: 180px; height: 20px; padding: 2px 10px 0; margin-right: -1px; cursor: pointer;   /* 2 px en haut : capitales au centre (mesuré) */
+  font: inherit; line-height: 14px; color: var(--faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  background: var(--btn); border: 1px solid var(--btn-outline); border-radius: 0; box-shadow: var(--bevel);
+}
+.tab:hover { background: var(--btn-hover); }
+.tab.on { color: var(--btn-text); background: var(--card-2); box-shadow: var(--bevel-down); }
+
+/* ================================================================ État et voyants */
+.orb, .status .dot { width: 11px; height: 11px; border-radius: 50%; flex: none; background: radial-gradient(circle at 35% 30%, #8a8a8a, #3a3a3a 60%, #1c1c1c); }
+.orb.green, .status.on .dot { background: radial-gradient(circle at 35% 30%, #8af08a, #18a828 55%, #0a5a14); }
+.orb.amber, .status.busy .dot { background: radial-gradient(circle at 35% 30%, #ffe090, #faa320 55%, #b05a00); }
+.orb.red { background: radial-gradient(circle at 35% 30%, #ff9a8a, #e02020 55%, #7a0202); }
+@keyframes pulse { 50% { opacity: 0.4; } }
+.orb.pulse, .status.busy .dot { animation: pulse 1s ease-in-out infinite; }   /* le voyant d'un .status suit la classe du .status (on, busy) */
+/* Afficheur : une bande de console noire, texte vert, creusée. */
+.status {
+  display: flex; align-items: center; gap: 8px; min-width: 0; background: var(--ink); color: var(--field-ink); padding: 5px 7px 3px;   /* 5/3 : capitales au centre (mesuré) */
+  border: 1px solid; border-color: var(--sunken-border); box-shadow: var(--sunken-shadow);
+}
+.status > span:last-child { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.banner { display: flex; align-items: center; gap: 10px; flex: none; background: var(--ink); border: 2px solid var(--red-frame); color: var(--warn); padding: 4px 9px; }
+
+/* Notification : une boîte de console noire ; cadre rouge = problème, vert = fait. */
+#toasts { position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 8px; max-width: 80%; pointer-events: none; z-index: 30; }
+.toast {
+  display: flex; align-items: center; gap: 14px; max-width: 100%; background: var(--ink); color: var(--red);
+  border: 2px solid var(--red-frame); box-shadow: 0 0 0 1px #000, 4px 5px 0 rgba(0, 0, 0, 0.55);
+  padding: 8px 14px; cursor: pointer; opacity: 0; transform: translateY(12px); transition: opacity 0.25s, transform 0.25s; pointer-events: auto;
+}
+.toast.ok { color: var(--green); border-color: #007f00; }
+.toast.show { opacity: 1; transform: none; }
+.toast-text { min-width: 0; }
+.toast .toast-action { flex: none; padding: 3px 10px; min-height: 0; }
+
+/* Menu contextuel : un mini-cadre ; le titre prend le dégradé de la barre de titre. */
+.menu { position: fixed; z-index: 20; min-width: 200px; background: var(--panel); border: 1px solid var(--outline); box-shadow: var(--ring), 4px 5px 0 rgba(0, 0, 0, 0.5); padding: 6px; }
+.menu-title { padding: 4px 8px 6px; background: var(--title-focus); margin: -6px -6px 4px; color: var(--title-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center; }
+.menu-item { display: flex; align-items: center; gap: 8px; padding: 6px 8px 4px; color: var(--text); cursor: pointer; }   /* 6/4 : capitales au centre (mesuré) */
+.menu-item:hover { background: var(--row-sel); box-shadow: inset 0 0 0 1px var(--row-sel-ring); }
+.menu-sep { height: 1px; background: var(--line); margin: 4px 6px; }
+.menu-item .subarrow { margin-left: auto; margin-right: -2px; border: 4px solid transparent; border-left: 5px solid currentColor; border-right: 0; }   /* le sous-menu s'ouvre à droite */
+.menu-item .chk { flex: none; width: 9px; height: 9px; border: 1px solid var(--faint); }   /* case des éléments à cocher */
+.menu-item .chk.on { background: var(--a-edge); border-color: var(--a-edge); box-shadow: inset 0 0 0 2px var(--panel); }
+
+/* ================================================================ Console (journal de conversation) */
+/* Police réduite, 13 px d'interligne, noir et vert. Les genres de lignes se distinguent par la couleur et l'italique,
+   jamais par le gras (une police pixel n'a qu'une graisse : l'épaissir fait se toucher les hampes de 2 px). */
+.log {
+  flex: 1; min-width: 0; min-height: 0; overflow-y: auto; overflow-x: hidden; background: var(--ink); color: var(--field-ink);
+  padding: 4px 0; border: 1px solid; border-color: var(--sunken-border); box-shadow: var(--sunken-shadow);
+  font: 14px/13px var(--font-log); user-select: text; cursor: text;
+}
+.log:focus { outline: none; border-color: var(--red-frame); box-shadow: inset 0 0 0 1px var(--red-frame); }
+.ln { position: relative; padding: 0 8px 0 6px; white-space: pre-wrap; overflow-wrap: anywhere; border-left: 3px solid transparent; font-family: var(--font-log); }
+.ln .ts { color: var(--faint); margin-right: 6px; user-select: none; }
+.ln .nk { margin-right: 6px; color: var(--nc, var(--own-ink)); }       /* l'auteur, dans sa couleur */
+.ln.own .nk, .ln.own .tx { color: var(--own-ink); }                    /* ses propres lignes : blanc sur une console sombre */
+.ln.action { color: #ff5cf0; font-family: var(--font-log-italic); }    /* /me : rose, italique */
+.ln.notice { color: var(--warn); }                                     /* annonces : ambre */
+.ln.join, .ln.part, .ln.quit, .ln.nick { color: #00a000; font-family: var(--font-log-italic); }   /* présence : vert sombre, italique */
+.ln.mode, .ln.topic { color: #6a8aff; }                                /* sujet, modes : bleu */
+.ln.info, .ln.raw { color: var(--faint); }                             /* voix du serveur : gris */
+.ln.motd { color: var(--faint); }
+.ln.kick, .ln.error { color: var(--red); }                             /* seuls les problèmes sont rouges */
+.ln.error { border-left-color: var(--red); }
+.ln.hl { background: var(--sel-bg); border-left-color: var(--sel-fg); }
+.ln.past { opacity: 0.6; }
+.ln.sep { color: var(--faint); text-align: center; border-top: 1px solid var(--a-hover); margin: 3px 0; padding-top: 3px; }
+.ln a.link { color: #5cf0ff; text-decoration: underline; cursor: pointer; }
+.ln a.link:hover { color: var(--own-ink); }
+.ln .fmt-b { text-shadow: 1px 0 0 currentColor; }  /* seul gras toléré : l'épaississement d'un pixel d'un texte « gras » reçu d'ailleurs */
+
+/* ================================================================ Barres de défilement */
+/* 15 px ; piste sombre, pouce en relief rayé ; comme KDX, UNE PAIRE de flèches (haut et bas, ou gauche et droite) à chaque bout, boutons de 13 px.
+   Les flèches sont des images générées par thème (--sb-up, --sb-down, --sb-left, --sb-right : la couleur sb-arrow), car une image ne lit pas de jeton. */
+::-webkit-scrollbar { width: 15px; height: 15px; }
+::-webkit-scrollbar-track { background: var(--sb-track); box-shadow: inset 1px 0 0 var(--lo2); }
+::-webkit-scrollbar-track:horizontal { box-shadow: inset 0 1px 0 var(--lo2); }
+::-webkit-scrollbar-thumb { background-color: var(--sb-thumb); border: 0; border-radius: 0; box-shadow: inset 1px 1px 0 var(--hi2), inset -1px -1px 0 var(--lo2), inset -2px -2px 0 var(--card-2); background-repeat: no-repeat; background-position: center; }
+::-webkit-scrollbar-thumb:vertical { background-image: repeating-linear-gradient(var(--line) 0 1px, transparent 1px 2px); background-size: 7px 5px; }
+::-webkit-scrollbar-thumb:horizontal { background-image: repeating-linear-gradient(90deg, var(--line) 0 1px, transparent 1px 2px); background-size: 5px 7px; }
+::-webkit-scrollbar-corner { background: var(--sb-track); }
+::-webkit-scrollbar-button { display: block; border: 0; background-color: var(--sb-btn); background-repeat: no-repeat; background-position: center; }
+::-webkit-scrollbar-button:vertical { width: 15px; height: 13px; box-shadow: inset 0 1px 0 var(--hi2), inset 0 -1px 0 var(--lo2), inset 1px 0 0 var(--lo2); }
+::-webkit-scrollbar-button:horizontal { width: 13px; height: 15px; box-shadow: inset 1px 0 0 var(--hi2), inset -1px 0 0 var(--lo2), inset 0 1px 0 var(--lo2); }
+::-webkit-scrollbar-button:vertical:start:increment, ::-webkit-scrollbar-button:vertical:end:decrement,
+::-webkit-scrollbar-button:horizontal:start:increment, ::-webkit-scrollbar-button:horizontal:end:decrement { display: block; }   /* la seconde flèche de chaque paire */
+::-webkit-scrollbar-button:vertical:decrement { background-image: var(--sb-up); }
+::-webkit-scrollbar-button:vertical:increment { background-image: var(--sb-down); }
+::-webkit-scrollbar-button:horizontal:decrement { background-image: var(--sb-left); }
+::-webkit-scrollbar-button:horizontal:increment { background-image: var(--sb-right); }

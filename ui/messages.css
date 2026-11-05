@@ -1,0 +1,439 @@
+/* Layouts of the Messages windows. Each window of the application is the same page
+   (index.html) opened with ?w=<kind>; html[data-panel] picks the one that shows.
+   Colours and controls come from cdx/cdx-ui.css (the CDX look) : no colour is written here, every rule reads a token of the theme,
+   which can be light (Lavande, Lagon…) as well as dark. The only literal colours left are data : IRC rank bars, the banner artwork. */
+
+select.text-input option { background: var(--card-2); color: var(--btn-text); }
+
+/* ---------- Which window this page shows ---------- */
+.win { display: none; }
+html[data-panel]:not([data-panel="all"]) .win { position: fixed; inset: 0; }
+.cb { gap: 0; } /* the charter spaces the children of a window by 5 px; the Messages pages space them with their own margins */
+html[data-panel="launcher"] #launcherWin,
+html[data-panel="servers"] #serversWin,
+html[data-panel="settings"] #settingsWin,
+html[data-panel="about"] #aboutWin,
+html[data-panel="join"] #joinWin,
+html[data-panel="console"] #consoleWin,
+html[data-panel="switcher"] #switcherWin,
+html[data-panel="whois"] #whoisWin,
+html[data-panel="list"] #listWin,
+html[data-panel="chat"] #chatWin,
+html[data-panel="all"] .win { display: flex; }
+html[data-panel="all"] body { overflow: auto; }
+html[data-panel="all"] #app { display: flex; flex-wrap: wrap; gap: 14px; padding: 14px; height: auto; align-items: flex-start; }
+html[data-panel="all"] .win { width: 640px; height: 420px; }
+html[data-panel="all"] #launcherWin { width: 206px; height: 438px; }
+.grip-rz { display: none; }
+html[data-panel="servers"] .grip-rz, html[data-panel="settings"] .grip-rz, html[data-panel="console"] .grip-rz,
+html[data-panel="launcher"] .grip-rz, html[data-panel="chat"] .grip-rz, html[data-panel="list"] .grip-rz, html[data-panel="all"] .grip-rz { display: block; }
+#app { height: 100%; }
+
+/* ---------- Launcher: the narrow button column of the main window ---------- */
+.launcher { background: var(--card-2); gap: 6px; padding: 6px; }
+.launcher .status { padding: 5px 7px; }
+.lbtns { display: flex; flex-direction: column; gap: 1px; }
+.lbtn {
+  position: relative; display: flex; align-items: center; gap: 8px; height: 24px; padding: 0 8px; text-align: left;
+  font: inherit; color: var(--btn-text); cursor: pointer; white-space: nowrap;
+  background: var(--btn); border: 1px solid var(--btn-outline); box-shadow: var(--bevel);
+}
+.lbtn:hover:not(:disabled) { background: var(--btn-hover); }
+.lbtn:focus-visible { outline: 2px solid var(--warn); outline-offset: 1px; }
+.lbtn:active:not(:disabled) { background: var(--card-2); box-shadow: var(--bevel-down); }
+.lbtn:disabled { color: var(--faint); cursor: default; }
+.lbtn .orb { position: absolute; right: 8px; top: 6px; }
+.lsel {
+  width: 100%; height: 24px; padding: 0 6px; font: inherit; color: var(--btn-text); cursor: pointer;
+  background-color: var(--btn); border: 1px solid var(--btn-outline); box-shadow: var(--bevel);
+}
+.lsel option { background: var(--card-2); color: var(--btn-text); }
+.lsel:disabled { color: var(--faint); }
+.launcher .primary { width: calc(100% - 8px); margin: 6px 4px; }
+.counters { display: flex; justify-content: space-around; padding: 2px 6px 0; margin-top: auto; color: var(--text); }
+.counters .cnt { display: inline-flex; align-items: center; gap: 6px; }
+/* The banner on top of the button bar (CDX shows its dial there): a dark plate with a glow and the name. */
+.logo-art {
+  flex: none; height: 50px; display: grid; place-items: center; border: 1px solid var(--btn-outline); box-shadow: var(--bevel-down); overflow: hidden;
+  background: radial-gradient(ellipse 70% 90% at 50% 130%, #f58a1a 0, #8a3a00 38%, transparent 72%), linear-gradient(#050505, #2c2c2c);
+}
+.logo-art span {
+  font: 42px/1 var(--font); letter-spacing: 6px; padding-left: 6px;
+  color: transparent; background: linear-gradient(#fff 0, #b9b9b9 45%, #444 55%, #9a9a9a); -webkit-background-clip: text; background-clip: text;
+  filter: drop-shadow(0 1px 0 #000) drop-shadow(0 0 3px rgba(0, 0, 0, 0.8));
+}
+
+/* Lists: ruled rows, hover = peach, selected = navy, status = left bar. */
+.row-item {
+  display: flex; align-items: center; gap: 8px; padding: 5px 8px 5px 6px; border-left: 6px solid transparent;
+  border-bottom: 1px solid var(--line); cursor: pointer; outline: none; min-width: 0;
+}
+.row-item:focus-visible { outline: 2px solid var(--warn); outline-offset: -2px; }
+.row-item.sel { background: var(--sel-bg); color: var(--sel-fg); }
+.row-item .grow { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row-item .sub { display: block; font: 14px/16px var(--font); color: var(--faint); }
+.empty { color: var(--faint); text-align: center; padding: 22px 12px; }
+.launcher .list { min-height: 60px; }
+
+/* ---------- Forms ---------- */
+.form { display: grid; grid-template-columns: 112px 1fr; gap: 7px 10px; align-items: center; }
+.form label, .form .lbl { color: var(--text); }
+.form label[for]::after, .whois .lbl:not(:empty)::after { content: ":"; }
+.form .span2 { grid-column: 1 / -1; }
+.form .inline { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.form .col2 { grid-column: 2; }
+[hidden] { display: none !important; }
+.form .port { flex: none; width: 90px; }
+.form .hint { grid-column: 2; color: var(--faint); line-height: 1.4; margin-top: -3px; }
+/* A group: a box etched into the panel, its title set in the top edge (CDX's "File System" box). */
+.form .grp {
+  grid-column: 1 / -1; display: grid; grid-template-columns: 112px 1fr; gap: 7px 10px; align-items: center; min-width: 0;
+  border: 1px solid var(--field-lo); box-shadow: 1px 1px 0 var(--field-hi), inset 1px 1px 0 var(--field-hi); padding: 12px 10px 10px; margin-top: 6px;
+}
+.form .grp > legend { padding: 0 6px; color: var(--text); }
+.form .panelbar { grid-column: 1 / -1; padding-bottom: 8px; border-bottom: 1px solid var(--field-lo); box-shadow: 0 1px 0 var(--field-hi); margin-bottom: 4px; }
+.form .chk-row { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+.btns { display: flex; gap: 8px; justify-content: flex-end; flex: none; margin-top: 8px; align-items: center; }
+.btns .push { margin-right: auto; }
+.scroll { flex: 1; min-height: 0; overflow-y: auto; padding-right: 6px; }
+
+/* Address book */
+.book { flex-direction: row; gap: 8px; }
+.book .side { width: 190px; flex: none; display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+.book .main { flex: 1; min-width: 0; display: flex; flex-direction: column; min-height: 0; }
+.book .fav-dot { flex: none; }
+
+/* Dialogs (join, about) */
+.dialog { gap: 10px; }
+.about { align-items: center; text-align: center; gap: 6px; justify-content: center; }
+.about .big { font-size: 28px; line-height: 32px; letter-spacing: 0.06em; color: var(--text); text-shadow: 0 2px 0 var(--lo); }
+.about .ver { color: var(--field-ink); }
+.about p { color: var(--muted); line-height: 1.5; max-width: 280px; }
+.about .path { color: var(--faint); font: 14px/16px var(--font); word-break: break-all; user-select: text; }
+
+/* ---------- Chat and console windows ---------- */
+.chat { gap: 6px; padding: 6px; position: relative; }
+.chat-main { flex: 1; min-height: 0; display: flex; gap: 6px; }
+.pane-l { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 6px; position: relative; }
+/* Everything in the transcript is bright green on black, as in CDX; only errors and kicks are red. */
+.ln { padding: 0 8px 0 6px; white-space: pre-wrap; overflow-wrap: anywhere; border-left: 3px solid transparent; }
+.ln .ts { color: var(--faint); margin-right: 6px; user-select: none; }
+.ln .nk { margin-right: 6px; }
+.ln.kick { color: var(--red); }
+.ln.error { color: var(--red); border-left-color: var(--red); }
+.ln.hl { background: var(--sel-bg); border-left-color: var(--sel-fg); }
+.ln.hl .tx { color: var(--sel-fg); }
+.ln.sep { border-top: 1px solid var(--a-hover); margin-top: 3px; padding-top: 3px; }
+body.nojoins .ln.join, body.nojoins .ln.part, body.nojoins .ln.quit, body.nojoins .ln.nick { display: none; }
+body.nots .ln .ts { display: none; }
+.ln .fmt-b { text-shadow: 1px 0 0 currentColor; } /* bold: a pixel font has one weight, so thicken by one pixel */
+.ln a.link { color: #5cf0ff; text-decoration: underline; cursor: pointer; }
+.ln a.link:hover { color: var(--own-ink); }
+.newmsg { position: absolute; right: 18px; bottom: 84px; z-index: 6; }
+.newmsg[hidden] { display: none; }
+
+.members { width: 34%; min-width: 150px; max-width: 320px; flex: none; display: flex; flex-direction: column; min-height: 0; }
+.members[hidden] { display: none; }
+.mem-h { display: none; }
+.members .list { border: 2px solid var(--field-lo); box-shadow: none; background: var(--ink); }
+/* A member: 8 px class bar (the rank), a 32 px tile for the icon, the name in its own colour; white rule between rows. */
+.mem {
+  display: flex; align-items: center; gap: 5px; height: 33px; padding: 0 8px 0 0; border-left: 8px solid var(--field-outline); border-bottom: 1px solid var(--own-ink);
+  cursor: default; white-space: nowrap; overflow: hidden; background: var(--ink);
+}
+.mem::before {
+  content: attr(data-ini); flex: none; width: 32px; height: 32px; display: grid; place-items: center; margin-right: 1px; text-transform: uppercase;
+  font: 28px/1 var(--font); color: var(--own-ink); text-shadow: 0 1px 0 var(--ink);
+  background: color-mix(in srgb, var(--nc, var(--faint)) 42%, var(--ink)); box-shadow: inset 1px 1px 0 rgba(255, 255, 255, 0.35), inset -1px -1px 0 rgba(0, 0, 0, 0.6);
+}
+.mem .sym { width: 11px; flex: none; text-align: center; font: 14px/16px var(--font); color: var(--nc, var(--text)); }
+.mem .nm { overflow: hidden; text-overflow: ellipsis; color: var(--nc, var(--text)); }
+.mem.away { background: var(--card-2); }
+.mem.away .nm { color: var(--faint); }
+.mem.away .nm::after { content: "   \25B6  absent"; color: var(--faint); }
+.mem:hover { background: var(--accent-2); }
+.mem.r0 { border-left-color: #ff5cf0; } .mem.r1 { border-left-color: #ff8a3c; } .mem.r2 { border-left-color: #ff3030; }
+.mem.r3 { border-left-color: #faa320; } .mem.r4 { border-left-color: #2a5ae0; }
+
+/* The input bar is one line high: the buttons at the charter height (20 px), the text box on one line, growing with the message (messages.js: fitInput) up to five. */
+.inputbar { display: flex; gap: 6px; align-items: flex-end; flex: none; }
+.inputbar .text-input { padding: 3px 7px; height: 21px; min-height: 21px; resize: none; overflow-y: auto; }
+.inputbar .ghost-btn { flex: none; }
+/* Under it: the "Topic:" button, the topic, and our own nick at the end. */
+.topicrow { display: flex; align-items: center; gap: 8px; flex: none; min-height: 22px; cursor: default; }
+.topicrow[hidden] { display: none; }
+.topicrow .tbtn { min-height: 20px; padding: 0 10px; flex: none; }
+.topicrow .t { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text); }
+.topicrow .text-input { padding: 2px 6px; }
+.mynick { flex: none; max-width: 40%; color: var(--accent-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font: 14px/16px var(--font); }
+.banner { display: flex; align-items: center; gap: 10px; flex: none; background: var(--ink); border: 2px solid var(--red-frame); color: var(--warn); padding: 4px 9px; font: 14px/16px var(--font); }
+.banner[hidden] { display: none; }
+.banner .t { flex: 1; min-width: 0; }
+
+/* ---------- 0.2 ---------- */
+.ln.past { opacity: 0.6; }
+.ln.sep { color: var(--faint); text-align: center; border-top: 1px solid var(--a-hover); margin: 3px 0; padding-top: 3px; }
+.row-item .count { flex: none; min-width: 18px; text-align: center; padding: 0 5px; font: 14px/16px var(--font); background: #b05a00; color: #fff; border: 1px solid var(--btn-outline); }   /* ambre de statut : non lu */
+.row-item .count.hot { background: var(--hl); color: var(--hl-text); }
+.row-item.unread .grow { color: var(--warn); }
+.row-item.unread.sel .grow, .row-item.unread:hover .grow { color: inherit; }
+.whois { grid-template-columns: 96px 1fr; gap: 6px 10px; }
+.whois .v { color: var(--field-ink); font: 14px/16px var(--font); user-select: text; overflow-wrap: anywhere; }
+.whois .v.warn { color: var(--warn); }
+.listbar { display: flex; gap: 6px; flex: none; margin-bottom: 6px; }
+.listbar .text-input { padding: 3px 7px; }
+/* Les colonnes de la liste des salons : --cdx-cols, posé par cdx-columns.js sur l'en-tête et ses lignes (largeurs d'origine en repli). */
+.lhead { display: grid; grid-template-columns: var(--cdx-cols, 181px 85px minmax(80px, 1fr)); flex: none; padding: 0 16px 0 7px; margin-bottom: 3px; }   /* 1 px de bordure de la liste + 6 px de la bordure des lignes ; 15 px de barre de défilement + 1 px */
+.lh {
+  white-space: nowrap; overflow: hidden; font: inherit; color: var(--head-text); text-align: left; padding: 0 8px; height: 22px; cursor: pointer;
+  background: var(--head); border: 1px solid var(--btn-outline); box-shadow: var(--bevel);
+}
+.lh:hover { background: var(--btn-hover); }
+.lh.on::after { content: ""; display: inline-block; margin-left: 7px; vertical-align: middle; border: 4px solid transparent; border-top: 5px solid var(--head-text); border-bottom: 0; }
+.lh.static { cursor: default; display: flex; align-items: center; }
+.lh.static:hover { background: var(--head); }
+.chan-row { display: grid; grid-template-columns: var(--cdx-cols, 181px 85px minmax(80px, 1fr)); align-items: baseline; padding: 4px 0; border-left: 6px solid transparent; border-bottom: 1px solid var(--line); cursor: pointer; }
+.chan-row.sel { background: var(--sel-bg); color: var(--sel-fg); }
+.chan-row > * { padding: 0 8px; min-width: 0; }
+.chan-row .n { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chan-row .u { text-align: right; font: 14px/16px var(--font); }
+.chan-row .t { color: var(--faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#chanList { scrollbar-gutter: stable; }   /* la place de la barre de défilement est toujours réservée : les colonnes restent sous leurs en-têtes */
+#lStatus { margin-top: 6px; flex: none; }
+#lMin { flex: none; width: 70px; }
+
+/* ---------- 0.4: answers and the quick switcher ---------- */
+.ln { position: relative; }
+.ln .rq {
+  display: block; margin: 1px 0 2px 6px; padding-left: 6px; border-left: 2px solid var(--a-edge); color: var(--faint);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; user-select: none;
+}
+.ln .rp {
+  position: absolute; right: 6px; top: 0; display: none; padding: 0 7px; min-height: 0; line-height: 17px; font: 14px/16px var(--font);
+  color: var(--btn-text); cursor: pointer; background: var(--btn); border: 1px solid var(--btn-outline); box-shadow: var(--bevel); user-select: none;
+}
+.ln:hover .rp { display: block; }
+.ln .rp:hover { background: var(--btn-hover); }
+.switcher { gap: 6px; padding: 6px; }
+.switcher .text-input { flex: none; padding: 7px 9px; }
+#swList { min-height: 0; }
+#swList .row-item .ic { flex: none; }
+#swList .row-item .sub { display: inline; margin-left: 8px; }
+#swList .row-item.empty-hint { cursor: default; color: var(--faint); }
+
+/* ---------- Pixel metrics, measured on a real KDX 1.6 window ----------
+   Fields are sunken (dark top and left, light bottom and right); buttons stack with one shared line;
+   scroll bars are flat with a pair of arrows at each end; margins are 4-5 px; a selected row is outlined, not coloured. */
+
+.members .list { border: 1px solid; border-color: var(--sunken-border); box-shadow: var(--sunken-shadow); }
+.topicrow .text-input { padding: 2px 6px; }
+
+.launcher { background: var(--panel); gap: 4px; padding: 4px; }
+.lbtns { gap: 0; }
+.lbtn { height: 22px; margin-top: -1px; padding: 0 6px; }
+.lbtns .lbtn:first-child { margin-top: 0; }
+.lsel { height: 22px; }
+.launcher .primary { height: 22px; }
+.counters { padding: 0 6px; }
+.chat { gap: 5px; padding: 5px; }
+.dialog, .about { padding: 12px; }
+#settingsWin .cb, #serversWin .cb { padding: 8px; }
+.btns { margin-top: 6px; }
+.form { gap: 6px 10px; }
+.chan-row { padding-top: 3px; padding-bottom: 3px; }
+
+.row-item:hover, .chan-row:hover { background: var(--row-hover); color: var(--list-text); }
+.row-item.sel, .chan-row.sel { background: var(--row-sel); color: var(--list-text); box-shadow: inset 0 0 0 1px var(--row-sel-ring); }
+.row-item:hover .sub, .row-item.sel .sub, .chan-row:hover .t, .chan-row.sel .t { color: var(--faint); }
+.mem:hover { background: var(--card-2); }
+.mem:hover .nm, .mem:hover .sym { color: var(--nc, var(--text)); }
+.mynick { margin-right: 14px; }
+#consoleForm { align-items: center; }
+#consoleForm .text-input { height: 24px; }
+
+/* ---------- Corners: CDX has no round corners (the chamfers are in the charter). Launcher buttons lose their corner pixels too. */
+.lbtn, .ln .rp { border-radius: 0; }
+.lsel { border-radius: 0; clip-path: var(--chamfer1); }
+.mynick { color: var(--text); }
+
+/* Chat transcripts and what is typed under them use CDX's smaller font, 13 px from line to line. */
+.log, .ln, #msgInput, #consoleInput { font-family: var(--font-log); }
+.log { line-height: 13px; }
+#msgInput, #consoleInput { line-height: 13px; }
+
+/* Compact member list (the default, CDX's "small icons in user lists"): 16 px tiles, 17 px rows, a narrower pane. */
+.smallmem .members { width: 28%; min-width: 130px; max-width: 240px; }
+.smallmem .mem { height: 17px; gap: 4px; border-left-width: 4px; }
+.smallmem .mem::before { width: 16px; height: 16px; margin-right: 0; font: 14px/1 var(--font); text-shadow: none; box-shadow: inset 1px 1px 0 rgba(255, 255, 255, 0.35), inset -1px -1px 0 rgba(0, 0, 0, 0.6); }
+.smallmem .mem .sym { width: 9px; }
+
+/* ---------- Kinds of lines, told apart (Réglages > Affichage switches it off for CDX's all-green look) ----------
+   who speaks: the nick in its own colour (white for us, with our text); what the room does: actions in
+   pink italics, arrivals and departures in dark green italics, topic and modes in blue; what is announced: notices
+   in amber, the server's own words in grey. A pixel font has one weight and doubling the letters (a text-shadow) makes
+   2 px stems run together, so nothing here is bold; italic is a separate slanted font. */
+body:not(.plainchat) .ln .nk { color: var(--nc, var(--own-ink)); }
+body:not(.plainchat) .ln .nk.who { margin-right: 0; }
+body:not(.plainchat) .ln.own .nk, body:not(.plainchat) .ln.own .tx { color: var(--own-ink); }
+body:not(.plainchat) .ln.action { color: #ff5cf0; font-family: var(--font-log-italic); }
+body:not(.plainchat) .ln.notice { color: var(--warn); }
+body:not(.plainchat) .ln.join, body:not(.plainchat) .ln.part, body:not(.plainchat) .ln.quit, body:not(.plainchat) .ln.nick { color: #00a000; font-family: var(--font-log-italic); }
+body:not(.plainchat) .ln.mode, body:not(.plainchat) .ln.topic { color: #6a8aff; }
+body:not(.plainchat) .ln.info, body:not(.plainchat) .ln.raw { color: var(--faint); }
+body:not(.plainchat) .ln.motd { color: var(--faint); }
+
+/* ---------- Tabs: windows merged into one (see tabs.rs) ---------- */
+.tabs { flex: none; display: flex; padding: 4px 5px 0; background: var(--panel); }
+.tabs[hidden] { display: none; }
+.tab {
+  flex: 0 1 auto; min-width: 0; max-width: 180px; height: 20px; padding: 0 10px; margin-right: -1px; cursor: pointer;
+  font: inherit; line-height: 14px; color: var(--faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  background: var(--btn); border: 1px solid var(--btn-outline); box-shadow: var(--bevel);
+}
+.tab:hover { background: var(--btn-hover); }
+.tab.on { color: var(--btn-text); background: var(--card-2); box-shadow: var(--bevel-down); }
+body.shaded .tabs { display: none; }
+/* the window a dragged one would join */
+body.droptarget .win::after { content: ""; position: absolute; inset: 0; z-index: 9; pointer-events: none; box-shadow: inset 0 0 0 3px var(--title-text); }
+
+/* ---------- A call, above the log of the conversation ---------- */
+.callbox { flex: none; display: flex; flex-direction: column; gap: 6px; padding: 6px; background: var(--ink); border: 1px solid; border-color: var(--sunken-border); box-shadow: var(--sunken-shadow); }
+.callbox[hidden] { display: none; }
+.call-pics { display: flex; gap: 6px; justify-content: center; align-items: flex-end; }
+.call-pics canvas { max-width: 100%; max-height: 200px; background: var(--ink); border: 1px solid var(--field-outline); }
+.call-pics video { width: 96px; max-height: 72px; background: var(--ink); border: 1px solid var(--field-outline); transform: scaleX(-1); }
+.call-pics [hidden] { display: none; }
+.call-info { text-align: center; color: var(--field-ink); }
+.call-btns { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+.call-btns [hidden] { display: none; }
+
+/* ---------- Chats hidden from the main menu: a heading at the bottom of the list, then the hidden ones, dimmed ---------- */
+.row-item.hidhead { color: var(--faint); border-top: 1px solid var(--line); }
+.row-item.hiddenrow { opacity: 0.6; }
+
+/* ---------- Images in the chat: a preview under the line, the whole image in a viewer over the window ---------- */
+.ln .thumb { display: block; margin: 3px 0 3px 6px; padding: 0; max-width: 200px; background: var(--ink); border: 1px solid var(--field-outline); box-shadow: var(--bevel); cursor: pointer; color: var(--text); font: inherit; }
+.ln .thumb img { display: block; max-width: 200px; max-height: 150px; }
+.ln .thumb:hover { box-shadow: var(--bevel), 0 0 0 1px var(--text); }
+.viewer { position: absolute; inset: 0; z-index: 30; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.94); cursor: zoom-out; }
+.viewer[hidden] { display: none; }
+.viewer img { max-width: calc(100% - 16px); max-height: calc(100% - 16px); object-fit: contain; border: 1px solid var(--line); }
+.viewer .vmsg { color: var(--text); }
+
+/* ---------- Pairing: the code to scan with the phone, in the window of the server's messages ---------- */
+.pairing { flex: none; display: flex; align-items: center; gap: 12px; padding: 6px; background: var(--ink); border: 1px solid; border-color: var(--sunken-border); box-shadow: var(--sunken-shadow); }
+.pairing[hidden] { display: none; }
+.pairing canvas { flex: none; image-rendering: pixelated; border: 1px solid var(--field-outline); }
+.pairing-text { min-width: 0; line-height: 16px; color: var(--text); }
+
+/* ---------- Size of the text of the transcripts (Réglages > Affichage) ----------
+   "petite": the transcript font, 13 px between lines. "moyenne": the interface font, whose letters are bigger.
+   "grande": the transcript font doubled (28 px is the only size above 14 px at which a pixel font stays sharp).
+   --lh is the distance between lines of a classic transcript, --lhr the one of the chat presentations (a little more air). */
+body { --lh: 13px; --lhr: 17px; }
+body.sz-moyenne { --lh: 16px; --lhr: 20px; }
+body.sz-grande { --lh: 26px; --lhr: 32px; }
+body .log, body #msgInput, body #consoleInput { line-height: var(--lh); }
+body.sz-moyenne .log, body.sz-moyenne .ln, body.sz-moyenne #msgInput, body.sz-moyenne #consoleInput { font-family: var(--font); }
+body.sz-grande .log, body.sz-grande #msgInput, body.sz-grande #consoleInput { font-size: 28px; }
+body.sz-grande .ln .thumb img { max-width: 260px; }
+
+/* ---------- Presentations of a chat (Réglages > Affichage > Conversations WhatsApp) ----------
+   Only in a window of a protocol with `rich_feed` and when the setting is not "classique": the page puts `rich-on` and
+   `feed-<name>` on the body. The lines are the same <div>s as ever (see renderLine and Log.addAll); what changes is the layout:
+   .first / .cont / .last tell the place of a message in a run of one author (within 5 minutes), .day is the title of a day. */
+.day { display: none; }
+body.rich-on .log .ln { line-height: var(--lhr); }
+body.rich-on .day {
+  display: flex; align-items: center; gap: 8px; margin: 10px 8px 8px; color: var(--faint); line-height: var(--lhr); justify-content: center;
+}
+body.rich-on .day::before, body.rich-on .day::after { content: ""; flex: 1; height: 1px; background: var(--a-hover); }
+/* what the room does (arrivals, the topic, an action, a notice) is a centred line between the messages */
+body.rich-on .ln:not(.msg):not(.sep) { text-align: center; margin: 6px 0; }
+body.rich-on .ln.msg { display: grid; white-space: normal; }
+body.rich-on .ln.msg .br { display: none; }
+body.rich-on .ln.msg .tx { white-space: pre-wrap; overflow-wrap: anywhere; min-width: 0; }
+body.rich-on .ln.msg .nk, body.rich-on .ln.msg .ts { margin: 0; }
+body.rich-on .ln.msg .ts, body.rich-on.nots .ln.msg .ts { display: block; color: var(--faint); }   /* the time is always shown here, whatever the setting for the transcript */
+body.rich-on .ln.msg .rq { min-width: 0; }
+body.rich-on .ln.msg .thumb { margin: 3px 0; }
+
+/* -- 1. Texte aéré: the name on the left (once per run), the text with a clean indent, the time on the right */
+body.feed-aere .ln.msg { grid-template-columns: 104px minmax(0, 1fr) 40px; column-gap: 8px; }
+body.feed-aere .ln.msg.first { margin-top: 7px; }
+body.feed-aere .ln.msg .rq { grid-column: 2; grid-row: 1; margin-left: 0; }
+body.feed-aere .ln.msg .nk { grid-column: 1; grid-row: 2; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; visibility: hidden; }
+body.feed-aere .ln.msg.first .nk { visibility: visible; }
+body.feed-aere .ln.msg .tx { grid-column: 2; grid-row: 2; }
+body.feed-aere .ln.msg .thumb { grid-column: 2; grid-row: 3; justify-self: start; }
+body.feed-aere .ln.msg .ts { grid-column: 3; grid-row: 2; text-align: right; opacity: 0; }
+body.feed-aere .ln.msg.first .ts, body.feed-aere .ln.msg:hover .ts { opacity: 1; }
+
+/* -- 2. Blocs par auteur: a header (name and time), then the messages under a bar of the colour of the author */
+body.feed-blocs .ln.msg { grid-template-columns: auto minmax(0, 1fr); column-gap: 8px; margin: 0 10px; padding: 3px 0 0 13px; }
+body.feed-blocs .ln.msg::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--nc); }
+body.feed-blocs .ln.msg.own::before { background: var(--own-ink); }
+body.feed-blocs .ln.msg.first { margin-top: 12px; padding-top: 0; }
+body.feed-blocs .ln.msg.first::before { top: var(--lhr); }   /* the bar starts under the header */
+body.feed-blocs .ln.msg .nk, body.feed-blocs .ln.msg .ts { grid-row: 1; }
+body.feed-blocs .ln.msg .nk { grid-column: 1; margin-left: -13px; }
+body.feed-blocs .ln.msg .ts { grid-column: 2; }
+body.feed-blocs .ln.msg.cont .nk, body.feed-blocs .ln.msg.cont .ts { display: none; }
+body.feed-blocs .ln.msg .rq { grid-column: 1 / -1; grid-row: 2; margin-left: 0; }
+body.feed-blocs .ln.msg .tx { grid-column: 1 / -1; grid-row: 3; }
+body.feed-blocs .ln.msg .thumb { grid-column: 1 / -1; grid-row: 4; justify-self: start; }
+body.feed-blocs .ln.msg.hl { background-color: var(--sel-bg); }
+
+/* -- 3. Bulles: the others on the left, us on the right on the accent */
+body.feed-bulles .ln.msg {
+  grid-template-columns: minmax(0, auto); width: fit-content; max-width: 76%; margin: 3px 10px 0; padding: 4px 8px 3px;
+  background: color-mix(in srgb, var(--ink) 91%, var(--own-ink)); border: 1px solid var(--line); border-left: 3px solid var(--nc);
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%);
+}
+body.feed-bulles .ln.msg.first { margin-top: 10px; }
+body.feed-bulles .ln.msg.own { background: var(--a-dark); border-color: var(--a-mid); border-left-width: 1px; }
+body.feed-bulles .ln.msg.hl { background: var(--sel-bg); border-color: var(--sel-fg); }
+body.feed-bulles .ln.msg .nk { grid-row: 1; }
+body.feed-bulles .ln.msg.cont .nk, body.feed-bulles .ln.msg.own .nk { display: none; }
+body.feed-bulles .ln.msg .rq { grid-row: 2; margin-left: 0; }
+body.feed-bulles .ln.msg .tx { grid-row: 3; }
+body.feed-bulles .ln.msg .thumb { grid-row: 4; justify-self: start; }
+body.feed-bulles .ln.msg .ts { grid-row: 5; text-align: right; line-height: 13px; margin-top: 1px; }
+
+/* -- 4. Cartes: one plate per run, with a header strip and a tile of the colour of the author */
+body.feed-cartes .ln.msg {
+  grid-template-columns: minmax(0, 1fr) auto; margin: 0 8px; padding: 0; background: color-mix(in srgb, var(--ink) 95%, var(--own-ink));
+  border: 1px solid var(--line); border-top: 0; border-bottom: 0;
+}
+body.feed-cartes .ln.msg.first { margin-top: 8px; border-top: 1px solid var(--line); }
+body.feed-cartes .ln.msg.last { border-bottom: 1px solid var(--line); }
+body.feed-cartes .ln.msg.cont { border-top: 1px dashed var(--line); }
+body.feed-cartes .ln.msg.hl { background: var(--sel-bg); outline: 1px solid var(--sel-fg); }
+body.feed-cartes .ln.msg .nk, body.feed-cartes .ln.msg .ts { grid-row: 1; background: var(--card-2); padding: 2px 6px; border-bottom: 1px solid var(--field-outline); }
+body.feed-cartes .ln.msg .nk { grid-column: 1; display: flex; align-items: center; gap: 7px; }
+body.feed-cartes .ln.msg .nk::before {
+  content: attr(data-av); flex: none; width: 16px; height: 16px; background: var(--nc); color: var(--ink); text-align: center; font: 14px/16px var(--font);
+  box-shadow: inset 1px 1px 0 rgba(255, 255, 255, 0.35), inset -1px -1px 0 rgba(0, 0, 0, 0.6);
+}
+body.feed-cartes .ln.msg .ts { grid-column: 2; }
+body.feed-cartes .ln.msg.own .nk, body.feed-cartes .ln.msg.own .ts { background: var(--a-dark); }
+body.feed-cartes .ln.msg.cont .nk, body.feed-cartes .ln.msg.cont .ts { display: none; }
+body.feed-cartes .ln.msg .rq { grid-column: 1 / -1; grid-row: 2; margin: 4px 8px 0; }
+body.feed-cartes .ln.msg .tx { grid-column: 1 / -1; grid-row: 3; padding: 4px 8px; }
+body.feed-cartes .ln.msg .thumb { grid-column: 1 / -1; grid-row: 4; justify-self: start; margin: 0 8px 6px; }
+
+/* ---------- Our own messages on the right (Réglages > Affichage > Mes messages; "auto" is the right for the bubbles only) ---------- */
+body.own-right.feed-bulles .ln.msg.own { margin-left: auto; }
+body.own-right.feed-blocs .ln.msg.own { width: fit-content; max-width: 76%; margin-left: auto; padding: 3px 13px 0 0; grid-template-columns: minmax(0, 1fr) auto; }
+body.own-right.feed-blocs .ln.msg.own.first { padding-top: 0; }
+body.own-right.feed-blocs .ln.msg.own::before { left: auto; right: 0; }
+body.own-right.feed-blocs .ln.msg.own .ts { grid-column: 1; text-align: right; }
+body.own-right.feed-blocs .ln.msg.own .nk { grid-column: 2; margin-left: 0; margin-right: -13px; }
+body.own-right.feed-blocs .ln.msg.own .thumb { justify-self: end; }
+body.own-right.feed-cartes .ln.msg.own { width: 76%; min-width: 220px; margin-left: auto; }
+body.own-right.feed-aere .ln.msg.own { grid-template-columns: 40px minmax(0, 1fr) 104px; }
+body.own-right.feed-aere .ln.msg.own .nk { grid-column: 3; text-align: right; }
+body.own-right.feed-aere .ln.msg.own .tx { grid-column: 2; text-align: right; }
+body.own-right.feed-aere .ln.msg.own .rq { grid-column: 2; }
+body.own-right.feed-aere .ln.msg.own .thumb { grid-column: 2; justify-self: end; }
+body.own-right.feed-aere .ln.msg.own .ts { grid-column: 1; text-align: left; }

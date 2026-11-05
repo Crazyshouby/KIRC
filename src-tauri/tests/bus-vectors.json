@@ -1,0 +1,26 @@
+{
+  "_note": "Cas de conformité du bus et de suite.json, communs aux trois langages : rejoués par cdx-shell --selftest-bus (C#), ctest d'Audio Linker (C++, cdx_bus.h) et cargo test de Messages (Rust, cdx_bus.rs). Recopié par charte-sync comme le reste de la charte : un client qui s'écarte d'un autre échoue dans sa propre CI.",
+  "max_line": 65536,
+  "apps": ["shell", "explorer", "browser", "repos", "transfers", "notes", "terminal", "agenda", "mail", "youtube", "audio_linker", "messages"],
+  "accent": [
+    { "json": "{\"version\":1,\"accent\":\"jean\"}", "fallback": "rouge", "expect": "jean", "why": "cas ordinaire" },
+    { "json": "{\"accent\":\"reve-vert\"}", "fallback": "rouge", "expect": "reve-vert", "why": "version absente : acceptée" },
+    { "json": "{ \"version\" : 1 , \"accent\" : \"lagon\" }", "fallback": "rouge", "expect": "lagon", "why": "espaces autour des deux-points et des virgules" },
+    { "json": "{\"accent\":\"turquoise\",\"version\":1}", "fallback": "rouge", "expect": "turquoise", "why": "ordre des clés indifférent" },
+    { "json": "{\"version\":1,\"accent\":\"bleu\"}", "fallback": "rouge", "expect": "jean", "why": "ancien nom (cdx-ui 1.x) ramené au nom actuel" },
+    { "json": "{\"accent\":\"charbon\"}", "fallback": "rouge", "expect": "techno", "why": "ancien nom" },
+    { "json": "{\"accent\":\"cdx\"}", "fallback": "ambre", "expect": "rouge", "why": "ancien nom du rouge" },
+    { "json": "{\"version\":2,\"accent\":\"jean\"}", "fallback": "ambre", "expect": "ambre", "why": "autre version : ignoré" },
+    { "json": "{\"version\":\"1\",\"accent\":\"jean\"}", "fallback": "ambre", "expect": "ambre", "why": "version en texte : pas le nombre 1" },
+    { "json": "{\"version\":1.5,\"accent\":\"jean\"}", "fallback": "ambre", "expect": "ambre", "why": "version non entière" },
+    { "json": "{\"version\":10,\"accent\":\"jean\"}", "fallback": "ambre", "expect": "ambre", "why": "10 n'est pas 1" },
+    { "json": "{\"accent\":\"jean\",\"autre\":{\"version\":2}}", "fallback": "ambre", "expect": "jean", "why": "seule la version du premier niveau compte" },
+    { "json": "{\"autre\":{\"accent\":\"marine\"},\"accent\":\"sarcelle\"}", "fallback": "rouge", "expect": "sarcelle", "why": "seul l'accent du premier niveau compte" },
+    { "json": "{\"accent\":\"violet-fluo\"}", "fallback": "rouge", "expect": "rouge", "why": "accent inconnu" },
+    { "json": "{\"accent\":5}", "fallback": "rouge", "expect": "rouge", "why": "accent qui n'est pas un texte" },
+    { "json": "{\"version\":1}", "fallback": "chocolat", "expect": "chocolat", "why": "pas d'accent" },
+    { "json": "{{{ abîmé", "fallback": "rouge", "expect": "rouge", "why": "fichier abîmé : jamais d'erreur" },
+    { "json": "[\"jean\"]", "fallback": "rouge", "expect": "rouge", "why": "pas un objet" },
+    { "json": "", "fallback": "rouge", "expect": "rouge", "why": "fichier vide" }
+  ]
+}

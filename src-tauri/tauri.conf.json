@@ -1,0 +1,57 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Messages",
+  "identifier": "fr.valentinlarge.cdx.messages",
+  "mainBinaryName": "cdx-messages",
+  "build": {
+    "frontendDist": "../ui"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data:; connect-src ipc: http://ipc.localhost"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": [
+      "nsis"
+    ],
+    "publisher": "Valentin Large",
+    "copyright": "Copyright (c) 2026 Valentin Large",
+    "license": "../LICENSE",
+    "shortDescription": "Messagerie IRC et WhatsApp au style CDX",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.ico"
+    ],
+    "windows": {
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper",
+        "silent": true
+      },
+      "nsis": {
+        "installMode": "currentUser",
+        "languages": [
+          "French"
+        ],
+        "displayLanguageSelector": false
+      }
+    },
+    "createUpdaterArtifacts": false
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEE0OENCQjUwNUJGMDE2QTgKUldTb0Z2QmJVTHVNcEdLSHRCUHhJSEJoc0lvdXIyVHFiMUhhbnlrSnBXUVNmUjNRVDlYZWFnUUgK",
+      "endpoints": [
+        "https://github.com/Crazyshouby/cdx-messages/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
+  }
+}

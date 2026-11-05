@@ -1,0 +1,69 @@
+{
+  "cdxUi": "2.5.0",
+  "files": {
+    "ui/cdx/cdx-ui.css": {
+      "from": "cdx-ui.css",
+      "sha256": "03848b11a5c7c932349a2274c2dcc7e7ececce6414a5086661f16d0a8111078e"
+    },
+    "ui/cdx/themes.css": {
+      "from": "themes.css",
+      "sha256": "9015ba7598fefedc18d417b066f2a12e36b0369738e7711e163178655db27379"
+    },
+    "ui/cdx/fonts.css": {
+      "from": "fonts.css",
+      "sha256": "667df1729ecd40167562b01deaf3002b5e2250044cc720e006074b81ba86f71c"
+    },
+    "ui/cdx/icons.js": {
+      "from": "icons.js",
+      "sha256": "05608ca62f1d45a7a262eaabc7a5613a89a02240ad334afda89fa38d8a9b3516"
+    },
+    "src-tauri/src/cdx_bus.rs": {
+      "from": "cdx_bus.rs",
+      "sha256": "d4cfa7d6d7cb9b8a4ba075d3c0cf3b9b674aca06bcfabc4c8971634930e13708"
+    },
+    "src-tauri/src/cdx_tokens.rs": {
+      "from": "tokens.rs",
+      "sha256": "cf4681462088de8d52329557d22ed9439cc9173d83827f6691e6e4c34f7e3966"
+    },
+    "src-tauri/tests/bus-vectors.json": {
+      "from": "bus-vectors.json",
+      "sha256": "61695fe1bfa71af2f9c42d12bc08fbecb62b1213f5b5302313da716c20dd2677"
+    },
+    "tools/cdx-verify.mjs": {
+      "from": "cdx-verify.mjs",
+      "sha256": "347fc3c292ee0b9ca2b3ae82b78e6c9abe62fdea38b529ebeb088b7623240982"
+    },
+    "ui/cdx/cdx-bridge.js": {
+      "from": "cdx-bridge.js",
+      "sha256": "fed968433f222e82f8b62a65d8f8937cce35981bf1713b090fdd990ccde19b7c"
+    },
+    "ui/cdx/cdx-frame.js": {
+      "from": "cdx-frame.js",
+      "sha256": "f16698986b72b7dc374246353675d0c1dc2f789109477cc319c9b4c5e5ce4e97"
+    },
+    "ui/cdx/cdx-frame.css": {
+      "from": "cdx-frame.css",
+      "sha256": "2f1a7698193b728609f6a340e4036c104a2e6a4fcf0e272e4c0d2464f1092ac7"
+    },
+    "ui/cdx/tokens.json": {
+      "from": "tokens.json",
+      "sha256": "1ba2ba2b857f151e07b995077aa7060b704a40641b59737be61033ab15ffbba2"
+    },
+    "tools/charte-lint.mjs": {
+      "from": "charte-lint.mjs",
+      "sha256": "103784201d7461c19761ac2c4bae18f213150e6b08d3459c5c4b5bf10cd01636"
+    },
+    "tools/lib/lint.mjs": {
+      "from": "lint.mjs",
+      "sha256": "9d4adb8b900bf9b576d83f252c6a54479d79fe95f1ee68e93459befeb1226ab7"
+    },
+    "ui/cdx/cdx-columns.js": {
+      "from": "cdx-columns.js",
+      "sha256": "908f8232b35c519a3b8df7c6825e6fba8bfb953007a2dc8485c44b27e3fd73ef"
+    },
+    "ui/cdx/cdx-split.js": {
+      "from": "cdx-split.js",
+      "sha256": "d7923d23884679fe9e390fd80852d1d9d4d2a1d2d3b82d12327bbdafc30e1093"
+    }
+  }
+}
