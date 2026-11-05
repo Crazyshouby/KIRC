@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Messages</title>
+<link rel="stylesheet" href="cdx/fonts.css">
+<link rel="stylesheet" href="cdx/cdx-ui.css">
+<link rel="stylesheet" href="cdx/themes.css">
+<link rel="stylesheet" href="cdx/cdx-frame.css">
+<link rel="stylesheet" href="messages.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- The launcher: the main window, a column of buttons like CDX's. -->
+  <section class="win" id="launcherWin">
+    <div class="tb"><span class="tb-title"><span class="pix" data-ic="messages" data-size="14" style="vertical-align:-2px;margin-right:6px"></span>Messages</span><button class="tb-btn tb-r" data-act="close" data-glyph="minus" title="Réduire dans la zone de notification" aria-label="Réduire dans la zone de notification"></button></div>
+    <div class="cb launcher">
+      <div class="logo-art" aria-hidden="true"><span>Messages</span></div>
+      <div class="status" id="statusPill"><span class="dot"></span><span id="statusText">Aucune connexion</span></div>
+      <div class="banner" id="updateBar" hidden><span class="orb amber"></span><span class="t" id="updateText"></span><button class="ghost-btn" id="updateBtn">Installer</button></div>
+      <select id="serverSelect" class="lsel" title="Serveur du carnet d'adresses" aria-label="Serveur"></select>
+      <button class="primary" id="connectBtn">Connecter</button>
+      <div class="lbtns">
+        <button class="lbtn" id="btnConsole" title="Messages du serveur"><span class="pix" data-ic="console"></span>Messages</button>
+        <button class="lbtn" id="btnJoin" title="Rejoindre un salon"><span class="pix" data-ic="salon"></span>Rejoindre…</button>
+        <button class="lbtn" id="btnList" title="Liste des salons du serveur"><span class="pix" data-ic="liste"></span>Salons…</button>
+        <button class="lbtn" id="btnBook" title="Carnet d'adresses"><span class="pix" data-ic="carnet"></span>Carnet d'adresses</button>
+      </div>
+      <div class="list" id="openList" aria-label="Salons ouverts"></div>
+      <div class="lbtns">
+        <button class="lbtn" id="btnSettings"><span class="pix" data-ic="reglages"></span>Réglages</button>
+        <button class="lbtn" id="btnAbout"><span class="pix" data-ic="info"></span>À propos</button>
+        <button class="lbtn" id="btnQuit" title="Quitte tous les serveurs et ferme Messages"><span class="pix" data-ic="quitter"></span>Quitter</button>
+      </div>
+      <div class="counters"><span class="cnt" title="Serveurs connectés"><span class="pix" data-ic="connecter"></span><span id="cntServers">0</span></span><span class="cnt" title="Salons rejoints"><span class="pix" data-ic="salon"></span><span id="cntChannels">0</span></span></div>
+    </div>
+    <div class="grip-rz"></div>
+  </section>
+
+  <!-- Address book -->
+  <section class="win" id="serversWin">
+    <div class="tb"><button class="tb-btn tb-l" data-act="close" data-glyph="x" title="Fermer" aria-label="Fermer"></button><button class="tb-btn tb-m" data-act="menu" title="Menu de la fenêtre" aria-label="Menu de la fenêtre"></button><span class="tb-title">Carnet d'adresses</span><button class="tb-btn tb-r2" data-act="zoom" data-glyph="plus" title="Agrandir" aria-label="Agrandir"></button><button class="tb-btn tb-r" data-act="shade" data-glyph="minus" title="Enrouler" aria-label="Enrouler"></button></div>
+    <div class="cb book">
+      <div class="side">
+        <div class="list" id="serverList"></div>
+        <button class="ghost-btn" id="newServer"><span class="pix" data-ic="serveur" style="vertical-align:-3px;margin-right:6px"></span>Nouveau serveur</button>
+      </div>
+      <div class="main">
+        <div class="scroll">
+          <form class="form" id="serverForm" autocomplete="off" spellcheck="false">
+            <label for="fProto" id="lProto" hidden>Protocole</label>
+            <select class="text-input" id="fProto" hidden></select>
+            <label for="fPreset" data-proto="irc">Modèle</label>
+            <select class="text-input" id="fPreset" data-proto="irc">
+              <option value="">— Choisir un réseau —</option>
+              <option value="Libera.Chat|irc.libera.chat|6697">Libera.Chat</option>
+              <option value="OFTC|irc.oftc.net|6697">OFTC</option>
+              <option value="Rizon|irc.rizon.net|6697">Rizon</option>
+              <option value="IRCnet|open.ircnet.net|6697">IRCnet</option>
+            </select>
+            <fieldset class="grp" data-proto="whatsapp" hidden><legend>WhatsApp</legend>
+            <label for="fWaName">Nom</label><input class="text-input" id="fWaName" maxlength="60" placeholder="WhatsApp">
+            <div class="hint">Client non officiel : WhatsApp n'autorise pas les clients tiers, et un compte qui en utilise un peut être suspendu. Messages se lie à votre compte comme un appareil de plus (WhatsApp, Réglages, Appareils connectés). Après « Connecter », un code s'affiche dans la fenêtre des messages : scannez-le avec le téléphone.</div>
+            <div class="hint">Pour délier l'appareil : tapez /logout dans la fenêtre des messages, ou retirez-le depuis le téléphone. Supprimer ce compte efface la session de Messages mais ne délie pas l'appareil.</div>
+            </fieldset>
+            <fieldset class="grp" data-proto="irc"><legend>Serveur</legend>
+            <label for="fName">Nom</label><input class="text-input" id="fName" maxlength="60">
+            <label for="fHost">Adresse</label><input class="text-input" id="fHost" maxlength="253" placeholder="irc.exemple.org">
+            <label for="fPort">Port</label>
+            <input class="text-input port" id="fPort" type="number" min="1" max="65535">
+            <span class="lbl"></span>
+            <label class="chk-row"><span class="switch"><input type="checkbox" id="fTls"><span class="track"></span></span>Connexion chiffrée (TLS)</label>
+            <div class="hint" id="tlsHint">Sans TLS, les mots de passe transitent en clair.</div>
+            <span class="lbl"></span>
+            <label class="chk-row" title="À n'utiliser que pour un serveur personnel au certificat auto-signé"><span class="switch"><input type="checkbox" id="fInvalid"><span class="track"></span></span>Accepter un certificat non valide</label>
+            <label for="fServerPass">Mot de passe</label><input class="text-input" id="fServerPass" type="password" maxlength="200" placeholder="(serveur protégé seulement)">
+            <label class="chk-row col2" id="rowForgetPass" hidden><span class="switch"><input type="checkbox" id="fForgetPass"><span class="track"></span></span>Oublier le mot de passe enregistré</label>
+            </fieldset>
+          <fieldset class="grp" data-proto="irc"><legend>Identité</legend>
+            <label for="fNick">Pseudo</label><input class="text-input" id="fNick" maxlength="30" placeholder="(réglages par défaut)">
+            <label for="fAlt">Pseudo de secours</label><input class="text-input" id="fAlt" maxlength="30">
+            <label for="fUser">Identifiant</label><input class="text-input" id="fUser" maxlength="30">
+            <label for="fReal">Nom réel</label><input class="text-input" id="fReal" maxlength="100">
+            </fieldset>
+          <fieldset class="grp" data-proto="irc"><legend>Authentification</legend>
+            <label for="fAuth">Méthode</label>
+            <select class="text-input" id="fAuth">
+              <option value="none">Aucune</option>
+              <option value="sasl">SASL (compte et mot de passe)</option>
+              <option value="nickserv">NickServ (mot de passe)</option>
+            </select>
+            <label for="fAccount" id="lAccount">Compte</label><input class="text-input" id="fAccount" maxlength="60" placeholder="(le pseudo)">
+            <label for="fAuthPass" id="lAuthPass">Mot de passe</label><input class="text-input" id="fAuthPass" type="password" maxlength="200">
+            <label class="chk-row col2" id="rowForgetAuth" hidden><span class="switch"><input type="checkbox" id="fForgetAuth"><span class="track"></span></span>Oublier le mot de passe enregistré</label>
+            <div class="hint">Les mots de passe sont gardés dans le coffre de Windows, jamais dans un fichier.</div>
+            </fieldset>
+          <fieldset class="grp"><legend>Connexion</legend>
+            <span class="lbl"></span>
+            <label class="chk-row"><span class="switch"><input type="checkbox" id="fAuto"><span class="track"></span></span>Se connecter au démarrage de Messages</label>
+            <label for="fJoin" data-proto="irc">Salons</label><textarea class="text-input" id="fJoin" rows="3" placeholder="#salon, #autre clé" data-proto="irc"></textarea>
+          </fieldset>
+          </form>
+        </div>
+        <div class="btns">
+          <button class="ghost-btn push" id="delServer">Supprimer</button>
+          <button class="ghost-btn" id="saveServer">Enregistrer</button>
+          <button class="primary" id="connectServer">Connecter</button>
+        </div>
+      </div>
+    </div>
+    <div class="grip-rz"></div>
+  </section>
+
+  <!-- Settings -->
+  <section class="win" id="settingsWin">
+    <div class="tb"><button class="tb-btn tb-l" data-act="close" data-glyph="x" title="Fermer" aria-label="Fermer"></button><span class="tb-title">Réglages</span><button class="tb-btn tb-r2" data-act="zoom" data-glyph="plus" title="Agrandir" aria-label="Agrandir"></button><button class="tb-btn tb-r" data-act="shade" data-glyph="minus" title="Enrouler" aria-label="Enrouler"></button></div>
+    <div class="cb">
+      <div class="scroll">
+        <form class="form" id="settingsForm" autocomplete="off" spellcheck="false">
+          <div class="panelbar"><select class="text-input" id="sPanel" aria-label="Section des réglages">
+            <option value="identite">Identité</option><option value="departs">Départs</option><option value="affichage">Affichage</option>
+            <option value="conversations">Conversations</option><option value="ignorer">Ignorer et alertes</option><option value="comportement">Comportement</option>
+          </select></div>
+          <fieldset class="grp" data-panel="identite"><legend>Identité par défaut</legend>
+          <label for="sNick">Pseudo</label><input class="text-input" id="sNick" maxlength="30">
+          <label for="sAlt">Pseudo de secours</label><input class="text-input" id="sAlt" maxlength="30">
+          <label for="sUser">Identifiant</label><input class="text-input" id="sUser" maxlength="30" placeholder="(le pseudo)">
+          <label for="sReal">Nom réel</label><input class="text-input" id="sReal" maxlength="100">
+          </fieldset>
+          <fieldset class="grp" data-panel="departs"><legend>Départs</legend>
+          <label for="sQuit">En quittant IRC</label><input class="text-input" id="sQuit" maxlength="200">
+          <label for="sPart">En quittant un salon</label><input class="text-input" id="sPart" maxlength="200">
+          </fieldset>
+          <fieldset class="grp" data-panel="affichage"><legend>Affichage</legend>
+          <label for="sTheme">Thème</label>
+          <select class="text-input" id="sTheme">
+            <option value="cdx">Clair-obscur rouge (défaut)</option>
+            <option value="marine">Marine et rose</option>
+            <option value="ambre">Ambre CRT</option>
+            <option value="jean">Bleu jean</option>
+            <option value="tramway">Tramway</option>
+            <option value="sarcelle">Sarcelle</option>
+            <option value="chocolat">Chocolat framboise</option>
+            <option value="lavande">Lavande</option>
+            <option value="oxygene">Oxygène</option>
+            <option value="couchant">Clair-obscur couchant</option>
+            <option value="techno">Techno électrique</option>
+            <option value="reve-bleu">Rêve bleu</option>
+            <option value="reve-vert">Rêve vert</option>
+            <option value="reve-violet">Rêve violet</option>
+            <option value="lagon">Lagon</option>
+            <option value="turquoise">Turquoise</option>
+          </select>
+          <div class="hint">L'aperçu est immédiat dans cette fenêtre ; « Enregistrer » l'applique à toutes.</div>
+          <label for="sFeed">Conversations WhatsApp</label>
+          <select class="text-input" id="sFeed">
+            <option value="blocs">Blocs par auteur</option>
+            <option value="aere">Texte aéré</option>
+            <option value="bulles">Bulles</option>
+            <option value="cartes">Cartes</option>
+            <option value="classique">Classique (comme IRC)</option>
+          </select>
+          <div class="hint">La façon dont les messages d'une conversation WhatsApp sont présentés. IRC ne change pas.</div>
+          <label for="sSide">Mes messages</label>
+          <select class="text-input" id="sSide">
+            <option value="auto">Selon la présentation</option>
+            <option value="gauche">À gauche</option>
+            <option value="droite">À droite</option>
+          </select>
+          <div class="hint">Le côté où s'affichent vos propres messages dans une conversation WhatsApp (« Selon la présentation » : à droite pour les bulles, à gauche pour les autres).</div>
+          <label for="sSize">Taille du texte</label>
+          <select class="text-input" id="sSize">
+            <option value="petite">Petite (actuelle)</option>
+            <option value="moyenne">Moyenne</option>
+            <option value="grande">Grande (double)</option>
+          </select>
+          <div class="hint">Pour les messages de toutes les fenêtres. Les polices pixel ne restent nettes qu'à ces tailles.</div>
+          <span class="lbl"></span><label class="chk-row"><span class="switch"><input type="checkbox" id="sStamps"><span class="track"></span></span>Afficher l'heure devant les messages</label>
+          <span class="lbl"></span><label class="chk-row"><span class="switch"><input type="checkbox" id="sJoins"><span class="track"></span></span>Afficher les arrivées et départs</label>
+          <span class="lbl"></span><label class="chk-row"><span class="switch"><input type="checkbox" id="sSmall"><span class="track"></span></span>Petites icônes dans la liste des membres</label>
+          <span class="lbl"></span><label class="chk-row"><span class="switch"><input type="checkbox" id="sColors"><span class="track"></span></span>Distinguer les messages par des couleurs et des styles</label>
+          <label for="sScroll">Historique</label><div class="inline"><input class="text-input port" id="sScroll" type="number" min="50" max="5000" step="50"> lignes par fenêtre</div>
+          </fieldset>
+          <fieldset class="grp" data-panel="conversations"><legend>Conversations</legend>
+          <span class="lbl"></span><label class="chk-row"><span class="switch"><input type="checkbox" id="sLog"><span class="track"></span></span>Enregistrer les conversations dans des fichiers</label>
+          <label for="sLogDays">Conservation</label><div class="inline"><input class="text-input port" id="sLogDays" type="number" min="0" max="3650"> jours (0 = toujours)</div>
+          <span class="lbl"></span><div class="inline"><button type="button" class="ghost-btn" id="openLogs">Ouvrir le dossier des journaux</button></div>
+          <div class="hint">Les dernières lignes d'une conversation réapparaissent à l'ouverture de sa fenêtre.</div>
+          </fieldset>
+          <fieldset class="grp" data-panel="ignorer"><legend>Ignorer et alertes</legend>
+          <label for="sIgnores">Pseudos ignorés</label><textarea class="text-input" id="sIgnores" rows="3" placeholder="pseudo ou masque, un par ligne&#10;*@hote.example"></textarea>
+          <label for="sWords">Mots d'alerte</label><textarea class="text-input" id="sWords" rows="2" placeholder="un mot par ligne (en plus de votre pseudo)"></textarea>
+          </fieldset>
+          <fieldset class="grp" data-panel="comportement"><legend>Comportement</legend>
+          <span class="lbl"></span><label class="chk-row"><span class="switch"><input type="checkbox" id="sNotif"><span class="track"></span></span>Notifier les messages privés et mentions</label>
+          <span class="lbl"></span><label class="chk-row"><span class="switch"><input type="checkbox" id="sQueries"><span class="track"></span></span>Ouvrir une fenêtre par conversation privée</label>
+          <span class="lbl"></span><label class="chk-row"><span class="switch"><input type="checkbox" id="sUpdates"><span class="track"></span></span>Rechercher les mises à jour (contacte github.com)</label>
+          <span class="lbl"></span><label class="chk-row"><span class="switch"><input type="checkbox" id="sConsole"><span class="track"></span></span>Ouvrir les messages du serveur à la connexion</label>
+        </fieldset>
+          </form>
+      </div>
+      <div class="btns">
+        <button class="ghost-btn" id="cancelSettings">Fermer</button>
+        <button class="primary" id="saveSettings">Enregistrer</button>
+      </div>
+    </div>
+    <div class="grip-rz"></div>
+  </section>
+
+  <!-- About -->
+  <section class="win" id="aboutWin">
+    <div class="tb"><button class="tb-btn tb-l" data-act="close" data-glyph="x" title="Fermer" aria-label="Fermer"></button><span class="tb-title">À propos de Messages</span><button class="tb-btn tb-r" data-act="shade" data-glyph="minus" title="Enrouler" aria-label="Enrouler"></button></div>
+    <div class="cb about">
+      <span class="pix" data-ic="messages" data-size="48"></span>
+      <div class="big">Messages</div>
+      <div class="ver mono" id="aboutVersion"></div>
+      <p>Client IRC pour Windows, dans le style de KDX (Haxial).<br>Licence MIT — © Valentin Large.<br>Polices reconstituées d'après celles de KDX (Haxial).</p>
+      <div class="inline"><button class="ghost-btn" id="checkUpdate">Rechercher une mise à jour</button></div>
+      <div class="ver mono" id="updateLine"></div>
+      <div class="path" id="aboutPath"></div>
+    </div>
+  </section>
+
+  <!-- Join a channel -->
+  <section class="win" id="joinWin">
+    <div class="tb"><button class="tb-btn tb-l" data-act="close" data-glyph="x" title="Fermer" aria-label="Fermer"></button><span class="tb-title">Rejoindre un salon</span><button class="tb-btn tb-r" data-act="shade" data-glyph="minus" title="Enrouler" aria-label="Enrouler"></button></div>
+    <div class="cb dialog">
+      <form class="form" id="joinForm" autocomplete="off" spellcheck="false">
+        <label for="jServer">Serveur</label><select class="text-input" id="jServer"></select>
+        <label for="jChannel">Salon</label><input class="text-input" id="jChannel" maxlength="200" placeholder="#salon">
+        <label for="jKey">Clé</label><input class="text-input" id="jKey" maxlength="100" placeholder="(si nécessaire)">
+      </form>
+      <div class="btns" style="margin-top:auto">
+        <button class="ghost-btn" id="joinCancel">Annuler</button>
+        <button class="primary" id="joinOk">Rejoindre</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- WHOIS card -->
+  <section class="win" id="whoisWin">
+    <div class="tb"><button class="tb-btn tb-l" data-act="close" data-glyph="x" title="Fermer" aria-label="Fermer"></button><span class="tb-title" data-title>Informations</span><button class="tb-btn tb-r" data-act="shade" data-glyph="minus" title="Enrouler" aria-label="Enrouler"></button></div>
+    <div class="cb dialog">
+      <div class="scroll"><div class="form whois" id="whoisForm"></div></div>
+      <div class="btns">
+        <button class="ghost-btn" id="whoisQuery">Message privé</button>
+        <button class="primary" id="whoisClose">Fermer</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Channel list -->
+  <section class="win" id="listWin">
+    <div class="tb"><button class="tb-btn tb-l" data-act="close" data-glyph="x" title="Fermer" aria-label="Fermer"></button><button class="tb-btn tb-m" data-act="menu" title="Menu de la fenêtre" aria-label="Menu de la fenêtre"></button><span class="tb-title" data-title>Salons</span><button class="tb-btn tb-r2" data-act="zoom" data-glyph="plus" title="Agrandir" aria-label="Agrandir"></button><button class="tb-btn tb-r" data-act="shade" data-glyph="minus" title="Enrouler" aria-label="Enrouler"></button></div>
+    <div class="cb">
+      <form class="listbar" id="listBar" autocomplete="off" spellcheck="false">
+        <input class="text-input" id="lFilter" maxlength="100" placeholder="Rechercher dans les noms et les sujets">
+        <input class="text-input port" id="lMin" type="number" min="0" max="100000" value="0" title="Nombre minimal de membres" style="width:70px">
+        <button type="button" class="ghost-btn" id="lRefresh">Actualiser</button>
+      </form>
+      <div class="lhead" id="lHead"><button type="button" class="lh" data-sort="name">Salon</button><button type="button" class="lh on" data-sort="users">Membres</button><span class="lh static">Sujet</span></div>
+      <div class="list" id="chanList"></div>
+      <div class="status" id="lStatus"><span class="dot"></span><span id="lStatusText"></span></div>
+    </div>
+    <div class="grip-rz"></div>
+  </section>
+
+  <!-- Quick switcher (Ctrl+K) -->
+  <section class="win" id="switcherWin">
+    <div class="tb"><button class="tb-btn tb-l" data-act="close" data-glyph="x" title="Fermer (Échap)" aria-label="Fermer"></button><span class="tb-title">Aller à…</span></div>
+    <div class="cb switcher">
+      <input class="text-input" id="swInput" maxlength="100" autocomplete="off" spellcheck="false" placeholder="Salon, conversation, action…" aria-label="Aller à">
+      <div class="list" id="swList" role="listbox"></div>
+      <div class="status"><span class="dot"></span><span id="swHint">↑↓ choisir · Entrée · # rejoindre · @ écrire</span></div>
+    </div>
+  </section>
+
+  <!-- Server messages (console) -->
+  <section class="win" id="consoleWin">
+    <div class="tb"><button class="tb-btn tb-l" data-act="close" data-glyph="x" title="Fermer" aria-label="Fermer"></button><button class="tb-btn tb-m" data-act="menu" title="Menu de la fenêtre" aria-label="Menu de la fenêtre"></button><span class="tb-title" data-title>Messages</span><button class="tb-btn tb-r2" data-act="zoom" data-glyph="plus" title="Agrandir" aria-label="Agrandir"></button><button class="tb-btn tb-r" data-act="shade" data-glyph="minus" title="Enrouler" aria-label="Enrouler"></button></div>
+    <div class="cb chat">
+      <div class="status" id="consoleStatus"><span class="dot"></span><span id="consoleStatusText"></span></div>
+      <div class="pairing" id="pairing" hidden><canvas id="pairCanvas" width="1" height="1"></canvas><div class="pairing-text">Scannez ce code avec WhatsApp sur votre téléphone : Réglages, Appareils connectés, Connecter un appareil. Il se renouvelle tout seul.</div></div>
+      <div class="chat-main"><div class="log" id="consoleLog" tabindex="0"></div></div>
+      <form class="inputbar" id="consoleForm" autocomplete="off">
+        <input class="text-input" id="consoleInput" maxlength="2000" spellcheck="false" placeholder="/join #salon · /msg pseudo texte · /aide">
+        <button class="ghost-btn" type="submit">Envoyer</button>
+      </form>
+    </div>
+    <div class="grip-rz"></div>
+  </section>
+
+  <!-- A channel or a private conversation -->
+  <section class="win" id="chatWin">
+    <div class="tb"><button class="tb-btn tb-l" data-act="close" data-glyph="x" title="Fermer (quitte le salon)" aria-label="Fermer"></button><button class="tb-btn tb-m" data-act="menu" title="Menu de la fenêtre" aria-label="Menu de la fenêtre"></button><span class="tb-title" data-title>Salon</span><button class="tb-btn tb-r2" data-act="zoom" data-glyph="plus" title="Agrandir" aria-label="Agrandir"></button><button class="tb-btn tb-r" data-act="shade" data-glyph="minus" title="Enrouler" aria-label="Enrouler"></button></div>
+    <div class="cb chat">
+      <div class="viewer" id="viewer" hidden><span class="vmsg" id="viewerMsg"></span><img id="viewerImg" alt=""></div>
+      <div class="chat-main">
+        <div class="pane-l">
+          <div class="callbox" id="callbox" hidden>
+            <div class="call-pics"><canvas id="callRemote" width="320" height="240" hidden></canvas><video id="callLocal" muted playsinline hidden></video></div>
+            <div class="call-info" id="callInfo"></div>
+            <div class="call-btns">
+              <button type="button" class="primary" id="callAnswer">Répondre</button>
+              <button type="button" class="ghost-btn" id="callAnswerVideo">Répondre avec la vidéo</button>
+              <button type="button" class="ghost-btn" id="callMute">Couper le micro</button>
+              <button type="button" class="ghost-btn" id="callHang">Raccrocher</button>
+            </div>
+          </div>
+          <div class="log" id="log" tabindex="0"></div>
+          <button class="ghost-btn newmsg" id="newMsg" hidden>▼ Nouveaux messages</button>
+          <div class="banner" id="replyBar" hidden><span class="orb green"></span><span class="t" id="replyText"></span><button type="button" class="ghost-btn" id="replyCancel" title="Annuler la réponse (Échap)">✕</button></div>
+          <div class="banner" id="pasteBar" hidden><span class="orb amber"></span><span class="t" id="pasteText"></span><button type="button" class="ghost-btn" id="pasteSend">Envoyer</button><button type="button" class="ghost-btn" id="pasteCancel">Annuler</button></div>
+          <div class="banner" id="chatBanner" hidden><span class="orb amber"></span><span class="t" id="chatBannerText"></span></div>
+          <form class="inputbar" id="inputForm" autocomplete="off">
+            <textarea class="text-input" id="msgInput" rows="1" maxlength="2000" spellcheck="false" aria-label="Message"></textarea>
+            <button type="button" class="ghost-btn" id="btnImage" title="Envoyer une image (ou la coller dans la zone de saisie)" hidden>Image…</button>
+            <button type="button" class="ghost-btn" id="btnCall" title="Appeler (audio)" hidden>Appel</button>
+            <button type="button" class="ghost-btn" id="btnVideoCall" title="Appeler avec la vidéo" hidden>Vidéo</button>
+            <input type="file" id="fileImage" accept="image/jpeg,image/png,image/webp" hidden>
+          </form>
+        </div>
+        <div class="members" id="membersBox">
+          <div class="mem-h"><span>Membres</span><span class="mono" id="memCount">[0]</span></div>
+          <div class="list" id="memberList"></div>
+        </div>
+      </div>
+      <div class="topicrow" id="topicBar"><button type="button" class="ghost-btn tbtn" id="topicBtn" title="Modifier le sujet du salon">Topic:</button><span class="t" id="topicText"></span><span class="mynick" id="myNick" title="Votre pseudo"></span></div>
+    </div>
+    <div class="grip-rz"></div>
+  </section>
+
+</div>
+<div id="toasts"></div>
+<script src="cdx/icons.js"></script>
+<script src="cdx/cdx-bridge.js"></script>
+<script src="cdx/cdx-frame.js"></script>
+<script src="cdx/cdx-columns.js"></script>
+<script src="cdx/cdx-split.js"></script>
+<script src="messages.js"></script>
+</body>
+</html>

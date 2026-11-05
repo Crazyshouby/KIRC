@@ -1,0 +1,47 @@
+[package]
+name = "cdx-messages"
+version = "0.5.0"
+description = "Messages - client IRC au style CDX"
+authors = ["Valentin Large"]
+license = "MIT"
+edition = "2021"
+# 1.94 for the optional `whatsapp` feature (its library needs it); the rest builds with 1.80.
+rust-version = "1.94"
+
+[lib]
+name = "cdx_messages_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon", "image-png", "image-ico"] }
+tauri-plugin-opener = "2"
+tauri-plugin-notification = "2"
+tauri-plugin-single-instance = "2"
+tauri-plugin-updater = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["rt-multi-thread", "net", "io-util", "time", "sync", "macros"] }
+native-tls = "0.2"
+tokio-native-tls = "0.3"
+base64 = "0.22"
+keyring = { version = "3", features = ["windows-native"] }
+log = "0.4"
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+
+# WhatsApp (unofficial client, off by default): cargo build --features whatsapp
+whatsapp-rust = { version = "0.7", default-features = false, features = ["sqlite-storage", "tokio-transport", "tokio-runtime", "ureq-client", "tokio-native", "voip-mlow"], optional = true }
+qrcode = { version = "0.14", default-features = false, optional = true }
+
+[features]
+default = []
+whatsapp = ["dep:whatsapp-rust", "dep:qrcode"]
+
+[profile.release]
+lto = true
+codegen-units = 1
+opt-level = "s"
+panic = "abort"
+strip = true

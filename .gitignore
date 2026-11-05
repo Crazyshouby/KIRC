@@ -1,0 +1,7 @@
+node_modules/
+src-tauri/target/
+src-tauri/gen/
+*.log
+tests/shots/
+tools/cdx-pixel*.ttf
+__pycache__/

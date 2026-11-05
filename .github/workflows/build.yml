@@ -1,0 +1,157 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-2022
+    timeout-minutes: 40
+    outputs:
+      version: ${{ steps.ver.outputs.version }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      # The version lives in src-tauri/Cargo.toml only. A release tag must match it
+      # (v0.1.0, or v0.1.0-rc1 for a pre-release of 0.1.0).
+      - name: Read version
+        id: ver
+        shell: pwsh
+        run: |
+          $toml = Get-Content src-tauri/Cargo.toml -Raw
+          if ($toml -notmatch '(?m)^version = "(\d+\.\d+\.\d+)"') { throw 'Version introuvable dans Cargo.toml' }
+          $v = $Matches[1]
+          "version=$v" >> $env:GITHUB_OUTPUT
+          if ($env:GITHUB_REF -like 'refs/tags/v*') {
+            $base = ($env:GITHUB_REF_NAME -replace '^v', '') -replace '-.*$', ''
+            if ($base -ne $v) { throw "Le tag $env:GITHUB_REF_NAME ne correspond pas à la version de Cargo.toml ($v)" }
+          }
+
+      # The CDX-UI charter (ui/cdx, src-tauri/src/cdx_bus.rs) is copied from the cdx-ui repository (node tools/charte-sync.mjs --write messages there):
+      # a copy edited by hand or left stale by a local generator fails here.
+      - name: Charter copies are untouched
+        shell: pwsh
+        run: node tools/cdx-verify.mjs ui/cdx/cdx-sync.json
+
+      # The pages follow the charter rules (CHARTE.md section 8); the exceptions are justified one by one in charte-lint.allow.
+      - name: Pages follow the charter
+        shell: pwsh
+        run: node tools/charte-lint.mjs ui --manifest ui/cdx/cdx-sync.json --allow charte-lint.allow
+
+      # Generated files are committed: regenerating them must change nothing.
+      - name: Generated notices are up to date
+        shell: pwsh
+        run: |
+          python tools/make_notices.py
+          git diff --exit-code --ignore-cr-at-eol -- THIRD-PARTY-NOTICES.txt
+          if ($LASTEXITCODE -ne 0) { throw 'Fichiers générés périmés : relancer tools/make_notices.py' }
+
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
+        with:
+          workspaces: src-tauri
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Lint and unit tests
+        shell: pwsh
+        working-directory: src-tauri
+        run: |
+          cargo clippy --all-targets -- -D warnings
+          if ($LASTEXITCODE -ne 0) { throw 'clippy' }
+          cargo test
+          if ($LASTEXITCODE -ne 0) { throw 'tests' }
+          # le code WhatsApp (environ 1 000 lignes, désactivé par défaut) : compilé, contrôlé et essayé lui aussi
+          cargo clippy --all-targets --features whatsapp -- -D warnings
+          if ($LASTEXITCODE -ne 0) { throw 'clippy (whatsapp)' }
+          cargo test --features whatsapp
+          if ($LASTEXITCODE -ne 0) { throw 'tests (whatsapp)' }
+
+      # The installer is signed for the updater when the repository holds the private key
+      # (secret TAURI_SIGNING_PRIVATE_KEY, see RELEASING.md): the application only installs updates
+      # signed by it. Without the secret (a fork's pull request) the installer is built unsigned.
+      - name: Installer
+        shell: pwsh
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        run: |
+          npm ci
+          if ($env:TAURI_SIGNING_PRIVATE_KEY) {
+            '{"bundle":{"createUpdaterArtifacts":true}}' | Set-Content -Encoding utf8 ci-updater.json
+            npx tauri build --config ci-updater.json
+          } else {
+            Write-Host 'Pas de clé de signature : installateur sans artefact de mise à jour'
+            npx tauri build
+          }
+
+      # The real application against tools/fake_ircd.py (see tests/e2e.mjs). OpenSSL comes with Git for Windows.
+      - name: End-to-end test
+        timeout-minutes: 12
+        shell: pwsh
+        run: |
+          $env:PATH = "C:\Program Files\Git\usr\bin;$env:PATH"
+          node tests/e2e.mjs src-tauri/target/release/cdx-messages.exe
+
+      - name: Checksum
+        shell: pwsh
+        run: |
+          $setup = Get-ChildItem src-tauri/target/release/bundle/nsis/*-setup.exe | Select-Object -First 1
+          $hash = (Get-FileHash $setup -Algorithm SHA256).Hash.ToLower()
+          [IO.File]::WriteAllText("$($setup.FullName).sha256", "$hash *$($setup.Name)`n")
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: Messages-installer
+          path: |
+            src-tauri/target/release/bundle/nsis/*-setup.exe
+            src-tauri/target/release/bundle/nsis/*-setup.exe.sha256
+            src-tauri/target/release/bundle/nsis/*-setup.exe.sig
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: failure()
+        with:
+          name: e2e-screenshots
+          path: tests/shots
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: Messages-installer
+          path: dist
+      - name: Verify checksum
+        run: cd dist && sha256sum -c *.sha256
+      # latest.json is what installed copies read to find the newest release (it points at the
+      # installer and carries its signature). A pre-release is never "latest", so none is offered.
+      - name: Update manifest
+        run: python3 tools/make_latest_json.py dist "$GITHUB_REF_NAME" "$GITHUB_REPOSITORY"
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          notes="Installateur Windows (par utilisateur, sans droits d'administrateur). L'exécutable n'est pas signé par une autorité : SmartScreen peut demander une confirmation. Empreinte SHA-256 dans le fichier .sha256 ; les copies déjà installées proposent la mise à jour d'elles-mêmes (signature vérifiée avec la clé publique intégrée)."
+          flags=""
+          case "$GITHUB_REF_NAME" in *-*) flags="--prerelease";; esac
+          files=$(ls dist/*)
+          gh release create "$GITHUB_REF_NAME" $files --title "Messages ${GITHUB_REF_NAME#v}" --notes "$notes" $flags

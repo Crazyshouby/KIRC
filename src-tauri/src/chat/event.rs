@@ -1,0 +1,193 @@
+//! What the protocol layer tells the rest of the application. These types are
+//! serialised as they are to the pages (see ui/messages.js).
+
+use serde::Serialize;
+
+#[derive(Serialize, Clone, Copy, Debug, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum ConnState {
+    Connecting,
+    Registering,
+    Connected,
+    Disconnected,
+    Reconnecting,
+}
+
+#[derive(Serialize, Clone, Copy, Debug, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum LineKind {
+    Msg,
+    Action,
+    Notice,
+    Join,
+    Part,
+    Quit,
+    Kick,
+    Nick,
+    Mode,
+    Topic,
+    Info,
+    Error,
+    Motd,
+    Raw,
+}
+
+/// What a line carries besides text: for now an image. Only the small preview that came with the message is here;
+/// the whole image is fetched when someone asks for it.
+#[derive(Serialize, Clone, Debug, PartialEq, Eq)]
+pub struct Media {
+    /// "image".
+    pub kind: String,
+    /// Base64 of a small JPEG.
+    pub thumb: String,
+    pub width: u32,
+    pub height: u32,
+}
+
+/// One line of a buffer. `buffer` is "" for the server console, otherwise a
+/// channel name or the nick of a private conversation.
+#[derive(Serialize, Clone, Debug)]
+pub struct Line {
+    pub buffer: String,
+    pub kind: LineKind,
+    pub nick: String,
+    pub text: String,
+    /// Milliseconds since the Unix epoch.
+    pub time: i64,
+    /// The line mentions us, or is a private message: worth a notification.
+    pub highlight: bool,
+    /// Typed by us.
+    pub own: bool,
+    /// The server's identifier of the message (IRCv3 `msgid`), empty when it gave none.
+    pub msgid: String,
+    /// The `msgid` of the message this one answers (`+draft/reply`), empty for none.
+    pub reply_to: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub media: Option<Media>,
+}
+
+/// A member of a channel. `modes` holds the status symbols, highest first
+/// ("@+" = operator and voiced).
+#[derive(Serialize, Clone, Debug, PartialEq, Eq)]
+pub struct UserEntry {
+    pub nick: String,
+    pub modes: String,
+    pub away: bool,
+}
+
+/// What /whois learned about someone, shown as one card.
+#[derive(Serialize, Clone, Debug, Default, PartialEq, Eq)]
+pub struct WhoisInfo {
+    pub nick: String,
+    pub user: String,
+    pub host: String,
+    pub realname: String,
+    pub server: String,
+    pub server_info: String,
+    /// Seconds without activity.
+    pub idle: Option<u64>,
+    /// Connection time, seconds since the epoch.
+    pub signon: Option<i64>,
+    pub channels: String,
+    pub account: String,
+    pub away: String,
+    pub secure: bool,
+    pub operator: bool,
+}
+
+/// One row of the server's channel list.
+#[derive(Serialize, Clone, Debug, PartialEq, Eq)]
+pub struct ChannelEntry {
+    pub name: String,
+    pub users: u32,
+    pub topic: String,
+}
+
+/// A code to scan with the phone to link an account: `modules` is the square of the code, row by row, '1' for a dark
+/// module and '0' for a light one (the page draws it; no markup travels).
+#[derive(Serialize, Clone, Debug, PartialEq, Eq)]
+pub struct PairingCode {
+    pub size: u16,
+    pub modules: String,
+    /// How long this code stays valid.
+    pub seconds: u32,
+}
+
+#[derive(Serialize, Clone, Copy, Debug, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum CallState {
+    /// Someone is calling us.
+    Incoming,
+    /// We are calling, and it rings.
+    Calling,
+    /// The call is connected.
+    Active,
+    /// Over (hung up, refused, missed, or failed).
+    Ended,
+}
+
+/// A voice or video call of the account (one at a time).
+#[derive(Serialize, Clone, Debug, PartialEq, Eq)]
+pub struct CallInfo {
+    pub id: String,
+    /// The conversation the call belongs to: its window shows the call.
+    pub buffer: String,
+    pub state: CallState,
+    pub video: bool,
+    /// Who calls, or why it ended.
+    pub text: String,
+}
+
+#[derive(Serialize, Clone, Debug)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum Event {
+    Status { state: ConnState, text: String },
+    Line { line: Line },
+    /// The complete member list of a channel (after NAMES, or emptied on disconnect).
+    Users { buffer: String, users: Vec<UserEntry> },
+    UserSet { buffer: String, user: UserEntry },
+    UserDel { buffer: String, nick: String },
+    Topic { buffer: String, topic: String },
+    /// We are on this channel: its window opens.
+    Joined { buffer: String },
+    /// We left this channel (or were kicked): its window closes.
+    Parted { buffer: String },
+    /// A private conversation exists: its window opens.
+    Query { buffer: String },
+    /// A chat the account belongs to exists, but nobody asked for its window: it is listed in the main menu.
+    Listed { buffer: String },
+    /// Older lines of a chat, from the account's history: written to the conversation log (and shown when its window
+    /// opens), without notifications or unread counters.
+    Backlog { buffer: String, lines: Vec<Line> },
+    /// The account is to be linked: scan this code with the phone.
+    Pairing { code: PairingCode },
+    /// Linking is over (done, or given up).
+    Paired,
+    /// A call begins, changes or ends.
+    Call { call: CallInfo },
+    /// Our own nick and the network name as the server announces it.
+    Me { nick: String, network: String },
+    /// We are marked away (or not any more).
+    Away { away: bool },
+    /// The answer to /whois.
+    Whois { info: Box<WhoisInfo> },
+    /// A channel list is being received.
+    ListStart,
+    /// The whole list, as received. The application keeps it and tells the pages with `ListReady`.
+    ChannelList { entries: Vec<ChannelEntry> },
+    ListReady { count: usize },
+    /// The window of this buffer was looked at: its unread counters go back to zero.
+    Read { buffer: String },
+}
+
+/// What the session asks the network layer to do.
+#[derive(Clone, Debug)]
+pub enum Out {
+    /// Goes through the flood limiter.
+    Send(String),
+    /// Immediate (answers to PING, registration, QUIT).
+    SendNow(String),
+    Ui(Event),
+    /// The user asked to leave: close after flushing, do not reconnect.
+    Quit,
+}

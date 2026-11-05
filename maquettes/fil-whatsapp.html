@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Maquettes — le fil des conversations WhatsApp</title>
+<link rel="stylesheet" href="../ui/cdx/fonts.css">
+<link rel="stylesheet" href="../ui/cdx/cdx-ui.css">
+<style>
+  body { overflow: auto; height: auto; padding: 24px; user-select: text; }
+  h1 { font: 14px/16px var(--font); color: var(--accent-2); margin: 0 0 4px; }
+  .lead { color: var(--faint); max-width: 900px; margin: 0 0 20px; line-height: 17px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(560px, 1fr)); gap: 28px 24px; align-items: start; }
+  figure { margin: 0; }
+  figcaption { margin: 0 0 8px; line-height: 17px; }
+  figcaption b { color: var(--accent-2); font-weight: normal; }
+  figcaption .cost { color: var(--faint); display: block; }
+  .win { height: auto; }
+  .win .cb { padding: 5px; }
+  .win .log { padding: 6px 0 8px; flex: none; overflow: visible; }
+
+  /* ---- ce qui est commun à toutes les propositions : le texte respire un peu plus (interligne 17 px au lieu de 13 px) */
+  .log .m, .log .ev, .log .day, .log .unread { font-family: var(--font-log); line-height: 17px; }
+  .log .ev { color: #00a000; font-family: var(--font-log-italic); text-align: center; margin: 8px 0; }
+  .log .day { text-align: center; color: var(--faint); margin: 10px 8px 8px; display: flex; align-items: center; gap: 8px; }
+  .log .day::before, .log .day::after { content: ""; flex: 1; height: 1px; background: var(--a-hover); }
+  .log .unread { margin: 10px 0; display: flex; align-items: center; gap: 8px; color: var(--a-spark); padding: 0 8px; }
+  .log .unread::before, .log .unread::after { content: ""; flex: 1; height: 1px; background: var(--a-edge); }
+  .log .nm { color: var(--nc); }
+  .log .tm { color: var(--faint); }
+  .log .own .nm, .log .own .bd { color: #fff; }
+  .log .hl .bd { color: #fff; }
+  .log a { color: #5cf0ff; text-decoration: underline; }
+  .log .vo { display: inline-flex; align-items: center; gap: 8px; padding: 2px 8px 2px 6px; margin: 2px 0; background: #111; border: 1px solid; border-color: var(--sunken-border); color: #fff; }
+  .log .vo i { font-style: normal; color: var(--green); }
+  .log .vo .bars { letter-spacing: 1px; color: var(--faint); }
+  .log .miss { color: var(--red); }
+  .log .miss::before { content: "☎ "; }
+  .log .rq { display: block; margin: 2px 0 3px; padding: 1px 0 1px 6px; border-left: 2px solid var(--a-edge); color: #888; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; user-select: none; }
+  .log .img { display: block; margin: 3px 0; border: 1px solid #000; box-shadow: var(--bevel); background: #000; max-width: 100%; }
+  .log .cap { display: block; }
+
+  /* ================= 1. Texte aéré : on garde la forme IRC, mais en colonnes ================= */
+  .v1 .m { display: grid; grid-template-columns: 104px 1fr 42px; column-gap: 8px; padding: 0 8px 0 6px; border-left: 3px solid transparent; }
+  .v1 .m .who { text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .v1 .m.first { margin-top: 7px; }
+  .v1 .m .tm { text-align: right; opacity: 0; }
+  .v1 .m:hover .tm, .v1 .m.first .tm { opacity: 1; }
+  .v1 .m .bd { white-space: pre-wrap; overflow-wrap: anywhere; min-width: 0; }
+  .v1 .m.hl { background: var(--sel-bg); border-left-color: var(--sel-fg); }
+  .v1 .m .rq { margin-left: 0; }
+  .v1 .m .bd-w { min-width: 0; }
+
+  /* ================= 2. Blocs par auteur : un en-tête, puis ses messages à la suite ================= */
+  .v2 .blk { margin: 0 10px 12px 10px; display: flex; flex-direction: column; }
+  .v2 .blk .hd { display: flex; gap: 8px; align-items: baseline; }
+  .v2 .blk .hd .nm { font-family: var(--font); }
+  .v2 .blk .bodies { margin-top: 2px; padding-left: 10px; border-left: 3px solid var(--nc); display: flex; flex-direction: column; gap: 3px; }
+  .v2 .blk.own .bodies { border-left-color: #fff; }
+  .v2 .blk .m.hl { background: var(--sel-bg); margin-left: -10px; padding-left: 7px; border-left: 3px solid var(--sel-fg); }
+  .v2 .m .bd { white-space: pre-wrap; overflow-wrap: anywhere; }
+  .v2 .m .tm { margin-left: 8px; }
+
+  /* ================= 3. Bulles : les autres à gauche, vous à droite ================= */
+  .v3 .row { display: flex; padding: 0 10px; margin-top: 3px; }
+  .v3 .row.first { margin-top: 10px; }
+  .v3 .row.own { justify-content: flex-end; }
+  .v3 .bub { max-width: 76%; padding: 4px 8px 3px; background: #161616; border: 1px solid #3a3a3a; box-shadow: inset 1px 1px 0 #2a2a2a; clip-path: polygon(0 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%); position: relative; }
+  .v3 .row.own .bub { background: var(--a-dark); border-color: var(--a-mid); box-shadow: inset 1px 1px 0 var(--a-mid); }
+  .v3 .row:not(.own) .bub { border-left: 3px solid var(--nc); }
+  .v3 .bub .nm { display: block; }
+  .v3 .bub .bd { white-space: pre-wrap; overflow-wrap: anywhere; }
+  .v3 .bub .tm { display: block; text-align: right; margin-top: 1px; line-height: 13px; }
+  .v3 .row.hl .bub { background: var(--sel-bg); border-color: var(--sel-fg); }
+  .v3 .ev, .v3 .day { margin-left: 10px; margin-right: 10px; }
+  .v3 .ev { margin-top: 10px; }
+
+  /* ================= 4. Cartes : une plaque par message, avec un en-tête ================= */
+  .v4 .card { margin: 0 8px 8px; background: #0d0d0d; border: 1px solid #000; box-shadow: var(--bevel); }
+  .v4 .card .hd { display: flex; align-items: center; gap: 7px; padding: 2px 6px; background: var(--card-2); border-bottom: 1px solid #000; }
+  .v4 .card .av { flex: none; width: 16px; height: 16px; background: var(--nc); color: #000; text-align: center; font: 14px/16px var(--font); box-shadow: inset 1px 1px 0 rgba(255,255,255,.35), inset -1px -1px 0 rgba(0,0,0,.6); }
+  .v4 .card .hd .tm { margin-left: auto; }
+  .v4 .card .m { padding: 4px 8px; }
+  .v4 .card .m + .m { border-top: 1px dashed #222; }
+  .v4 .card .bd { white-space: pre-wrap; overflow-wrap: anywhere; }
+  .v4 .card.own { box-shadow: var(--bevel); background: #12090a; }
+  .v4 .card.own .hd { background: var(--a-dark); }
+  .v4 .card.hl { outline: 1px solid var(--sel-fg); background: var(--sel-bg); }
+  .v4 .ev { margin: 4px 8px 8px; }
+</style>
+</head>
+<body>
+<h1>Le fil d'une conversation WhatsApp — quatre propositions</h1>
+<p class="lead">La même conversation de groupe, rendue de quatre façons avec la vraie charte de Messages (polices, couleurs, relief). Tout est identique d'une proposition à l'autre : une journée, une arrivée, un message vocal, un appel manqué, une photo, une réponse citée, un message long, une mention, une ligne « nouveaux messages ». Seule la mise en page change. L'interligne passe de 13 à 17 px dans les quatre.</p>
+<div class="grid" id="grid"></div>
+
+<script>
+// ---- une seule conversation, pour tout le monde -------------------------------------------------
+const COL = { "Catherine": "#ff5cf0", "Sébastien": "#86a6ff", "Anne-Lise": "#ffd24a", "Valentin": "#fff" };
+const photo = "data:image/svg+xml;utf8," + encodeURIComponent(
+  "<svg xmlns='http://www.w3.org/2000/svg' width='200' height='150' shape-rendering='crispEdges'>" +
+  "<rect width='200' height='150' fill='#3a2a1a'/><rect y='90' width='200' height='60' fill='#5a3d22'/>" +
+  "<ellipse cx='100' cy='88' rx='72' ry='26' fill='#d9a441'/><ellipse cx='100' cy='80' rx='62' ry='20' fill='#c0392b'/>" +
+  "<circle cx='70' cy='74' r='6' fill='#8e1d12'/><circle cx='104' cy='68' r='6' fill='#8e1d12'/><circle cx='132' cy='78' r='6' fill='#8e1d12'/>" +
+  "<rect x='0' y='0' width='200' height='40' fill='#2a1d12'/></svg>");
+const T = [
+  { k: "day", t: "Jeudi 29 octobre" },
+  { k: "m", who: "Catherine", tm: "18:02", t: "Salut tout le monde ! Vous êtes dispos dimanche pour le repas chez mamie ?" },
+  { k: "m", who: "Catherine", tm: "18:02", t: "Elle voudrait savoir combien on sera pour prévoir" },
+  { k: "m", who: "Sébastien", tm: "18:04", t: "Moi je viens, avec Léa et les enfants" },
+  { k: "m", who: "Anne-Lise", tm: "18:05", t: "On sera 4 aussi. Je peux apporter le dessert si ça arrange", rq: "Catherine : Elle voudrait savoir combien on sera pour prévoir" },
+  { k: "m", who: "Anne-Lise", tm: "18:05", t: "Ma tarte de la dernière fois", img: true },
+  { k: "m", who: "Valentin", tm: "18:07", t: "Parfait pour moi, j'arrive vers midi", own: true },
+  { k: "ev", t: "Alexandre a rejoint le groupe" },
+  { k: "unread", t: "3 nouveaux messages" },
+  { k: "m", who: "Sébastien", tm: "18:31", t: "Au fait, j'ai retrouvé les photos du mariage de l'été dernier. Je les mets sur le drive ce soir, je vous envoie le lien dès que c'est fait pour que tout le monde puisse les récupérer avant dimanche." },
+  { k: "m", who: "Catherine", tm: "18:33", voice: "0:42" },
+  { k: "m", who: "Sébastien", tm: "18:40", miss: "Appel manqué" },
+  { k: "m", who: "Catherine", tm: "18:41", t: "Valentin, tu peux me rappeler quand tu as une minute ?", hl: true },
+];
+const esc = s => s.replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+const nc = w => `style="--nc:${COL[w] || "#fff"}"`;
+const body = x => x.voice ? `<span class="vo"><i>▶</i><span class="bars">▂▃▅▂▆▃▂▄▂▃▅▂▃▂</span>${x.voice}</span>`
+  : x.miss ? `<span class="miss">${x.miss}</span>`
+  : (x.rq ? `<span class="rq">↪ ${esc(x.rq)}</span>` : "") + `<span class="bd">${esc(x.t)}</span>` + (x.img ? `<img class="img" src="${photo}" width="200" height="150" alt="">` : "");
+const common = x => x.k === "day" ? `<div class="day">${x.t}</div>` : x.k === "ev" ? `<div class="ev">+++ ${x.t}</div>` : x.k === "unread" ? `<div class="unread">${x.t}</div>` : null;
+
+// Un message est « à la suite » du précédent si c'est le même auteur (même série).
+function runs(list) {
+  const out = []; let cur = null;
+  for (const x of list) {
+    if (x.k !== "m") { out.push(x); cur = null; continue; }
+    if (cur && cur.who === x.who) cur.items.push(x); else { cur = { k: "run", who: x.who, own: !!x.own, items: [x] }; out.push(cur); }
+  }
+  return out;
+}
+
+const R = {
+  v1() { // texte aéré
+    return T.map(x => common(x) || (() => {
+      const prev = T[T.indexOf(x) - 1]; const first = !(prev && prev.k === "m" && prev.who === x.who);
+      return `<div class="m ${first ? "first" : ""} ${x.own ? "own" : ""} ${x.hl ? "hl" : ""}" ${nc(x.who)}>` +
+        `<span class="who nm">${first ? esc(x.who) : ""}</span><span class="bd-w">${body(x)}</span><span class="tm">${x.tm}</span></div>`;
+    })()).join("");
+  },
+  v2() { // blocs par auteur
+    return runs(T).map(r => common(r) || `<div class="blk ${r.own ? "own" : ""}" ${nc(r.who)}><div class="hd"><span class="nm">${esc(r.who)}</span><span class="tm">${r.items[0].tm}</span></div>` +
+      `<div class="bodies">${r.items.map(x => `<div class="m ${x.hl ? "hl" : ""}">${body(x)}${r.items.length > 1 && x !== r.items[0] ? `<span class="tm">${x.tm}</span>` : ""}</div>`).join("")}</div></div>`).join("");
+  },
+  v3() { // bulles
+    return T.map(x => common(x) || (() => {
+      const prev = T[T.indexOf(x) - 1]; const first = !(prev && prev.k === "m" && prev.who === x.who);
+      return `<div class="row ${x.own ? "own" : ""} ${first ? "first" : ""} ${x.hl ? "hl" : ""}" ${nc(x.who)}><div class="bub">` +
+        `${first && !x.own ? `<span class="nm">${esc(x.who)}</span>` : ""}${body(x)}<span class="tm">${x.tm}</span></div></div>`;
+    })()).join("");
+  },
+  v4() { // cartes
+    return runs(T).map(r => common(r) || `<div class="card ${r.own ? "own" : ""} ${r.items.some(i => i.hl) ? "hl" : ""}" ${nc(r.who)}>` +
+      `<div class="hd"><span class="av">${esc(r.who[0])}</span><span class="nm">${esc(r.who)}</span><span class="tm">${r.items[0].tm}${r.items.length > 1 ? " — " + r.items[r.items.length - 1].tm : ""}</span></div>` +
+      r.items.map(x => `<div class="m ${x.hl ? "hl" : ""}">${body(x)}</div>`).join("") + `</div>`).join("");
+  },
+};
+
+const NOTES = [
+  ["1 · Texte aéré", "La forme IRC d'aujourd'hui, mise en colonnes : le nom à gauche (une seule fois par série), le texte au milieu avec un retrait propre, l'heure à droite (visible au survol). Ce qui change le plus : l'espace entre les séries et l'interligne.", "Coût : faible. Du CSS et une règle « même auteur que la ligne d'avant » dans renderLine."],
+  ["2 · Blocs par auteur", "Un en-tête (nom coloré et heure) puis ses messages à la suite, sous un filet à sa couleur. On voit d'un coup d'œil qui parle, et les réponses d'une même personne restent groupées.", "Coût : moyen. Il faut regrouper les lignes consécutives dans un même bloc, y compris quand des lignes arrivent ou sont rechargées depuis l'historique."],
+  ["3 · Bulles", "Les autres à gauche, vous à droite et sur fond d'accent, comme dans l'appli de téléphone. Le fil se lit comme une conversation à deux sens. La largeur est limitée à environ trois quarts de la fenêtre.", "Coût : moyen. Même regroupement que le 2, plus une mise en page à deux sens. Prend davantage de hauteur par message."],
+  ["4 · Cartes", "Une plaque en relief par série, avec un en-tête à tuile de couleur (comme la liste des membres) et la plage d'heures. C'est le plus aéré et le plus clair pour les images, mais le moins dense.", "Coût : moyen. Même regroupement. Les images peuvent y être plus grandes sans gêner."],
+];
+const grid = document.getElementById("grid");
+["v1", "v2", "v3", "v4"].forEach((v, i) => {
+  const n = NOTES[i];
+  grid.insertAdjacentHTML("beforeend",
+    `<figure><figcaption><b>${n[0]}</b><br>${n[1]}<span class="cost">${n[2]}</span></figcaption>` +
+    `<section class="win active"><div class="tb"><span class="tb-title">La big family — WhatsApp</span></div>` +
+    `<div class="cb"><div class="log ${v}">${R[v]()}</div></div></section></figure>`);
+});
+</script>
+</body>
+</html>
